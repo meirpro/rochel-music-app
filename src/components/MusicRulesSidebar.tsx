@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLocalStorage } from "usehooks-ts";
 
 // Note colors matching the color legend
 const NOTE_COLORS: Record<string, string> = {
@@ -22,7 +22,9 @@ export function MusicRulesSidebar({
   isOpen,
   onToggle,
 }: MusicRulesSidebarProps) {
-  const [expandedSection, setExpandedSection] = useState<string | null>(
+  // Persist expanded section in localStorage
+  const [expandedSection, setExpandedSection] = useLocalStorage<string | null>(
+    "rochel-editor-sidebar-section",
     "durations",
   );
 

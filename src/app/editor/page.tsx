@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useLocalStorage } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
 import {
   NoteEditor,
@@ -33,24 +34,177 @@ const NOTE_COLORS = {
   B: "#ff77c8",
 };
 
+// Types for localStorage persistence
+interface EditorComposition {
+  notes: EditorNote[];
+  repeatMarkers: RepeatMarker[];
+  systemCount: number;
+}
+
+interface EditorSettings {
+  selectedTool: NoteTool;
+  showLabels: boolean;
+  showKidFaces: boolean;
+  showGrid: boolean;
+  tempo: number;
+  timeSignature: TimeSignature;
+}
+
+interface EditorUI {
+  showRulesSidebar: boolean;
+}
+
+const DEFAULT_COMPOSITION: EditorComposition = {
+  notes: [],
+  repeatMarkers: [],
+  systemCount: 1,
+};
+
+const DEFAULT_SETTINGS: EditorSettings = {
+  selectedTool: "quarter",
+  showLabels: true,
+  showKidFaces: false,
+  showGrid: false,
+  tempo: 100,
+  timeSignature: "4/4",
+};
+
+const DEFAULT_UI: EditorUI = {
+  showRulesSidebar: true,
+};
+
 export default function EditorPage() {
-  const [notes, setNotes] = useState<EditorNote[]>([]);
-  const [repeatMarkers, setRepeatMarkers] = useState<RepeatMarker[]>([]);
-  const [selectedTool, setSelectedTool] = useState<NoteTool>("quarter");
-  const [showLabels, setShowLabels] = useState(true);
-  const [showKidFaces, setShowKidFaces] = useState(false);
+  // Persisted state - composition (notes, markers, layout)
+  const [composition, setComposition] = useLocalStorage<EditorComposition>(
+    "rochel-editor-composition",
+    DEFAULT_COMPOSITION,
+  );
+
+  // Persisted state - editor settings (tool, toggles, tempo, time sig)
+  const [settings, setSettings] = useLocalStorage<EditorSettings>(
+    "rochel-editor-settings",
+    DEFAULT_SETTINGS,
+  );
+
+  // Persisted state - UI visibility
+  const [ui, setUI] = useLocalStorage<EditorUI>("rochel-editor-ui", DEFAULT_UI);
+
+  // Transient state - playback (not persisted)
   const [isPlaying, setIsPlaying] = useState(false);
-  const [tempo, setTempo] = useState(100);
   const [playheadX, setPlayheadX] = useState<number | null>(null);
   const [playheadSystem, setPlayheadSystem] = useState(0);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
-  const [systemCount, setSystemCount] = useState(1);
-  const [timeSignature, setTimeSignature] = useState<TimeSignature>("4/4");
-  const [showRulesSidebar, setShowRulesSidebar] = useState(true);
-  const [showGrid, setShowGrid] = useState(false);
+
   const isPlayingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Destructure for easier access
+  const { notes, repeatMarkers, systemCount } = composition;
+  const {
+    selectedTool,
+    showLabels,
+    showKidFaces,
+    showGrid,
+    tempo,
+    timeSignature,
+  } = settings;
+  const { showRulesSidebar } = ui;
+
+  // Helper setters for composition
+  const setNotes = useCallback(
+    (notesOrUpdater: EditorNote[] | ((prev: EditorNote[]) => EditorNote[])) => {
+      setComposition((prev) => ({
+        ...prev,
+        notes:
+          typeof notesOrUpdater === "function"
+            ? notesOrUpdater(prev.notes)
+            : notesOrUpdater,
+      }));
+    },
+    [setComposition],
+  );
+
+  const setRepeatMarkers = useCallback(
+    (
+      markersOrUpdater:
+        | RepeatMarker[]
+        | ((prev: RepeatMarker[]) => RepeatMarker[]),
+    ) => {
+      setComposition((prev) => ({
+        ...prev,
+        repeatMarkers:
+          typeof markersOrUpdater === "function"
+            ? markersOrUpdater(prev.repeatMarkers)
+            : markersOrUpdater,
+      }));
+    },
+    [setComposition],
+  );
+
+  const setSystemCount = useCallback(
+    (countOrUpdater: number | ((prev: number) => number)) => {
+      setComposition((prev) => ({
+        ...prev,
+        systemCount:
+          typeof countOrUpdater === "function"
+            ? countOrUpdater(prev.systemCount)
+            : countOrUpdater,
+      }));
+    },
+    [setComposition],
+  );
+
+  // Helper setters for settings
+  const setSelectedTool = useCallback(
+    (tool: NoteTool) => {
+      setSettings((prev) => ({ ...prev, selectedTool: tool }));
+    },
+    [setSettings],
+  );
+
+  const setShowLabels = useCallback(
+    (show: boolean) => {
+      setSettings((prev) => ({ ...prev, showLabels: show }));
+    },
+    [setSettings],
+  );
+
+  const setShowKidFaces = useCallback(
+    (show: boolean) => {
+      setSettings((prev) => ({ ...prev, showKidFaces: show }));
+    },
+    [setSettings],
+  );
+
+  const setShowGrid = useCallback(
+    (show: boolean) => {
+      setSettings((prev) => ({ ...prev, showGrid: show }));
+    },
+    [setSettings],
+  );
+
+  const setTempo = useCallback(
+    (tempoValue: number) => {
+      setSettings((prev) => ({ ...prev, tempo: tempoValue }));
+    },
+    [setSettings],
+  );
+
+  const setTimeSignature = useCallback(
+    (sig: TimeSignature) => {
+      setSettings((prev) => ({ ...prev, timeSignature: sig }));
+    },
+    [setSettings],
+  );
+
+  // Helper setter for UI
+  const setShowRulesSidebar = useCallback(
+    (show: boolean) => {
+      setUI((prev) => ({ ...prev, showRulesSidebar: show }));
+    },
+    [setUI],
+  );
 
   // Handle duplicate note attempt
   const handleDuplicateNote = useCallback(() => {
