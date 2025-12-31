@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
-/* SMuFL music notation font */
+/* SMuFL music notation fonts */
 @font-face {
-  font-family: "Leland Text";
-  src: url("/fonts/LelandText.woff2") format("woff2");
+  font-family: "leland_textregular";
+  src: url("/fonts/lelandtext.woff2") format("woff2"),
+    url("/fonts/lelandtext.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bravura";
+  src: url("/fonts/Bravura.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;

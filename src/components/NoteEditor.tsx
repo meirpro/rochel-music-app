@@ -1,9 +1,62 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { Pitch } from "@/lib/types";
 import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
+
+// Time signature type
+export type TimeSignature = "4/4" | "3/4" | "6/8" | "2/4";
+
+// Time signature configuration
+const TIME_SIG_CONFIG: Record<
+  TimeSignature,
+  {
+    beatsPerMeasure: number;
+    beamGroups: number[];
+    measuresPerSystem: number;
+    shadeGroups: number[]; // How to group beats for shading
+  }
+> = {
+  "4/4": {
+    beatsPerMeasure: 4,
+    beamGroups: [2, 2],
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1], // Alternate each beat
+  },
+  "3/4": {
+    beatsPerMeasure: 3,
+    beamGroups: [1, 1, 1],
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1, 1, 1], // 6 beats total
+  },
+  "6/8": {
+    beatsPerMeasure: 6,
+    beamGroups: [3, 3],
+    measuresPerSystem: 2,
+    shadeGroups: [3, 3, 3, 3], // Group in 3s (compound meter feel)
+  },
+  "2/4": {
+    beatsPerMeasure: 2,
+    beamGroups: [1, 1],
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1], // 4 beats total
+  },
+};
+
+// Helper to get layout values based on time signature
+function getLayoutConfig(timeSignature: TimeSignature) {
+  const config = TIME_SIG_CONFIG[timeSignature];
+  const beatsPerSystem = config.beatsPerMeasure * config.measuresPerSystem;
+  const staffRight = LEFT_MARGIN + beatsPerSystem * BEAT_WIDTH;
+  const svgWidth = staffRight + 60;
+  return {
+    ...config,
+    beatsPerSystem,
+    staffRight,
+    svgWidth,
+  };
+}
 
 // Editor-specific note type
 export interface EditorNote {
@@ -13,6 +66,12 @@ export interface EditorNote {
   x: number;
   y: number;
   system: number; // Which system/row (0-indexed)
+}
+
+// Beam group for rendering connected eighth notes
+interface BeamGroup {
+  notes: EditorNote[];
+  stemDirection: "up" | "down";
 }
 
 // Repeat sign marker - supports cross-system repeats
@@ -47,6 +106,7 @@ interface NoteEditorProps {
   onSystemCountChange: (count: number) => void;
   onDuplicateNote?: () => void;
   svgRef?: React.RefObject<SVGSVGElement | null>;
+  timeSignature?: TimeSignature;
 }
 
 // Constants - adjusted for better fit
@@ -57,10 +117,8 @@ const LINE_SPACING = 32;
 const BEAT_WIDTH = 60; // Slightly wider for cleaner look
 const LEFT_MARGIN = 100;
 const STAFF_LEFT = 40;
-const STAFF_RIGHT = 580; // Fits 8 beats nicely
-const BEATS_PER_SYSTEM = 8; // 2 measures of 4/4
-const MEASURES_PER_SYSTEM = 2;
-const SVG_WIDTH = 640;
+// Note: STAFF_RIGHT, BEATS_PER_SYSTEM, MEASURES_PER_SYSTEM, SVG_WIDTH are now dynamic
+// based on time signature - use getLayoutConfig(timeSignature)
 
 // Pitch positions
 const PITCH_POSITIONS: Record<Pitch, number> = {
@@ -111,17 +169,17 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
 }
 
-function snapX(x: number): number {
+function snapX(x: number, staffRight: number): number {
   const snapped =
     Math.round((x - LEFT_MARGIN) / (BEAT_WIDTH / 2)) * (BEAT_WIDTH / 2) +
     LEFT_MARGIN;
-  return Math.max(LEFT_MARGIN, Math.min(STAFF_RIGHT - 20, snapped));
+  return Math.max(LEFT_MARGIN, Math.min(staffRight - 20, snapped));
 }
 
 // Get measure from X position
-function getMeasureFromX(x: number): number {
+function getMeasureFromX(x: number, beatsPerMeasure: number): number {
   const beatsFromLeft = (x - LEFT_MARGIN) / BEAT_WIDTH;
-  return Math.floor(beatsFromLeft / 4);
+  return Math.floor(beatsFromLeft / beatsPerMeasure);
 }
 
 function getDurationFromTool(tool: NoteTool): number {
@@ -139,6 +197,100 @@ function getDurationFromTool(tool: NoteTool): number {
   }
 }
 
+// Function to group eighth notes for beaming
+function groupEighthNotes(
+  notes: EditorNote[],
+  timeSignature: TimeSignature,
+): BeamGroup[] {
+  const config = TIME_SIG_CONFIG[timeSignature];
+  const eighthNotes = notes.filter((n) => n.duration === 0.5);
+
+  // Sort by system, then by x position
+  const sorted = [...eighthNotes].sort((a, b) => {
+    if (a.system !== b.system) return a.system - b.system;
+    return a.x - b.x;
+  });
+
+  const groups: BeamGroup[] = [];
+  let currentGroup: EditorNote[] = [];
+  let currentBeatGroup = -1;
+
+  for (const note of sorted) {
+    // Calculate which beat group this note belongs to
+    const beatFromLeft = (note.x - LEFT_MARGIN) / BEAT_WIDTH;
+    const measureBeat = beatFromLeft % config.beatsPerMeasure;
+
+    // Find which beam group this beat belongs to
+    let beatGroup = 0;
+    let beatCount = 0;
+    for (let i = 0; i < config.beamGroups.length; i++) {
+      beatCount += config.beamGroups[i];
+      if (measureBeat < beatCount) {
+        beatGroup = i;
+        break;
+      }
+    }
+
+    // Calculate absolute beat group (including system and measure)
+    const measure = Math.floor(beatFromLeft / config.beatsPerMeasure);
+    const absoluteBeatGroup = note.system * 1000 + measure * 100 + beatGroup;
+
+    // Check if this note should join the current group
+    if (currentGroup.length === 0) {
+      currentGroup.push(note);
+      currentBeatGroup = absoluteBeatGroup;
+    } else if (absoluteBeatGroup === currentBeatGroup) {
+      // Same beat group - check if consecutive
+      const lastNote = currentGroup[currentGroup.length - 1];
+      const xDiff = note.x - lastNote.x;
+      // Allow notes within 1.5 beat widths to be grouped
+      if (xDiff > 0 && xDiff <= BEAT_WIDTH * 1.5) {
+        currentGroup.push(note);
+      } else {
+        // Not consecutive, finish current group and start new
+        if (currentGroup.length >= 2) {
+          groups.push(createBeamGroup(currentGroup));
+        }
+        currentGroup = [note];
+        currentBeatGroup = absoluteBeatGroup;
+      }
+    } else {
+      // Different beat group, finish current and start new
+      if (currentGroup.length >= 2) {
+        groups.push(createBeamGroup(currentGroup));
+      }
+      currentGroup = [note];
+      currentBeatGroup = absoluteBeatGroup;
+    }
+  }
+
+  // Don't forget the last group
+  if (currentGroup.length >= 2) {
+    groups.push(createBeamGroup(currentGroup));
+  }
+
+  return groups;
+}
+
+// Helper to create a beam group with calculated stem direction
+function createBeamGroup(notes: EditorNote[]): BeamGroup {
+  // Find the note furthest from the staff center to determine stem direction
+  let maxDistance = 0;
+  let stemDirection: "up" | "down" = "up";
+
+  for (const note of notes) {
+    const staffCenterY = getStaffCenterY(note.system);
+    const distance = Math.abs(note.y - staffCenterY);
+    if (distance > maxDistance) {
+      maxDistance = distance;
+      // If the furthest note is above center, stems go down; otherwise up
+      stemDirection = note.y < staffCenterY ? "down" : "up";
+    }
+  }
+
+  return { notes, stemDirection };
+}
+
 export function NoteEditor({
   notes,
   onNotesChange,
@@ -154,9 +306,37 @@ export function NoteEditor({
   onSystemCountChange,
   onDuplicateNote,
   svgRef: externalSvgRef,
+  timeSignature = "4/4",
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
+
+  // Get dynamic layout based on time signature
+  const layout = useMemo(() => getLayoutConfig(timeSignature), [timeSignature]);
+  const {
+    beatsPerSystem,
+    staffRight,
+    svgWidth,
+    measuresPerSystem,
+    shadeGroups,
+  } = layout;
+
+  // Group eighth notes for beaming
+  const beamGroups = useMemo(
+    () => groupEighthNotes(notes, timeSignature),
+    [notes, timeSignature],
+  );
+
+  // Get set of note IDs that are part of beam groups (for skipping individual flags)
+  const beamedNoteIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of beamGroups) {
+      for (const note of group.notes) {
+        ids.add(note.id);
+      }
+    }
+    return ids;
+  }, [beamGroups]);
   const [draggedNote, setDraggedNote] = useState<string | null>(null);
   const [draggedMarker, setDraggedMarker] = useState<{
     id: string;
@@ -206,13 +386,13 @@ export function NoteEditor({
       const system = getSystemFromY(y, systemCount);
       const staffCenterY = getStaffCenterY(system);
 
-      if (x < LEFT_MARGIN - 20 || x > STAFF_RIGHT + 20) return;
+      if (x < LEFT_MARGIN - 20 || x > staffRight + 20) return;
       if (y < staffCenterY - LINE_SPACING * 2 - 30) return;
       if (y > staffCenterY + LINE_SPACING * 2 + 30) return;
 
       // Handle repeat tool - allows multiple repeat sections
       if (selectedTool === "repeat") {
-        const measure = getMeasureFromX(x);
+        const measure = getMeasureFromX(x, layout.beatsPerMeasure);
 
         if (!repeatStart) {
           // First click - set start position
@@ -275,7 +455,7 @@ export function NoteEditor({
       if (selectedTool === "delete") return;
 
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x);
+      const snappedX = snapX(x, staffRight);
       const snappedY = getYFromPitch(pitch, system);
 
       const existingNote = notes.find(
@@ -331,10 +511,10 @@ export function NoteEditor({
       // Handle marker dragging - allows cross-system repeats
       if (draggedMarker) {
         const system = getSystemFromY(y, systemCount);
-        const measure = getMeasureFromX(x);
+        const measure = getMeasureFromX(x, layout.beatsPerMeasure);
         const clampedMeasure = Math.max(
           0,
-          Math.min(MEASURES_PER_SYSTEM, measure),
+          Math.min(measuresPerSystem, measure),
         );
 
         // Find the paired marker by pairId
@@ -352,9 +532,10 @@ export function NoteEditor({
         let isValid = true;
         if (pairedMarker) {
           const draggedAbsoluteBeat =
-            system * BEATS_PER_SYSTEM + clampedMeasure * 4;
+            system * beatsPerSystem + clampedMeasure * layout.beatsPerMeasure;
           const pairedAbsoluteBeat =
-            pairedMarker.system * BEATS_PER_SYSTEM + pairedMarker.measure * 4;
+            pairedMarker.system * beatsPerSystem +
+            pairedMarker.measure * layout.beatsPerMeasure;
 
           if (
             draggedMarker.type === "start" &&
@@ -389,7 +570,7 @@ export function NoteEditor({
       if (!draggedNote) return;
       const system = getSystemFromY(y, systemCount);
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x);
+      const snappedX = snapX(x, staffRight);
       const snappedY = getYFromPitch(pitch, system);
 
       // Check if another note exists at this position (excluding the dragged note)
@@ -448,13 +629,22 @@ export function NoteEditor({
     const isActive = activeNoteId === note.id;
     const type = getNoteType(note.duration);
     const staffCenterY = getStaffCenterY(note.system);
-    const stemDir = note.y > staffCenterY ? "up" : "down";
+    const isBeamed = beamedNoteIds.has(note.id);
+
+    // For beamed notes, use the beam group's stem direction
+    let stemDir: "up" | "down" = note.y > staffCenterY ? "up" : "down";
+    if (isBeamed) {
+      const beamGroup = beamGroups.find((g) =>
+        g.notes.some((n) => n.id === note.id),
+      );
+      if (beamGroup) {
+        stemDir = beamGroup.stemDirection;
+      }
+    }
+
+    const stemH = 40;
     const isHollow = type === "half" || type === "whole";
-    const fill = isHollow ? "#ffffff" : color;
-    const stroke = isHollow ? color : "#000";
-    const strokeWidth = isHollow ? 3 : 1;
-    const stemH = 35;
-    const stemX = stemDir === "up" ? note.x + 9 : note.x - 9;
+    const stemX = stemDir === "up" ? note.x + 13 : note.x - 13;
     const stemY1 = note.y;
     const stemY2 = stemDir === "up" ? note.y - stemH : note.y + stemH;
 
@@ -533,7 +723,7 @@ export function NoteEditor({
               }
               y2={stemDir === "up" ? note.y - 38 : note.y + 38}
               stroke="#000"
-              strokeWidth={3}
+              strokeWidth={3.5}
             />
           )}
           {/* Note name label */}
@@ -554,7 +744,11 @@ export function NoteEditor({
       );
     }
 
-    // Standard note rendering
+    // Standard note rendering with SVG ellipse
+    const fill = isHollow ? "#ffffff" : color;
+    const stroke = isHollow ? color : "#000";
+    const strokeWidth = isHollow ? 2.5 : 1;
+
     return (
       <g
         key={note.id}
@@ -562,43 +756,47 @@ export function NoteEditor({
         style={{ cursor: selectedTool === "delete" ? "not-allowed" : "grab" }}
         className="transition-opacity hover:opacity-80"
       >
+        {/* Ledger line for C4 */}
         {note.pitch === "C4" && (
           <line
-            x1={note.x - 14}
+            x1={note.x - 20}
             y1={note.y}
-            x2={note.x + 14}
+            x2={note.x + 20}
             y2={note.y}
             stroke="#4a5568"
             strokeWidth={2}
           />
         )}
+        {/* Selection indicator */}
         {isSelected && (
-          <circle cx={note.x} cy={note.y - 25} r={4} fill="#3B82F6" />
+          <circle cx={note.x} cy={note.y - 28} r={4} fill="#3B82F6" />
         )}
         {/* Active glow effect */}
         {isActive && (
           <ellipse
             cx={note.x}
             cy={note.y}
-            rx={16}
-            ry={14}
+            rx={22}
+            ry={18}
             fill="none"
             stroke={color}
             strokeWidth={4}
             opacity={0.6}
-            transform={`rotate(-15 ${note.x} ${note.y})`}
+            transform={`rotate(-20 ${note.x} ${note.y})`}
           />
         )}
+        {/* Notehead - sized to span between staff lines */}
         <ellipse
           cx={note.x}
           cy={note.y}
-          rx={10}
-          ry={8}
+          rx={16}
+          ry={14}
           fill={fill}
           stroke={isActive ? "#fff" : stroke}
-          strokeWidth={isActive ? 3 : strokeWidth}
-          transform={`rotate(-15 ${note.x} ${note.y})`}
+          strokeWidth={isActive ? 2.5 : strokeWidth}
+          transform={`rotate(-20 ${note.x} ${note.y})`}
         />
+        {/* Stem */}
         {type !== "whole" && (
           <line
             x1={stemX}
@@ -606,29 +804,32 @@ export function NoteEditor({
             x2={stemX}
             y2={stemY2}
             stroke={color}
-            strokeWidth={3}
+            strokeWidth={3.5}
           />
         )}
-        {type === "eighth" && (
+        {/* Flag for eighth notes (only if not beamed) */}
+        {type === "eighth" && !isBeamed && (
           <path
             d={
               stemDir === "up"
-                ? `M ${stemX} ${stemY2} Q ${stemX + 9} ${stemY2 + 10} ${stemX + 9} ${stemY2 + 20}`
-                : `M ${stemX} ${stemY2} Q ${stemX - 9} ${stemY2 - 10} ${stemX - 9} ${stemY2 - 20}`
+                ? `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 + 10} ${stemX + 10} ${stemY2 + 22}`
+                : `M ${stemX} ${stemY2} Q ${stemX - 10} ${stemY2 - 10} ${stemX - 10} ${stemY2 - 22}`
             }
             stroke={color}
-            strokeWidth={3}
+            strokeWidth={3.5}
             fill="none"
           />
         )}
+        {/* Note label */}
         {showLabels && (
           <text
             x={note.x}
-            y={note.y + 4}
+            y={note.y + 5}
             textAnchor="middle"
-            fill={isHollow ? color : "#1a1a1a"}
+            fill={isHollow ? "#1a1a1a" : "#ffffff"}
             fontSize={11}
             fontWeight="bold"
+            fontFamily="system-ui, sans-serif"
             style={{ pointerEvents: "none" }}
           >
             {note.pitch[0]}
@@ -649,10 +850,20 @@ export function NoteEditor({
 
     return (
       <g key={`system-${systemIndex}`}>
-        {/* Beat shading - alternating gray */}
-        {Array.from({ length: BEATS_PER_SYSTEM }, (_, beatIndex) => {
+        {/* Beat shading - based on time signature groupings */}
+        {Array.from({ length: beatsPerSystem }, (_, beatIndex) => {
           const beatX = LEFT_MARGIN + beatIndex * BEAT_WIDTH;
-          const isOdd = beatIndex % 2 === 1;
+          // Calculate which shade group this beat belongs to
+          let groupIndex = 0;
+          let beatCount = 0;
+          for (let i = 0; i < shadeGroups.length; i++) {
+            beatCount += shadeGroups[i];
+            if (beatIndex < beatCount) {
+              groupIndex = i;
+              break;
+            }
+          }
+          const isShaded = groupIndex % 2 === 1;
           return (
             <rect
               key={`shade-${systemIndex}-${beatIndex}`}
@@ -660,7 +871,7 @@ export function NoteEditor({
               y={staffCenterY - LINE_SPACING - 20}
               width={BEAT_WIDTH}
               height={LINE_SPACING * 2 + 40}
-              fill={isOdd ? "#f8fafc" : "#f1f5f9"}
+              fill={isShaded ? "#f8fafc" : "#f1f5f9"}
             />
           );
         })}
@@ -669,7 +880,7 @@ export function NoteEditor({
         <line
           x1={STAFF_LEFT}
           y1={staffCenterY - LINE_SPACING}
-          x2={STAFF_RIGHT}
+          x2={staffRight}
           y2={staffCenterY - LINE_SPACING}
           stroke="#4a5568"
           strokeWidth={2}
@@ -677,7 +888,7 @@ export function NoteEditor({
         <line
           x1={STAFF_LEFT}
           y1={staffCenterY}
-          x2={STAFF_RIGHT}
+          x2={staffRight}
           y2={staffCenterY}
           stroke="#4a5568"
           strokeWidth={2}
@@ -685,17 +896,20 @@ export function NoteEditor({
         <line
           x1={STAFF_LEFT}
           y1={staffCenterY + LINE_SPACING}
-          x2={STAFF_RIGHT}
+          x2={staffRight}
           y2={staffCenterY + LINE_SPACING}
           stroke="#4a5568"
           strokeWidth={2}
         />
 
-        {/* Bar lines - at measures 0, 1, 2 (beginning, middle, end) */}
-        {[0, 4, 8].map((beat) => {
+        {/* Bar lines - dynamic based on time signature */}
+        {Array.from(
+          { length: measuresPerSystem + 1 },
+          (_, i) => i * layout.beatsPerMeasure,
+        ).map((beat) => {
           const barX = LEFT_MARGIN + beat * BEAT_WIDTH;
-          const measureIndex = beat / 4;
-          const isEdge = beat === 0 || beat === 8;
+          const measureIndex = beat / layout.beatsPerMeasure;
+          const isEdge = beat === 0 || beat === beatsPerSystem;
 
           const startMarker = startMarkers.find(
             (m) => m.measure === measureIndex,
@@ -815,9 +1029,12 @@ export function NoteEditor({
           repeatStart.system === systemIndex &&
           selectedTool === "repeat" && (
             <rect
-              x={LEFT_MARGIN + repeatStart.measure * 4 * BEAT_WIDTH}
+              x={
+                LEFT_MARGIN +
+                repeatStart.measure * layout.beatsPerMeasure * BEAT_WIDTH
+              }
               y={staffCenterY - LINE_SPACING - 15}
-              width={4 * BEAT_WIDTH}
+              width={layout.beatsPerMeasure * BEAT_WIDTH}
               height={LINE_SPACING * 2 + 30}
               fill="#8b5cf6"
               opacity={0.15}
@@ -847,7 +1064,7 @@ export function NoteEditor({
               textAnchor="middle"
               fill="#334155"
             >
-              4
+              {timeSignature.split("/")[0]}
             </text>
             <text
               x={85}
@@ -857,26 +1074,24 @@ export function NoteEditor({
               textAnchor="middle"
               fill="#334155"
             >
-              4
+              {timeSignature.split("/")[1]}
             </text>
           </>
         )}
 
         {/* Beat numbers */}
-        {Array.from({ length: BEATS_PER_SYSTEM }, (_, i) => i + 1).map(
-          (beat) => (
-            <text
-              key={`beat-${systemIndex}-${beat}`}
-              x={LEFT_MARGIN + (beat - 0.5) * BEAT_WIDTH}
-              y={staffCenterY + LINE_SPACING + 35}
-              fontSize={11}
-              textAnchor="middle"
-              fill="#64748b"
-            >
-              {systemIndex * BEATS_PER_SYSTEM + beat}
-            </text>
-          ),
-        )}
+        {Array.from({ length: beatsPerSystem }, (_, i) => i + 1).map((beat) => (
+          <text
+            key={`beat-${systemIndex}-${beat}`}
+            x={LEFT_MARGIN + (beat - 0.5) * BEAT_WIDTH}
+            y={staffCenterY + LINE_SPACING + 35}
+            fontSize={11}
+            textAnchor="middle"
+            fill="#64748b"
+          >
+            {systemIndex * beatsPerSystem + beat}
+          </text>
+        ))}
 
         {/* System number label */}
         <text
@@ -916,7 +1131,7 @@ export function NoteEditor({
 
       <svg
         ref={svgRef}
-        width={SVG_WIDTH}
+        width={svgWidth}
         height={svgHeight}
         onClick={handleClick}
         onMouseMove={handleMouseMove}
@@ -934,8 +1149,86 @@ export function NoteEditor({
                   : "crosshair",
         }}
       >
+        {/* Gradient definitions for multi-colored beams */}
+        <defs>
+          {beamGroups.map((group, groupIndex) => {
+            const colors = group.notes.map((n) => getNoteColor(n.pitch));
+            const uniqueColors = [...new Set(colors)];
+            if (uniqueColors.length > 1) {
+              return (
+                <linearGradient
+                  key={`beam-gradient-${groupIndex}`}
+                  id={`beam-gradient-${groupIndex}`}
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
+                  {group.notes.map((note, i) => (
+                    <stop
+                      key={note.id}
+                      offset={`${(i / (group.notes.length - 1)) * 100}%`}
+                      stopColor={getNoteColor(note.pitch)}
+                    />
+                  ))}
+                </linearGradient>
+              );
+            }
+            return null;
+          })}
+        </defs>
+
         {Array.from({ length: systemCount }, (_, i) => renderSystem(i))}
         {notes.map(renderNote)}
+
+        {/* Render beams for grouped eighth notes */}
+        {beamGroups.map((group, groupIndex) => {
+          const { notes: groupNotes, stemDirection } = group;
+          if (groupNotes.length < 2) return null;
+
+          const stemH = 40;
+          const beamThickness = 6;
+
+          // Calculate beam Y position (at the end of stems)
+          const stemYs = groupNotes.map((note) => {
+            return stemDirection === "up" ? note.y - stemH : note.y + stemH;
+          });
+
+          // Use the average Y for a straight beam, or slope for melodic contour
+          const firstY = stemYs[0];
+          const lastY = stemYs[stemYs.length - 1];
+
+          // Get colors
+          const colors = groupNotes.map((n) => getNoteColor(n.pitch));
+          const uniqueColors = [...new Set(colors)];
+          const beamColor =
+            uniqueColors.length > 1
+              ? `url(#beam-gradient-${groupIndex})`
+              : colors[0];
+
+          // Calculate stem X positions
+          const stemXs = groupNotes.map((note) =>
+            stemDirection === "up" ? note.x + 13 : note.x - 13,
+          );
+
+          const firstX = stemXs[0];
+          const lastX = stemXs[stemXs.length - 1];
+
+          return (
+            <g key={`beam-group-${groupIndex}`}>
+              {/* The beam itself */}
+              <polygon
+                points={`
+                  ${firstX},${firstY}
+                  ${lastX},${lastY}
+                  ${lastX},${lastY + (stemDirection === "up" ? beamThickness : -beamThickness)}
+                  ${firstX},${firstY + (stemDirection === "up" ? beamThickness : -beamThickness)}
+                `}
+                fill={beamColor}
+              />
+            </g>
+          );
+        })}
 
         {playheadX !== null && (
           <g>
@@ -956,7 +1249,7 @@ export function NoteEditor({
 
         {notes.length === 0 && systemCount === 1 && (
           <text
-            x={SVG_WIDTH / 2}
+            x={svgWidth / 2}
             y={getStaffCenterY(0)}
             textAnchor="middle"
             fill="#94a3b8"
@@ -977,5 +1270,5 @@ export function NoteEditor({
   );
 }
 
-// Export constants for use in page
-export { LEFT_MARGIN, BEAT_WIDTH, BEATS_PER_SYSTEM };
+// Export constants and helpers for use in page
+export { LEFT_MARGIN, BEAT_WIDTH, getLayoutConfig };

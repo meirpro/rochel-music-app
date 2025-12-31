@@ -7,8 +7,10 @@ import {
   EditorNote,
   NoteTool,
   RepeatMarker,
+  TimeSignature,
   LEFT_MARGIN,
   BEAT_WIDTH,
+  getLayoutConfig,
 } from "@/components/NoteEditor";
 import {
   Tooltip,
@@ -16,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MusicRulesSidebar } from "@/components/MusicRulesSidebar";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
 
@@ -42,6 +45,8 @@ export default function EditorPage() {
   const [playheadSystem, setPlayheadSystem] = useState(0);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [systemCount, setSystemCount] = useState(1);
+  const [timeSignature, setTimeSignature] = useState<TimeSignature>("4/4");
+  const [showRulesSidebar, setShowRulesSidebar] = useState(false);
   const isPlayingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -105,12 +110,14 @@ export default function EditorPage() {
     URL.revokeObjectURL(url);
   }, []);
 
-  // Constants for playback
-  const BEATS_PER_SYSTEM = 8;
-
   // Handle playback with smooth scrolling
   const handlePlay = useCallback(() => {
     if (isPlayingRef.current || notes.length === 0) return;
+
+    // Get dynamic layout based on current time signature
+    const layout = getLayoutConfig(timeSignature);
+    const BEATS_PER_SYSTEM = layout.beatsPerSystem;
+    const beatsPerMeasure = layout.beatsPerMeasure;
 
     setIsPlaying(true);
     isPlayingRef.current = true;
@@ -149,9 +156,10 @@ export default function EditorPage() {
       );
       if (endMarker) {
         const startAbsoluteBeat =
-          marker.system * BEATS_PER_SYSTEM + marker.measure * 4;
+          marker.system * BEATS_PER_SYSTEM + marker.measure * beatsPerMeasure;
         const endAbsoluteBeat =
-          endMarker.system * BEATS_PER_SYSTEM + endMarker.measure * 4;
+          endMarker.system * BEATS_PER_SYSTEM +
+          endMarker.measure * beatsPerMeasure;
         if (endAbsoluteBeat > startAbsoluteBeat) {
           repeatSections.push({
             pairId: marker.pairId,
@@ -421,7 +429,7 @@ export default function EditorPage() {
     };
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [notes, tempo, repeatMarkers, systemCount]);
+  }, [notes, tempo, repeatMarkers, systemCount, timeSignature]);
 
   const handleStop = useCallback(() => {
     setIsPlaying(false);
@@ -507,24 +515,6 @@ export default function EditorPage() {
     <TooltipProvider>
       <div className="min-h-screen bg-gray-50">
         <Toaster richColors />
-
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">Note Editor</h1>
-              <p className="text-sm text-gray-500">
-                Click to add notes, drag to move them
-              </p>
-            </div>
-            <a
-              href="/"
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-            >
-              ← Back to Player
-            </a>
-          </div>
-        </header>
 
         {/* Toolbar */}
         <div className="bg-white border-b border-gray-200 px-4 py-2">
@@ -700,6 +690,24 @@ export default function EditorPage() {
 
             <div className="w-px h-5 bg-gray-300" />
 
+            <label className="flex items-center gap-2">
+              <span className="text-gray-600">Time:</span>
+              <select
+                value={timeSignature}
+                onChange={(e) =>
+                  setTimeSignature(e.target.value as TimeSignature)
+                }
+                className="px-2 py-1 rounded border border-gray-300 text-gray-800 font-medium bg-white"
+              >
+                <option value="4/4">4/4</option>
+                <option value="3/4">3/4</option>
+                <option value="6/8">6/8</option>
+                <option value="2/4">2/4</option>
+              </select>
+            </label>
+
+            <div className="w-px h-5 bg-gray-300" />
+
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -750,6 +758,7 @@ export default function EditorPage() {
               onSystemCountChange={setSystemCount}
               onDuplicateNote={handleDuplicateNote}
               svgRef={svgRef}
+              timeSignature={timeSignature}
             />
           </div>
 
@@ -779,6 +788,12 @@ export default function EditorPage() {
             </p>
           </div>
         </main>
+
+        {/* Music Rules Sidebar */}
+        <MusicRulesSidebar
+          isOpen={showRulesSidebar}
+          onToggle={() => setShowRulesSidebar(!showRulesSidebar)}
+        />
       </div>
     </TooltipProvider>
   );
