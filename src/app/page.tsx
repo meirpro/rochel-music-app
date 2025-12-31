@@ -225,19 +225,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <header className="max-w-7xl mx-auto px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-gray-800 tracking-tight m-0">
-          3-Line Treble Kid Staff - Music Teaching App
-        </h1>
-        <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-          Only the &quot;green zone&quot; notes:{" "}
-          <b className="text-gray-700">C D E F G A B C</b>. Three staff lines
-          (E, G, B) plus one optional ledger line below for middle C. Click
-          notes to hear them.
-        </p>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-3 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-3.5">
+      <main className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-3.5">
         {/* Controls Panel */}
         <section className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
           <div className="px-3.5 py-3 border-b border-gray-200 flex items-center justify-between gap-2.5">
