@@ -20,8 +20,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MusicRulesSidebar } from "@/components/MusicRulesSidebar";
+import { SongLibrarySidebar } from "@/components/SongLibrarySidebar";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
+import { SavedSong, SavedSongsMap } from "@/lib/types";
+import { getDefaultSongs } from "@/lib/defaultSongs";
 
 // Note colors matching the color legend
 const NOTE_COLORS = {
@@ -52,6 +55,7 @@ interface EditorSettings {
 
 interface EditorUI {
   showRulesSidebar: boolean;
+  showSongLibrary: boolean;
 }
 
 const DEFAULT_COMPOSITION: EditorComposition = {
@@ -71,6 +75,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
 
 const DEFAULT_UI: EditorUI = {
   showRulesSidebar: true,
+  showSongLibrary: false,
 };
 
 export default function EditorPage() {
@@ -88,6 +93,12 @@ export default function EditorPage() {
 
   // Persisted state - UI visibility
   const [ui, setUI] = useLocalStorage<EditorUI>("rochel-editor-ui", DEFAULT_UI);
+
+  // Persisted state - saved songs library (initialized with defaults)
+  const [savedSongs, setSavedSongs] = useLocalStorage<SavedSongsMap>(
+    "rochel-saved-songs",
+    getDefaultSongs(),
+  );
 
   // Transient state - playback (not persisted)
   const [isPlaying, setIsPlaying] = useState(false);
@@ -109,7 +120,7 @@ export default function EditorPage() {
     tempo,
     timeSignature,
   } = settings;
-  const { showRulesSidebar } = ui;
+  const { showRulesSidebar, showSongLibrary } = ui;
 
   // Helper setters for composition
   const setNotes = useCallback(
@@ -205,6 +216,107 @@ export default function EditorPage() {
     },
     [setUI],
   );
+
+  const setShowSongLibrary = useCallback(
+    (show: boolean) => {
+      setUI((prev) => ({ ...prev, showSongLibrary: show }));
+    },
+    [setUI],
+  );
+
+  // Song library handlers
+  const handleSaveSong = useCallback(
+    (name: string) => {
+      const id = `song-${Date.now()}`;
+      const now = Date.now();
+      const newSong: SavedSong = {
+        id,
+        name,
+        createdAt: now,
+        updatedAt: now,
+        composition: {
+          notes,
+          repeatMarkers,
+          systemCount,
+        },
+        settings: {
+          tempo,
+          timeSignature,
+        },
+      };
+      setSavedSongs((prev) => ({ ...prev, [id]: newSong }));
+      toast.success(`Saved "${name}"`, {
+        description: `${notes.length} notes saved`,
+        position: "top-left",
+      });
+    },
+    [notes, repeatMarkers, systemCount, tempo, timeSignature, setSavedSongs],
+  );
+
+  const handleLoadSong = useCallback(
+    (song: SavedSong) => {
+      if (
+        notes.length > 0 &&
+        !confirm("Load this song? Current work will be replaced.")
+      ) {
+        return;
+      }
+      setComposition({
+        notes: song.composition.notes,
+        repeatMarkers: song.composition.repeatMarkers,
+        systemCount: song.composition.systemCount,
+      });
+      setSettings((prev) => ({
+        ...prev,
+        tempo: song.settings.tempo,
+        timeSignature: song.settings.timeSignature,
+      }));
+      toast.success(`Loaded "${song.name}"`, {
+        description: `${song.composition.notes.length} notes`,
+        position: "top-left",
+      });
+    },
+    [notes.length, setComposition, setSettings],
+  );
+
+  const handleDeleteSong = useCallback(
+    (songId: string) => {
+      const song = savedSongs[songId];
+      setSavedSongs((prev) => {
+        const updated = { ...prev };
+        delete updated[songId];
+        return updated;
+      });
+      toast.success(`Deleted "${song?.name || "song"}"`, {
+        position: "top-left",
+      });
+    },
+    [savedSongs, setSavedSongs],
+  );
+
+  const handleRestoreDefaults = useCallback(() => {
+    const defaults = getDefaultSongs();
+    setSavedSongs((prev) => ({ ...prev, ...defaults }));
+    toast.success("Default songs restored", {
+      description: "Dayenu and Mashiach Now added",
+      position: "top-left",
+    });
+  }, [setSavedSongs]);
+
+  const handleExportSongs = useCallback(() => {
+    const json = JSON.stringify(savedSongs, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "rochel-songs.json";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Songs exported", {
+      description: `${Object.keys(savedSongs).length} songs saved to file`,
+      position: "top-left",
+    });
+  }, [savedSongs]);
 
   // Handle duplicate note attempt
   const handleDuplicateNote = useCallback(() => {
@@ -904,20 +1016,6 @@ export default function EditorPage() {
               {repeatMarkers.length > 0 &&
                 ` • ${repeatMarkers.length / 2} repeat`}
             </span>
-
-            <div className="w-px h-5 bg-gray-300" />
-
-            <button
-              onClick={() => setShowRulesSidebar(!showRulesSidebar)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                showRulesSidebar
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <span>?</span>
-              <span>Help</span>
-            </button>
           </div>
         </div>
 
@@ -975,6 +1073,18 @@ export default function EditorPage() {
         <MusicRulesSidebar
           isOpen={showRulesSidebar}
           onToggle={() => setShowRulesSidebar(!showRulesSidebar)}
+        />
+
+        {/* Song Library Sidebar */}
+        <SongLibrarySidebar
+          isOpen={showSongLibrary}
+          onToggle={() => setShowSongLibrary(!showSongLibrary)}
+          savedSongs={savedSongs}
+          onSaveSong={handleSaveSong}
+          onLoadSong={handleLoadSong}
+          onDeleteSong={handleDeleteSong}
+          onRestoreDefaults={handleRestoreDefaults}
+          onExport={handleExportSongs}
         />
       </div>
     </TooltipProvider>

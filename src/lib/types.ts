@@ -90,3 +90,45 @@ export interface PlaybackState {
   currentNoteIndex: number;
   tempo: number;
 }
+
+// Time signature type (also exported from NoteEditor)
+export type TimeSignature = "4/4" | "3/4" | "6/8" | "2/4";
+
+// Editor-specific note type (also exported from NoteEditor)
+export interface EditorNote {
+  id: string;
+  pitch: Pitch;
+  duration: number; // 0.5, 1, 2, or 4 beats
+  x: number;
+  y: number;
+  system: number; // Which system/row (0-indexed)
+}
+
+// Repeat sign marker (also exported from NoteEditor)
+export interface RepeatMarker {
+  id: string;
+  pairId: string; // Links start and end markers together
+  type: "start" | "end";
+  measure: number; // Measure number (0, 1, 2 for measures per system)
+  system: number;
+}
+
+// Saved song structure for localStorage persistence
+export interface SavedSong {
+  id: string; // "song-{timestamp}"
+  name: string; // User-provided name
+  createdAt: number; // Unix timestamp
+  updatedAt: number; // Unix timestamp
+  composition: {
+    notes: EditorNote[];
+    repeatMarkers: RepeatMarker[];
+    systemCount: number;
+  };
+  settings: {
+    tempo: number;
+    timeSignature: TimeSignature;
+  };
+}
+
+// Map of song ID to SavedSong for localStorage
+export type SavedSongsMap = Record<string, SavedSong>;
