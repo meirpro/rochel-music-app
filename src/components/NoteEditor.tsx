@@ -99,6 +99,7 @@ interface NoteEditorProps {
   selectedTool: NoteTool;
   showLabels?: boolean;
   showKidFaces?: boolean;
+  showGrid?: boolean;
   playheadX?: number | null;
   playheadSystem?: number;
   activeNoteId?: string | null;
@@ -169,11 +170,24 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
 }
 
-function snapX(x: number, staffRight: number): number {
+function snapX(x: number, staffRight: number, beatsPerMeasure: number): number {
   const snapped =
     Math.round((x - LEFT_MARGIN) / (BEAT_WIDTH / 2)) * (BEAT_WIDTH / 2) +
     LEFT_MARGIN;
-  return Math.max(LEFT_MARGIN, Math.min(staffRight - 20, snapped));
+  const clamped = Math.max(LEFT_MARGIN, Math.min(staffRight - 20, snapped));
+
+  // Check if this position is on a bar line (avoid placing notes there)
+  const beatsFromLeft = (clamped - LEFT_MARGIN) / BEAT_WIDTH;
+  const isOnBarLine = beatsFromLeft % beatsPerMeasure === 0;
+
+  if (isOnBarLine) {
+    // Shift note to the right by half a beat to avoid bar line
+    const shifted = clamped + BEAT_WIDTH / 2;
+    // Make sure we don't exceed the staff
+    return Math.min(shifted, staffRight - 20);
+  }
+
+  return clamped;
 }
 
 // Get measure from X position
@@ -199,17 +213,38 @@ function getDurationFromTool(tool: NoteTool): number {
 
 // Function to group eighth notes for beaming
 function groupEighthNotes(
-  notes: EditorNote[],
+  allNotes: EditorNote[],
   timeSignature: TimeSignature,
 ): BeamGroup[] {
   const config = TIME_SIG_CONFIG[timeSignature];
-  const eighthNotes = notes.filter((n) => n.duration === 0.5);
+  const eighthNotes = allNotes.filter((n) => n.duration === 0.5);
 
-  // Sort by system, then by x position
+  // Sort all notes by system, then by x position (for checking notes in between)
+  const allSorted = [...allNotes].sort((a, b) => {
+    if (a.system !== b.system) return a.system - b.system;
+    return a.x - b.x;
+  });
+
+  // Sort eighth notes by system, then by x position
   const sorted = [...eighthNotes].sort((a, b) => {
     if (a.system !== b.system) return a.system - b.system;
     return a.x - b.x;
   });
+
+  // Helper to check if there's any note between two notes
+  const hasNoteBetween = (note1: EditorNote, note2: EditorNote): boolean => {
+    if (note1.system !== note2.system) return true; // Different systems = don't beam
+    const minX = Math.min(note1.x, note2.x);
+    const maxX = Math.max(note1.x, note2.x);
+    return allSorted.some(
+      (n) =>
+        n.system === note1.system &&
+        n.x > minX + 5 &&
+        n.x < maxX - 5 &&
+        n.id !== note1.id &&
+        n.id !== note2.id,
+    );
+  };
 
   const groups: BeamGroup[] = [];
   let currentGroup: EditorNote[] = [];
@@ -240,14 +275,18 @@ function groupEighthNotes(
       currentGroup.push(note);
       currentBeatGroup = absoluteBeatGroup;
     } else if (absoluteBeatGroup === currentBeatGroup) {
-      // Same beat group - check if consecutive
+      // Same beat group - check if consecutive AND no notes in between
       const lastNote = currentGroup[currentGroup.length - 1];
       const xDiff = note.x - lastNote.x;
-      // Allow notes within 1.5 beat widths to be grouped
-      if (xDiff > 0 && xDiff <= BEAT_WIDTH * 1.5) {
+      // Only beam if adjacent AND no other notes in between
+      if (
+        xDiff > 0 &&
+        xDiff <= BEAT_WIDTH * 1.5 &&
+        !hasNoteBetween(lastNote, note)
+      ) {
         currentGroup.push(note);
       } else {
-        // Not consecutive, finish current group and start new
+        // Not consecutive or has notes in between, finish current group
         if (currentGroup.length >= 2) {
           groups.push(createBeamGroup(currentGroup));
         }
@@ -299,6 +338,7 @@ export function NoteEditor({
   selectedTool,
   showLabels = true,
   showKidFaces = false,
+  showGrid = false,
   playheadX = null,
   playheadSystem = 0,
   activeNoteId = null,
@@ -315,6 +355,7 @@ export function NoteEditor({
   const layout = useMemo(() => getLayoutConfig(timeSignature), [timeSignature]);
   const {
     beatsPerSystem,
+    beatsPerMeasure,
     staffRight,
     svgWidth,
     measuresPerSystem,
@@ -455,7 +496,7 @@ export function NoteEditor({
       if (selectedTool === "delete") return;
 
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight);
+      const snappedX = snapX(x, staffRight, beatsPerMeasure);
       const snappedY = getYFromPitch(pitch, system);
 
       const existingNote = notes.find(
@@ -570,7 +611,7 @@ export function NoteEditor({
       if (!draggedNote) return;
       const system = getSystemFromY(y, systemCount);
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight);
+      const snappedX = snapX(x, staffRight, beatsPerMeasure);
       const snappedY = getYFromPitch(pitch, system);
 
       // Check if another note exists at this position (excluding the dragged note)
@@ -875,6 +916,30 @@ export function NoteEditor({
             />
           );
         })}
+
+        {/* Grid lines showing valid note positions */}
+        {showGrid &&
+          Array.from({ length: beatsPerSystem * 2 }, (_, i) => {
+            const beatPosition = i * 0.5;
+            const isOnBarLine = beatPosition % beatsPerMeasure === 0;
+            // Skip bar line positions (notes can't be placed there)
+            if (isOnBarLine) return null;
+            const gridX = LEFT_MARGIN + beatPosition * BEAT_WIDTH;
+            const isFullBeat = beatPosition % 1 === 0;
+            return (
+              <line
+                key={`grid-${systemIndex}-${i}`}
+                x1={gridX}
+                y1={staffCenterY - LINE_SPACING - 15}
+                x2={gridX}
+                y2={staffCenterY + LINE_SPACING + 15}
+                stroke={isFullBeat ? "#10b981" : "#a7f3d0"}
+                strokeWidth={isFullBeat ? 1.5 : 1}
+                strokeDasharray={isFullBeat ? "none" : "4 4"}
+                opacity={0.6}
+              />
+            );
+          })}
 
         {/* Staff lines */}
         <line

@@ -46,7 +46,8 @@ export default function EditorPage() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [systemCount, setSystemCount] = useState(1);
   const [timeSignature, setTimeSignature] = useState<TimeSignature>("4/4");
-  const [showRulesSidebar, setShowRulesSidebar] = useState(false);
+  const [showRulesSidebar, setShowRulesSidebar] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const isPlayingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -732,11 +733,37 @@ export default function EditorPage() {
 
             <div className="w-px h-5 bg-gray-300" />
 
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showGrid}
+                onChange={(e) => setShowGrid(e.target.checked)}
+                className="rounded text-emerald-600"
+              />
+              <span className="text-gray-600">Grid</span>
+            </label>
+
+            <div className="w-px h-5 bg-gray-300" />
+
             <span className="text-gray-500">
               {notes.length} note{notes.length !== 1 ? "s" : ""}
               {repeatMarkers.length > 0 &&
                 ` • ${repeatMarkers.length / 2} repeat`}
             </span>
+
+            <div className="w-px h-5 bg-gray-300" />
+
+            <button
+              onClick={() => setShowRulesSidebar(!showRulesSidebar)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                showRulesSidebar
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <span>?</span>
+              <span>Help</span>
+            </button>
           </div>
         </div>
 
@@ -751,6 +778,7 @@ export default function EditorPage() {
               selectedTool={selectedTool}
               showLabels={showLabels}
               showKidFaces={showKidFaces}
+              showGrid={showGrid}
               playheadX={playheadX}
               playheadSystem={playheadSystem}
               activeNoteId={activeNoteId}

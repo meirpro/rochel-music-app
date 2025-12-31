@@ -118,14 +118,14 @@ export function MusicRulesSidebar({
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-l-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
-          isOpen ? "right-80" : "right-0"
+        className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-r-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
+          isOpen ? "left-80" : "left-0"
         }`}
         title={isOpen ? "Hide music rules" : "Show music rules"}
       >
         <span className="text-lg">?</span>
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 transition-transform ${isOpen ? "" : "rotate-180"}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -141,8 +141,8 @@ export function MusicRulesSidebar({
 
       {/* Sidebar panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white border-l border-gray-200 shadow-xl z-40 transform transition-transform duration-300 overflow-y-auto ${
-          isOpen ? "translate-x-0" : "translate-x-full"
+        className={`fixed top-0 left-0 h-full w-80 bg-white border-r border-gray-200 shadow-xl z-40 transform transition-transform duration-300 overflow-y-auto ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10">
@@ -195,18 +195,43 @@ export function MusicRulesSidebar({
           <Section id="beaming" title="Beaming Rules">
             <div className="space-y-3">
               <p>
-                <strong>Beams</strong> connect eighth notes (and shorter) to
-                show rhythm groupings.
+                <strong>Beams</strong> connect eighth notes to show rhythm
+                groupings. Notes beam automatically based on their position.
               </p>
               <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                <p className="font-medium text-gray-700">Rules:</p>
+                <p className="font-medium text-gray-700">When notes connect:</p>
                 <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  <li>Only eighth notes or shorter can be beamed</li>
-                  <li>Never beam across bar lines</li>
+                  <li>Only eighth notes can be beamed</li>
+                  <li>Notes must be adjacent (close together)</li>
+                  <li>Notes must be in the same &quot;beat group&quot;</li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3 space-y-2 mt-2">
+                <p className="font-medium text-blue-700">
+                  Beat Groups by Time Signature:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-blue-600 text-xs">
                   <li>
-                    In 4/4: don&apos;t beam across the middle of the measure
+                    <strong>4/4:</strong> Beats 1-2 | Beats 3-4 (per measure)
                   </li>
-                  <li>In 6/8: beam in groups of 3</li>
+                  <li>
+                    <strong>3/4:</strong> Each beat separate
+                  </li>
+                  <li>
+                    <strong>6/8:</strong> Beats 1-3 | Beats 4-6 (groups of 3)
+                  </li>
+                  <li>
+                    <strong>2/4:</strong> Each beat separate
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-3 mt-2">
+                <p className="font-medium text-amber-700 text-xs">
+                  Notes will NOT beam across:
+                </p>
+                <ul className="list-disc list-inside text-amber-600 text-xs">
+                  <li>Bar lines (measure boundaries)</li>
+                  <li>Beat group boundaries</li>
                 </ul>
               </div>
               <div className="flex items-center gap-2 mt-2">
@@ -322,28 +347,35 @@ export function MusicRulesSidebar({
           </Section>
 
           {/* Staff & Clef */}
-          <Section id="staff" title="Staff & Clef">
+          <Section id="staff" title="Staff & Note Placement">
             <div className="space-y-3">
               <p>
-                The <strong>staff</strong> has 5 lines and 4 spaces. Notes are
-                placed on lines or spaces to show pitch.
+                This editor uses a simplified <strong>3-line staff</strong>.
+                Notes snap to lines and spaces automatically.
               </p>
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                <p className="font-medium text-gray-700">Note positions:</p>
+                <ul className="text-xs text-gray-600 space-y-1">
+                  <li>
+                    <strong>On lines:</strong> E, G, B (note sits on the line)
+                  </li>
+                  <li>
+                    <strong>In spaces:</strong> D, F, A (note between lines)
+                  </li>
+                  <li>
+                    <strong>Ledger lines:</strong> C (below), C5 (above)
+                  </li>
+                </ul>
+              </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="font-medium text-gray-700 mb-2">
-                  Treble Clef (G Clef):
+                  Treble Clef (𝄞):
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">𝄞</span>
-                  <span className="text-gray-600">
-                    Used for higher-pitched instruments and the right hand of
-                    piano
-                  </span>
-                </div>
+                <span className="text-gray-600 text-xs">
+                  Used for higher-pitched instruments and the right hand of
+                  piano
+                </span>
               </div>
-              <p className="text-xs text-gray-500">
-                The <strong>ledger line</strong> below the staff is middle C
-                (C4).
-              </p>
             </div>
           </Section>
 
