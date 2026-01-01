@@ -911,7 +911,7 @@ export function NoteEditor({
             d={
               stemDir === "up"
                 ? `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 + 10} ${stemX + 10} ${stemY2 + 22}`
-                : `M ${stemX} ${stemY2} Q ${stemX - 10} ${stemY2 - 10} ${stemX - 10} ${stemY2 - 22}`
+                : `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 - 10} ${stemX + 10} ${stemY2 - 22}`
             }
             stroke={color}
             strokeWidth={3.5}
