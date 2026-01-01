@@ -236,6 +236,26 @@ export function MusicRulesSidebar({
                   <li>Beat group boundaries</li>
                 </ul>
               </div>
+              <div className="bg-purple-50 rounded-lg p-3 mt-2 space-y-2">
+                <p className="font-medium text-purple-700 text-xs">
+                  Stem Direction for Beamed Notes:
+                </p>
+                <p className="text-purple-600 text-xs">
+                  Find the note <strong>furthest from the middle line</strong>.
+                  All stems in the group point that direction.
+                </p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 mt-2 space-y-2">
+                <p className="font-medium text-green-700 text-xs">
+                  Beam Angle (Slope):
+                </p>
+                <ul className="list-disc list-inside text-green-600 text-xs">
+                  <li>Ascending notes = beam angles up</li>
+                  <li>Descending notes = beam angles down</li>
+                  <li>Same pitch = horizontal beam</li>
+                  <li>Max slope: one staff space</li>
+                </ul>
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center">
                   <MiniNote type="eighth" color={NOTE_COLORS.C} />
