@@ -735,7 +735,7 @@ export function NoteEditor({
 
     const stemH = 40;
     const isHollow = type === "half" || type === "whole";
-    const stemX = stemDir === "up" ? note.x + 10 : note.x - 10;
+    const stemX = stemDir === "up" ? note.x + 12 : note.x - 12;
     const stemY1 = note.y;
     const stemY2 = stemDir === "up" ? note.y - stemH : note.y + stemH;
 
@@ -879,6 +879,17 @@ export function NoteEditor({
             transform={`rotate(-20 ${note.x} ${note.y})`}
           />
         )}
+        {/* Stem - skip for beamed eighth notes (beam section draws their stems) */}
+        {type !== "whole" && !(type === "eighth" && isBeamed) && (
+          <line
+            x1={stemX}
+            y1={stemY1}
+            x2={stemX}
+            y2={stemY2}
+            stroke={color}
+            strokeWidth={3}
+          />
+        )}
         {/* Notehead - sized to span between staff lines */}
         <ellipse
           cx={note.x}
@@ -890,17 +901,6 @@ export function NoteEditor({
           strokeWidth={isActive ? 2.5 : strokeWidth}
           transform={`rotate(-20 ${note.x} ${note.y})`}
         />
-        {/* Stem - skip for beamed eighth notes (beam section draws their stems) */}
-        {type !== "whole" && !(type === "eighth" && isBeamed) && (
-          <line
-            x1={stemX}
-            y1={stemY1}
-            x2={stemX}
-            y2={stemY2}
-            stroke={color}
-            strokeWidth={3.5}
-          />
-        )}
         {/* Flag for eighth notes (only if not beamed) */}
         {type === "eighth" && !isBeamed && (
           <path
@@ -1378,7 +1378,7 @@ export function NoteEditor({
                     x2={stemX}
                     y2={beamY}
                     stroke={colors[i]}
-                    strokeWidth={2.5}
+                    strokeWidth={3}
                   />
                 );
               })}
