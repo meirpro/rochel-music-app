@@ -1,11 +1,17 @@
 // Pitch names for the kid staff (C4 to C5 range)
+// Includes sharps for piano keyboard (not used in kid staff notation)
 export type Pitch =
   | "C4"
+  | "C#4"
   | "D4"
+  | "D#4"
   | "E4"
   | "F4"
+  | "F#4"
   | "G4"
+  | "G#4"
   | "A4"
+  | "A#4"
   | "B4"
   | "C5"
   | "REST";

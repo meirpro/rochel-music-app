@@ -5,8 +5,8 @@ import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { NOTE_COLORS, MIDI_NOTES } from "@/lib/constants";
 import { Pitch } from "@/lib/types";
 
-// Piano keys configuration
-const PIANO_KEYS: { pitch: Pitch; name: string; keyboard: string[] }[] = [
+// White piano keys configuration
+const WHITE_KEYS: { pitch: Pitch; name: string; keyboard: string[] }[] = [
   { pitch: "C4", name: "C", keyboard: ["a", "1"] },
   { pitch: "D4", name: "D", keyboard: ["s", "2"] },
   { pitch: "E4", name: "E", keyboard: ["d", "3"] },
@@ -16,6 +16,26 @@ const PIANO_KEYS: { pitch: Pitch; name: string; keyboard: string[] }[] = [
   { pitch: "B4", name: "B", keyboard: ["j", "7"] },
   { pitch: "C5", name: "C", keyboard: ["k", "8"] },
 ];
+
+// Black piano keys configuration (sharps)
+// Position index indicates which white key gap they sit in (0 = between C and D, etc.)
+const BLACK_KEYS: {
+  pitch: Pitch;
+  name: string;
+  keyboard: string[];
+  afterWhiteIndex: number;
+}[] = [
+  { pitch: "C#4", name: "C#", keyboard: ["w"], afterWhiteIndex: 0 },
+  { pitch: "D#4", name: "D#", keyboard: ["e"], afterWhiteIndex: 1 },
+  // No black key between E and F
+  { pitch: "F#4", name: "F#", keyboard: ["t"], afterWhiteIndex: 3 },
+  { pitch: "G#4", name: "G#", keyboard: ["y"], afterWhiteIndex: 4 },
+  { pitch: "A#4", name: "A#", keyboard: ["u"], afterWhiteIndex: 5 },
+  // No black key between B and C
+];
+
+// Combined for keyboard event handling
+const ALL_KEYS = [...WHITE_KEYS, ...BLACK_KEYS];
 
 interface PianoDrawerProps {
   isOpen: boolean;
@@ -27,6 +47,8 @@ interface PianoDrawerProps {
   tempo?: number; // BPM for calculating duration
   useColors: boolean;
   onToggleColors: () => void;
+  showBlackKeys: boolean;
+  onToggleBlackKeys: () => void;
 }
 
 export function PianoDrawer({
@@ -38,6 +60,8 @@ export function PianoDrawer({
   tempo = 100,
   useColors,
   onToggleColors,
+  showBlackKeys,
+  onToggleBlackKeys,
 }: PianoDrawerProps) {
   // Track keyboard-pressed keys for sustain behavior
   const [pressedKeys, setPressedKeys] = useState<Set<Pitch>>(new Set());
@@ -147,7 +171,12 @@ export function PianoDrawer({
       if (e.repeat) return;
 
       const key = e.key.toLowerCase();
-      const pianoKey = PIANO_KEYS.find((k) => k.keyboard.includes(key));
+      // Check white keys first, then black keys (if enabled)
+      const whiteKey = WHITE_KEYS.find((k) => k.keyboard.includes(key));
+      const blackKey = showBlackKeys
+        ? BLACK_KEYS.find((k) => k.keyboard.includes(key))
+        : null;
+      const pianoKey = whiteKey || blackKey;
 
       if (pianoKey && !pressedKeys.has(pianoKey.pitch)) {
         e.preventDefault();
@@ -164,7 +193,7 @@ export function PianoDrawer({
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      const pianoKey = PIANO_KEYS.find((k) => k.keyboard.includes(key));
+      const pianoKey = ALL_KEYS.find((k) => k.keyboard.includes(key));
 
       if (pianoKey && pressedKeys.has(pianoKey.pitch)) {
         // Stop the sustained note
@@ -189,7 +218,7 @@ export function PianoDrawer({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [pressedKeys, startNote]);
+  }, [pressedKeys, startNote, showBlackKeys]);
 
   // Handle playback highlight with proper timing and gaps
   // activeNoteStartTime changes for each new note, ensuring we get a fresh cycle even for repeated pitches
@@ -281,89 +310,184 @@ export function PianoDrawer({
         }`}
       >
         <div className="h-full flex flex-col">
-          {/* Header with color toggle */}
+          {/* Header with toggles */}
           <div className="flex items-center justify-between px-4 py-1 bg-gray-800 border-b border-gray-700">
             <div className="text-xs text-gray-400">
               Keys: <span className="text-gray-300">A-K</span> or{" "}
-              <span className="text-gray-300">1-8</span> (hold for sustain)
+              <span className="text-gray-300">1-8</span>
+              {showBlackKeys && (
+                <>
+                  {" "}
+                  | Sharps: <span className="text-gray-300">W E T Y U</span>
+                </>
+              )}
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-gray-400">Colors</span>
-              <div
-                className={`relative w-8 h-4 rounded-full transition-colors ${
-                  useColors ? "bg-emerald-500" : "bg-gray-600"
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onToggleColors();
-                }}
-              >
+            <div className="flex items-center gap-4">
+              {/* Black keys toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-gray-400">Sharps</span>
                 <div
-                  className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
-                    useColors ? "translate-x-4" : "translate-x-0.5"
+                  className={`relative w-8 h-4 rounded-full transition-colors ${
+                    showBlackKeys ? "bg-emerald-500" : "bg-gray-600"
                   }`}
-                />
-              </div>
-            </label>
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onToggleBlackKeys();
+                  }}
+                >
+                  <div
+                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                      showBlackKeys ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </div>
+              </label>
+              {/* Colors toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-gray-400">Colors</span>
+                <div
+                  className={`relative w-8 h-4 rounded-full transition-colors ${
+                    useColors ? "bg-emerald-500" : "bg-gray-600"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onToggleColors();
+                  }}
+                >
+                  <div
+                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                      useColors ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Piano keys */}
-          <div className="flex-1 flex items-center justify-center gap-1 px-4 py-2">
-            {PIANO_KEYS.map((key, index) => {
-              const pressed = isKeyPressed(key.pitch);
-              const bgColor = getKeyColor(key.pitch);
+          <div className="flex-1 flex items-center justify-center px-4 py-2 relative">
+            {/* White keys */}
+            <div className="flex gap-1">
+              {WHITE_KEYS.map((key, index) => {
+                const pressed = isKeyPressed(key.pitch);
+                const bgColor = getKeyColor(key.pitch);
 
-              return (
-                <button
-                  key={key.pitch}
-                  onMouseDown={() => {
-                    setMousePressed(key.pitch);
-                    playShortNote(key.pitch);
-                  }}
-                  onMouseUp={() => setMousePressed(null)}
-                  onMouseLeave={() => setMousePressed(null)}
-                  className={`relative flex flex-col items-center justify-end pb-2 rounded-b-lg select-none
-                    ${useColors ? "border-2 border-black/20" : "border border-gray-300"}
-                    transition-all duration-[50ms] ease-out
-                  `}
-                  style={{
-                    backgroundColor: pressed
-                      ? useColors
-                        ? `color-mix(in srgb, ${bgColor} 70%, black)`
-                        : "#d0d0d0"
-                      : bgColor,
-                    width: "60px",
-                    height: "80px",
-                    transform: pressed
-                      ? "translateY(3px) scale(0.97)"
-                      : "translateY(0) scale(1)",
-                    boxShadow: pressed
-                      ? "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 3px rgba(0,0,0,0.2)"
-                      : "0 4px 6px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  {/* Note name */}
-                  <span
-                    className={`text-lg font-bold transition-opacity duration-50 ${
-                      useColors ? "text-white drop-shadow-md" : "text-gray-700"
-                    } ${pressed ? "opacity-80" : "opacity-100"}`}
+                return (
+                  <button
+                    key={key.pitch}
+                    onMouseDown={() => {
+                      setMousePressed(key.pitch);
+                      playShortNote(key.pitch);
+                    }}
+                    onMouseUp={() => setMousePressed(null)}
+                    onMouseLeave={() => setMousePressed(null)}
+                    className={`relative flex flex-col items-center justify-end pb-2 rounded-b-lg select-none
+                      ${useColors ? "border-2 border-black/20" : "border border-gray-300"}
+                      transition-all duration-[50ms] ease-out
+                    `}
+                    style={{
+                      backgroundColor: pressed
+                        ? useColors
+                          ? `color-mix(in srgb, ${bgColor} 70%, black)`
+                          : "#d0d0d0"
+                        : bgColor,
+                      width: "60px",
+                      height: "80px",
+                      transform: pressed
+                        ? "translateY(3px) scale(0.97)"
+                        : "translateY(0) scale(1)",
+                      boxShadow: pressed
+                        ? "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 3px rgba(0,0,0,0.2)"
+                        : "0 4px 6px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)",
+                    }}
                   >
-                    {key.name}
-                    {index === 7 && (
-                      <span className="text-xs align-super">5</span>
-                    )}
-                  </span>
-                  {/* Keyboard hint */}
-                  <span
-                    className={`text-xs ${
-                      useColors ? "text-white/70" : "text-gray-400"
-                    }`}
-                  >
-                    {key.keyboard[0].toUpperCase()}
-                  </span>
-                </button>
-              );
-            })}
+                    {/* Note name */}
+                    <span
+                      className={`text-lg font-bold transition-opacity duration-50 ${
+                        useColors
+                          ? "text-white drop-shadow-md"
+                          : "text-gray-700"
+                      } ${pressed ? "opacity-80" : "opacity-100"}`}
+                    >
+                      {key.name}
+                      {index === 7 && (
+                        <span className="text-xs align-super">5</span>
+                      )}
+                    </span>
+                    {/* Keyboard hint */}
+                    <span
+                      className={`text-xs ${
+                        useColors ? "text-white/70" : "text-gray-400"
+                      }`}
+                    >
+                      {key.keyboard[0].toUpperCase()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Black keys (overlay) */}
+            {showBlackKeys && (
+              <div
+                className="absolute top-2 left-1/2 flex pointer-events-none"
+                style={{ transform: "translateX(-50%)" }}
+              >
+                {WHITE_KEYS.slice(0, -1).map((_, index) => {
+                  // Find if there's a black key after this white key
+                  const blackKey = BLACK_KEYS.find(
+                    (bk) => bk.afterWhiteIndex === index,
+                  );
+
+                  return (
+                    <div
+                      key={index}
+                      className="relative"
+                      style={{ width: "61px" }} // White key width + gap
+                    >
+                      {blackKey && (
+                        <button
+                          onMouseDown={() => {
+                            setMousePressed(blackKey.pitch);
+                            playShortNote(blackKey.pitch);
+                          }}
+                          onMouseUp={() => setMousePressed(null)}
+                          onMouseLeave={() => setMousePressed(null)}
+                          className="absolute pointer-events-auto flex flex-col items-center justify-end pb-1 rounded-b-md select-none border border-gray-800 transition-all duration-[50ms] ease-out"
+                          style={{
+                            // Position at the right edge of container (gap between white keys)
+                            right: 0,
+                            transform: `translateX(50%) ${
+                              isKeyPressed(blackKey.pitch)
+                                ? "translateY(2px) scale(0.97)"
+                                : "translateY(0) scale(1)"
+                            }`,
+                            width: "36px",
+                            height: "50px",
+                            backgroundColor: isKeyPressed(blackKey.pitch)
+                              ? "#4a4a4a"
+                              : "#1a1a1a",
+                            boxShadow: isKeyPressed(blackKey.pitch)
+                              ? "0 1px 2px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)"
+                              : "0 3px 4px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)",
+                            zIndex: 10,
+                          }}
+                        >
+                          {/* Note name */}
+                          <span className="text-xs font-bold text-gray-300">
+                            {blackKey.name}
+                          </span>
+                          {/* Keyboard hint */}
+                          <span className="text-[10px] text-gray-500">
+                            {blackKey.keyboard[0].toUpperCase()}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -53,6 +53,7 @@ interface EditorSettings {
   tempo: number;
   timeSignature: TimeSignature;
   pianoUseColors: boolean;
+  pianoShowBlackKeys: boolean;
 }
 
 interface EditorUI {
@@ -75,6 +76,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   tempo: 100,
   timeSignature: "4/4",
   pianoUseColors: true,
+  pianoShowBlackKeys: false,
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -128,6 +130,7 @@ export default function EditorPage() {
     tempo,
     timeSignature,
     pianoUseColors,
+    pianoShowBlackKeys,
   } = settings;
   const { showRulesSidebar, showSongLibrary, showPiano } = ui;
 
@@ -243,6 +246,13 @@ export default function EditorPage() {
   const setPianoUseColors = useCallback(
     (use: boolean) => {
       setSettings((prev) => ({ ...prev, pianoUseColors: use }));
+    },
+    [setSettings],
+  );
+
+  const setPianoShowBlackKeys = useCallback(
+    (show: boolean) => {
+      setSettings((prev) => ({ ...prev, pianoShowBlackKeys: show }));
     },
     [setSettings],
   );
@@ -739,6 +749,49 @@ export default function EditorPage() {
     }
   }, []);
 
+  const handleSeek = useCallback((clickX: number, clickSystem: number) => {
+    // When stopped: just set visual playhead position
+    if (!isPlayingRef.current) {
+      setPlayheadX(clickX);
+      setPlayheadSystem(clickSystem);
+      return;
+    }
+
+    // When playing: find timeline segment and adjust startTime
+    const timeline = timelineRef.current;
+    if (timeline.length === 0) return;
+
+    for (const segment of timeline) {
+      if (
+        segment.system === clickSystem &&
+        clickX >= segment.startX &&
+        clickX <= segment.endX
+      ) {
+        // Calculate beat within this segment
+        const progress =
+          (clickX - segment.startX) / (segment.endX - segment.startX);
+        const targetBeat =
+          segment.startBeat + progress * (segment.endBeat - segment.startBeat);
+
+        // Adjust startTime so elapsed time matches targetBeat
+        const elapsedMs = targetBeat * msPerBeatRef.current;
+        playbackStartTimeRef.current = performance.now() - elapsedMs;
+
+        // Reset played notes for notes after this point
+        const playedNotes = playedNotesRef.current;
+        const playbackSequence = playbackSequenceRef.current;
+        playedNotes.clear();
+        // Mark notes before current beat as played
+        for (let i = 0; i < playbackSequence.length; i++) {
+          if (playbackSequence[i].playBeat < targetBeat) {
+            playedNotes.add(i);
+          }
+        }
+        break;
+      }
+    }
+  }, []);
+
   const handleClear = useCallback(() => {
     if (notes.length > 0 && confirm("Clear all notes and repeat markers?")) {
       setNotes([]);
@@ -762,7 +815,7 @@ export default function EditorPage() {
 
     return (
       <button
-        onClick={() => setSelectedTool(tool)}
+        onClick={() => setSelectedTool(selectedTool === tool ? null : tool)}
         className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex flex-col items-center gap-1 min-w-[3.5rem]
         ${
           selectedTool === tool
@@ -829,7 +882,9 @@ export default function EditorPage() {
             {/* Repeat tool */}
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
               <button
-                onClick={() => setSelectedTool("repeat")}
+                onClick={() =>
+                  setSelectedTool(selectedTool === "repeat" ? null : "repeat")
+                }
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex flex-col items-center gap-1 min-w-[3.5rem]
                 ${
                   selectedTool === "repeat"
@@ -858,7 +913,11 @@ export default function EditorPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setSelectedTool("delete")}
+                    onClick={() =>
+                      setSelectedTool(
+                        selectedTool === "delete" ? null : "delete",
+                      )
+                    }
                     className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2
                       ${
                         selectedTool === "delete"
@@ -1128,6 +1187,8 @@ export default function EditorPage() {
           tempo={tempo}
           useColors={pianoUseColors}
           onToggleColors={() => setPianoUseColors(!pianoUseColors)}
+          showBlackKeys={pianoShowBlackKeys}
+          onToggleBlackKeys={() => setPianoShowBlackKeys(!pianoShowBlackKeys)}
         />
       </div>
     </TooltipProvider>

@@ -89,7 +89,8 @@ export type NoteTool =
   | "half"
   | "whole"
   | "delete"
-  | "repeat";
+  | "repeat"
+  | null;
 
 interface NoteEditorProps {
   notes: EditorNote[];
@@ -122,14 +123,19 @@ const STAFF_LEFT = 40;
 // Note: STAFF_RIGHT, BEATS_PER_SYSTEM, MEASURES_PER_SYSTEM, SVG_WIDTH are now dynamic
 // based on time signature - use getLayoutConfig(timeSignature)
 
-// Pitch positions
+// Pitch positions (sharps included for type completeness, positioned between naturals)
 const PITCH_POSITIONS: Record<Pitch, number> = {
   C4: 0,
+  "C#4": 0.5,
   D4: 1,
+  "D#4": 1.5,
   E4: 2,
   F4: 3,
+  "F#4": 3.5,
   G4: 4,
+  "G#4": 4.5,
   A4: 5,
+  "A#4": 5.5,
   B4: 6,
   C5: 7,
   REST: -1,
@@ -385,6 +391,11 @@ export function NoteEditor({
     system: number;
     measure: number;
   } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    noteId: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const justDraggedRef = useRef(false);
 
   const svgHeight = SYSTEM_TOP_MARGIN + systemCount * SYSTEM_HEIGHT + 40;
@@ -409,8 +420,36 @@ export function NoteEditor({
     }
   }, []);
 
+  const handleNoteContextMenu = useCallback(
+    (e: React.MouseEvent, noteId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ noteId, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
+
+  const handleChangeDuration = useCallback(
+    (duration: number) => {
+      if (!contextMenu) return;
+      onNotesChange(
+        notes.map((n) =>
+          n.id === contextMenu.noteId ? { ...n, duration } : n,
+        ),
+      );
+      setContextMenu(null);
+    },
+    [contextMenu, notes, onNotesChange],
+  );
+
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
+      // Close context menu on any click
+      if (contextMenu) {
+        setContextMenu(null);
+        return;
+      }
+
       if (draggedNote) return;
 
       // Skip if we just finished dragging (click fires after mouseup)
@@ -426,6 +465,9 @@ export function NoteEditor({
       if (x < LEFT_MARGIN - 20 || x > staffRight + 20) return;
       if (y < staffCenterY - LINE_SPACING * 2 - 30) return;
       if (y > staffCenterY + LINE_SPACING * 2 + 30) return;
+
+      // No action when no tool is selected
+      if (selectedTool === null) return;
 
       // Handle repeat tool - allows multiple repeat sections
       if (selectedTool === "repeat") {
@@ -526,6 +568,7 @@ export function NoteEditor({
       repeatMarkers,
       onRepeatMarkersChange,
       repeatStart,
+      contextMenu,
     ],
   );
 
@@ -692,6 +735,7 @@ export function NoteEditor({
         <g
           key={note.id}
           onMouseDown={(e) => handleNoteMouseDown(e, note.id)}
+          onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
           style={{ cursor: selectedTool === "delete" ? "not-allowed" : "grab" }}
           className="transition-opacity hover:opacity-80"
         >
@@ -790,6 +834,7 @@ export function NoteEditor({
       <g
         key={note.id}
         onMouseDown={(e) => handleNoteMouseDown(e, note.id)}
+        onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
         style={{ cursor: selectedTool === "delete" ? "not-allowed" : "grab" }}
         className="transition-opacity hover:opacity-80"
       >
@@ -1193,19 +1238,22 @@ export function NoteEditor({
         width={svgWidth}
         height={svgHeight}
         onClick={handleClick}
+        onContextMenu={(e) => e.preventDefault()}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         className="bg-white border border-gray-200 rounded-xl shadow-sm select-none"
         style={{
           cursor:
-            selectedTool === "delete"
-              ? "not-allowed"
-              : selectedTool === "repeat"
-                ? "pointer"
-                : draggedNote
-                  ? "grabbing"
-                  : "crosshair",
+            selectedTool === null
+              ? "default"
+              : selectedTool === "delete"
+                ? "not-allowed"
+                : selectedTool === "repeat"
+                  ? "pointer"
+                  : draggedNote
+                    ? "grabbing"
+                    : "crosshair",
         }}
       >
         {/* Gradient definitions for multi-colored beams */}
@@ -1365,6 +1413,39 @@ export function NoteEditor({
           </text>
         )}
       </svg>
+
+      {/* Context menu for changing note duration */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            onClick={() => handleChangeDuration(0.5)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <span className="text-gray-500">♪</span> Eighth
+          </button>
+          <button
+            onClick={() => handleChangeDuration(1)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <span className="text-gray-500">♩</span> Quarter
+          </button>
+          <button
+            onClick={() => handleChangeDuration(2)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <span className="text-gray-500">𝅗𝅥</span> Half
+          </button>
+          <button
+            onClick={() => handleChangeDuration(4)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <span className="text-gray-500">𝅝</span> Whole
+          </button>
+        </div>
+      )}
 
       {/* Repeat mode indicator */}
       {selectedTool === "repeat" && repeatStart && (

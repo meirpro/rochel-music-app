@@ -12,14 +12,19 @@ const BEATS_PER_MEASURE = 4; // For 4/4 time
 const MEASURES_PER_SYSTEM = 2;
 const BEATS_PER_SYSTEM = BEATS_PER_MEASURE * MEASURES_PER_SYSTEM; // 8
 
-// Pitch positions on staff
+// Pitch positions on staff (sharps included for type completeness)
 const PITCH_POSITIONS: Record<Pitch, number> = {
   C4: 0,
+  "C#4": 0.5,
   D4: 1,
+  "D#4": 1.5,
   E4: 2,
   F4: 3,
+  "F#4": 3.5,
   G4: 4,
+  "G#4": 4.5,
   A4: 5,
+  "A#4": 5.5,
   B4: 6,
   C5: 7,
   REST: -1,
