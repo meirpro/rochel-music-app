@@ -777,14 +777,10 @@ export default function EditorPage() {
   }, []);
 
   const handleSeek = useCallback((clickX: number, clickSystem: number) => {
-    // When stopped: just set visual playhead position
-    if (!isPlayingRef.current) {
-      setPlayheadX(clickX);
-      setPlayheadSystem(clickSystem);
-      return;
-    }
+    // Only allow seeking during playback
+    if (!isPlayingRef.current) return;
 
-    // When playing: find timeline segment and adjust startTime
+    // Find timeline segment and adjust startTime
     const timeline = timelineRef.current;
     if (timeline.length === 0) return;
 
@@ -834,11 +830,12 @@ export default function EditorPage() {
   }: {
     tool: NoteTool;
     label: string;
-    noteType: "whole" | "half" | "quarter" | "eighth";
+    noteType: "whole" | "half" | "quarter" | "dotted-quarter" | "eighth";
   }) => {
     const isHollow = noteType === "whole" || noteType === "half";
     const hasStem = noteType !== "whole";
     const hasFlag = noteType === "eighth";
+    const hasDot = noteType === "dotted-quarter";
 
     return (
       <button
@@ -853,21 +850,21 @@ export default function EditorPage() {
         <svg width="24" height="24" viewBox="0 0 24 24">
           {/* Note head */}
           <ellipse
-            cx="12"
+            cx="10"
             cy="16"
             rx="6"
             ry="4"
             fill={isHollow ? "#fff" : NOTE_COLORS.G}
             stroke={isHollow ? NOTE_COLORS.G : "#000"}
             strokeWidth={isHollow ? 2 : 1}
-            transform="rotate(-15 12 16)"
+            transform="rotate(-15 10 16)"
           />
           {/* Stem */}
           {hasStem && (
             <line
-              x1="17"
+              x1="15"
               y1="15"
-              x2="17"
+              x2="15"
               y2="4"
               stroke={NOTE_COLORS.G}
               strokeWidth={2}
@@ -876,12 +873,14 @@ export default function EditorPage() {
           {/* Flag for eighth note */}
           {hasFlag && (
             <path
-              d="M 17 4 Q 22 8 20 14"
+              d="M 15 4 Q 20 8 18 14"
               stroke={NOTE_COLORS.G}
               strokeWidth={2}
               fill="none"
             />
           )}
+          {/* Dot for dotted notes */}
+          {hasDot && <circle cx="20" cy="14" r="2.5" fill={NOTE_COLORS.G} />}
         </svg>
         <span className="text-xs">{label}</span>
       </button>
@@ -901,6 +900,11 @@ export default function EditorPage() {
               <ToolButton tool="whole" label="Whole" noteType="whole" />
               <ToolButton tool="half" label="Half" noteType="half" />
               <ToolButton tool="quarter" label="Quarter" noteType="quarter" />
+              <ToolButton
+                tool="dotted-quarter"
+                label="Dotted"
+                noteType="dotted-quarter"
+              />
               <ToolButton tool="eighth" label="Eighth" noteType="eighth" />
             </div>
 

@@ -86,6 +86,7 @@ export interface RepeatMarker {
 export type NoteTool =
   | "eighth"
   | "quarter"
+  | "dotted-quarter"
   | "half"
   | "whole"
   | "delete"
@@ -208,6 +209,8 @@ function getDurationFromTool(tool: NoteTool): number {
       return 0.5;
     case "quarter":
       return 1;
+    case "dotted-quarter":
+      return 1.5;
     case "half":
       return 2;
     case "whole":
@@ -710,6 +713,7 @@ export function NoteEditor({
   const getNoteType = (duration: number): string => {
     if (duration >= 4) return "whole";
     if (duration >= 2) return "half";
+    if (duration === 1.5) return "dotted-quarter";
     if (duration >= 1) return "quarter";
     return "eighth";
   };
@@ -912,6 +916,15 @@ export function NoteEditor({
             stroke={color}
             strokeWidth={3.5}
             fill="none"
+          />
+        )}
+        {/* Dot for dotted notes - positioned to the right, in a space (not on a line) */}
+        {type === "dotted-quarter" && (
+          <circle
+            cx={note.x + 20}
+            cy={note.y - LINE_SPACING / 4} // Offset up slightly to sit in a space
+            r={4}
+            fill={color}
           />
         )}
         {/* Note label */}
