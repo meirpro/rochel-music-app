@@ -450,6 +450,12 @@ export function NoteEditor({
     [contextMenu, notes, onNotesChange],
   );
 
+  const handleDeleteFromMenu = useCallback(() => {
+    if (!contextMenu) return;
+    onNotesChange(notes.filter((n) => n.id !== contextMenu.noteId));
+    setContextMenu(null);
+  }, [contextMenu, notes, onNotesChange]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       // Close context menu on any click
@@ -1474,6 +1480,13 @@ export function NoteEditor({
             className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
             <span className="text-gray-500">𝅝</span> Whole
+          </button>
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={handleDeleteFromMenu}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+          >
+            <span>🗑</span> Delete
           </button>
         </div>
       )}
