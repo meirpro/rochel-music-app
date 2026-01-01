@@ -1,121 +1,96 @@
-import { SavedSong, Pitch, EditorNote } from "./types";
+import { SavedSong, EditorNote, RepeatMarker } from "./types";
 
-const BEATS_PER_MEASURE = 4; // For 4/4 time
-const MEASURES_PER_SYSTEM = 2;
-const BEATS_PER_SYSTEM = BEATS_PER_MEASURE * MEASURES_PER_SYSTEM; // 8
-
-// Convert array of {pitch, duration} to EditorNote array with beat-based positions
-function convertToEditorNotes(
-  notes: Array<{ pitch: Pitch; duration: number }>,
-): EditorNote[] {
-  let currentBeat = 0;
-  const timestamp = Date.now();
-  return notes.map((note, index) => {
-    const system = Math.floor(currentBeat / BEATS_PER_SYSTEM);
-    const beatInSystem = currentBeat % BEATS_PER_SYSTEM;
-
-    const editorNote: EditorNote = {
-      id: `default-${timestamp}-${index}`,
-      pitch: note.pitch,
-      duration: note.duration,
-      beat: beatInSystem,
-      system,
-    };
-    currentBeat += note.duration;
-    return editorNote;
-  });
-}
-
-// Calculate systems needed for a song
-function calculateSystemCount(notes: Array<{ duration: number }>): number {
-  const totalBeats = notes.reduce((sum, n) => sum + n.duration, 0);
-  return Math.ceil(totalBeats / BEATS_PER_SYSTEM);
-}
-
-// Dayenu FULL - Section A (measures 1-4) + Section B (measures 5-8)
-const dayenuNotes: Array<{ pitch: Pitch; duration: number }> = [
-  // === Section A ===
-  // M1: E G G G G A G F (all 8ths)
-  { pitch: "E4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  // M2: E G G G G A G F (all 8ths)
-  { pitch: "E4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  // M3: E G D F E G D F (all 8ths)
-  { pitch: "E4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "D4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  { pitch: "E4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "D4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  // M4: E (q), D (q), C (half)
-  { pitch: "E4", duration: 1 },
-  { pitch: "D4", duration: 1 },
-  { pitch: "C4", duration: 2 },
-
-  // === Section B ===
-  // M5: E (q), E (q), G (8th), F (dotted q = 1.5)
-  { pitch: "E4", duration: 1 },
-  { pitch: "E4", duration: 1 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "F4", duration: 1.5 },
-  // M6: F (q), F (q), A (8th), G (dotted q = 1.5)
-  { pitch: "F4", duration: 1 },
-  { pitch: "F4", duration: 1 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "G4", duration: 1.5 },
-  // M7: G (q), G (q), C5 (8th), B (q), B (8th)
-  { pitch: "G4", duration: 1 },
-  { pitch: "G4", duration: 1 },
-  { pitch: "C5", duration: 0.5 },
-  { pitch: "B4", duration: 1 },
-  { pitch: "B4", duration: 0.5 },
-  // M8: B (8th), G (8th), A (8th), B (8th), C5 (half)
-  { pitch: "B4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "B4", duration: 0.5 },
-  { pitch: "C5", duration: 2 },
+// Mashiach Now notes (beat-based format)
+const mashiachNowNotes: EditorNote[] = [
+  { id: "mashiach-0", pitch: "D4", duration: 0.5, beat: 0, system: 0 },
+  { id: "mashiach-1", pitch: "D4", duration: 0.5, beat: 0.5, system: 0 },
+  { id: "mashiach-2", pitch: "D4", duration: 0.5, beat: 1, system: 0 },
+  { id: "mashiach-3", pitch: "E4", duration: 0.5, beat: 1.5, system: 0 },
+  { id: "mashiach-4", pitch: "F4", duration: 0.5, beat: 2, system: 0 },
+  { id: "mashiach-5", pitch: "F4", duration: 0.5, beat: 2.5, system: 0 },
+  { id: "mashiach-6", pitch: "F4", duration: 0.5, beat: 3, system: 0 },
+  { id: "mashiach-7", pitch: "G4", duration: 0.5, beat: 3.5, system: 0 },
+  { id: "mashiach-8", pitch: "A4", duration: 0.5, beat: 4, system: 0 },
+  { id: "mashiach-9", pitch: "A4", duration: 0.5, beat: 4.5, system: 0 },
+  { id: "mashiach-10", pitch: "A4", duration: 0.5, beat: 5, system: 0 },
+  { id: "mashiach-11", pitch: "G4", duration: 0.5, beat: 5.5, system: 0 },
+  { id: "mashiach-12", pitch: "F4", duration: 0.5, beat: 6, system: 0 },
+  { id: "mashiach-13", pitch: "E4", duration: 0.5, beat: 6.5, system: 0 },
+  { id: "mashiach-14", pitch: "D4", duration: 2, beat: 7, system: 0 },
 ];
 
-// Mashiach Now verse (4 measures)
-const mashiachNowNotes: Array<{ pitch: Pitch; duration: number }> = [
-  // M1: D D D E (8ths) - 2 beats, then rest for 2 beats
-  { pitch: "D4", duration: 0.5 },
-  { pitch: "D4", duration: 0.5 },
-  { pitch: "D4", duration: 0.5 },
-  { pitch: "E4", duration: 0.5 },
-  // M2: F F F G (8ths)
-  { pitch: "F4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  { pitch: "F4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  // M3: A A A G (8ths)
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "A4", duration: 0.5 },
-  { pitch: "G4", duration: 0.5 },
-  // M4: F E D(half)
-  { pitch: "F4", duration: 0.5 },
-  { pitch: "E4", duration: 0.5 },
-  { pitch: "D4", duration: 2 },
+// Dayenu notes (beat-based format) - Full song with Section A and Section B
+const dayenuNotes: EditorNote[] = [
+  // System 0: M1-M2 (Section A)
+  { id: "dayenu-0", pitch: "E4", duration: 0.5, beat: 0, system: 0 },
+  { id: "dayenu-1", pitch: "G4", duration: 0.5, beat: 0.5, system: 0 },
+  { id: "dayenu-2", pitch: "G4", duration: 0.5, beat: 1, system: 0 },
+  { id: "dayenu-3", pitch: "G4", duration: 0.5, beat: 1.5, system: 0 },
+  { id: "dayenu-4", pitch: "G4", duration: 0.5, beat: 2, system: 0 },
+  { id: "dayenu-5", pitch: "A4", duration: 0.5, beat: 2.5, system: 0 },
+  { id: "dayenu-6", pitch: "G4", duration: 0.5, beat: 3, system: 0 },
+  { id: "dayenu-7", pitch: "F4", duration: 0.5, beat: 3.5, system: 0 },
+  { id: "dayenu-8", pitch: "E4", duration: 0.5, beat: 4, system: 0 },
+  { id: "dayenu-9", pitch: "G4", duration: 0.5, beat: 4.5, system: 0 },
+  { id: "dayenu-10", pitch: "G4", duration: 0.5, beat: 5, system: 0 },
+  { id: "dayenu-11", pitch: "G4", duration: 0.5, beat: 5.5, system: 0 },
+  { id: "dayenu-12", pitch: "G4", duration: 0.5, beat: 6, system: 0 },
+  { id: "dayenu-13", pitch: "A4", duration: 0.5, beat: 6.5, system: 0 },
+  { id: "dayenu-14", pitch: "G4", duration: 0.5, beat: 7, system: 0 },
+  { id: "dayenu-15", pitch: "F4", duration: 0.5, beat: 7.5, system: 0 },
+  // System 1: M3-M4 (Section A continued)
+  { id: "dayenu-16", pitch: "E4", duration: 0.5, beat: 0, system: 1 },
+  { id: "dayenu-17", pitch: "G4", duration: 0.5, beat: 0.5, system: 1 },
+  { id: "dayenu-18", pitch: "D4", duration: 0.5, beat: 1, system: 1 },
+  { id: "dayenu-19", pitch: "F4", duration: 0.5, beat: 1.5, system: 1 },
+  { id: "dayenu-20", pitch: "E4", duration: 0.5, beat: 2, system: 1 },
+  { id: "dayenu-21", pitch: "G4", duration: 0.5, beat: 2.5, system: 1 },
+  { id: "dayenu-22", pitch: "D4", duration: 0.5, beat: 3, system: 1 },
+  { id: "dayenu-23", pitch: "F4", duration: 0.5, beat: 3.5, system: 1 },
+  { id: "dayenu-24", pitch: "E4", duration: 1, beat: 4, system: 1 },
+  { id: "dayenu-25", pitch: "D4", duration: 1, beat: 5, system: 1 },
+  { id: "dayenu-26", pitch: "C4", duration: 2, beat: 6, system: 1 },
+  // System 2: M5-M6 (Section B - Chorus)
+  { id: "dayenu-27", pitch: "E4", duration: 1, beat: 0, system: 2 },
+  { id: "dayenu-28", pitch: "E4", duration: 1, beat: 1, system: 2 },
+  { id: "dayenu-29", pitch: "G4", duration: 0.5, beat: 2, system: 2 },
+  { id: "dayenu-30", pitch: "F4", duration: 1.5, beat: 2.5, system: 2 },
+  { id: "dayenu-31", pitch: "F4", duration: 1, beat: 4, system: 2 },
+  { id: "dayenu-32", pitch: "F4", duration: 1, beat: 5, system: 2 },
+  { id: "dayenu-33", pitch: "A4", duration: 0.5, beat: 6, system: 2 },
+  { id: "dayenu-34", pitch: "G4", duration: 1.5, beat: 6.5, system: 2 },
+  // System 3: M7-M8 (Section B continued)
+  { id: "dayenu-35", pitch: "G4", duration: 1, beat: 0, system: 3 },
+  { id: "dayenu-36", pitch: "G4", duration: 1, beat: 1, system: 3 },
+  { id: "dayenu-37", pitch: "C5", duration: 0.5, beat: 2, system: 3 },
+  { id: "dayenu-38", pitch: "B4", duration: 1, beat: 2.5, system: 3 },
+  { id: "dayenu-39", pitch: "B4", duration: 0.5, beat: 3.5, system: 3 },
+  { id: "dayenu-40", pitch: "B4", duration: 0.5, beat: 4, system: 3 },
+  { id: "dayenu-41", pitch: "G4", duration: 0.5, beat: 4.5, system: 3 },
+  { id: "dayenu-42", pitch: "A4", duration: 0.5, beat: 5, system: 3 },
+  { id: "dayenu-43", pitch: "B4", duration: 0.5, beat: 5.5, system: 3 },
+  { id: "dayenu-44", pitch: "C5", duration: 2, beat: 6, system: 3 },
 ];
 
-// Generate default songs with fresh IDs
+// Dayenu repeat markers (Section B repeats)
+const dayenuRepeatMarkers: RepeatMarker[] = [
+  {
+    id: "dayenu-repeat-start",
+    pairId: "dayenu-repeat",
+    type: "start",
+    measure: 0,
+    system: 2,
+  },
+  {
+    id: "dayenu-repeat-end",
+    pairId: "dayenu-repeat",
+    type: "end",
+    measure: 2,
+    system: 3,
+  },
+];
+
+// Generate default songs
 export function getDefaultSongs(): Record<string, SavedSong> {
   const now = Date.now();
 
@@ -125,25 +100,9 @@ export function getDefaultSongs(): Record<string, SavedSong> {
     createdAt: now,
     updatedAt: now,
     composition: {
-      notes: convertToEditorNotes(dayenuNotes),
-      repeatMarkers: [
-        // Repeat Section B (systems 2-3, beats 16-32)
-        {
-          id: "dayenu-repeat-start",
-          pairId: "dayenu-repeat",
-          type: "start",
-          measure: 0,
-          system: 2,
-        },
-        {
-          id: "dayenu-repeat-end",
-          pairId: "dayenu-repeat",
-          type: "end",
-          measure: 2,
-          system: 3,
-        },
-      ],
-      systemCount: calculateSystemCount(dayenuNotes),
+      notes: dayenuNotes,
+      repeatMarkers: dayenuRepeatMarkers,
+      systemCount: 4,
     },
     settings: {
       tempo: 92,
@@ -157,9 +116,9 @@ export function getDefaultSongs(): Record<string, SavedSong> {
     createdAt: now - 1000,
     updatedAt: now - 1000,
     composition: {
-      notes: convertToEditorNotes(mashiachNowNotes),
+      notes: mashiachNowNotes,
       repeatMarkers: [],
-      systemCount: calculateSystemCount(mashiachNowNotes),
+      systemCount: 2,
     },
     settings: {
       tempo: 100,
