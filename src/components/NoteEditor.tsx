@@ -117,6 +117,7 @@ const STAFF_CENTER_OFFSET = 80;
 const LINE_SPACING = 32;
 const BEAT_WIDTH = 60; // Slightly wider for cleaner look
 const LEFT_MARGIN = 100;
+const NOTE_OFFSET = 15; // Center notes within beat columns (60px width, 2 eighths = 30px each)
 const STAFF_LEFT = 40;
 // Note: STAFF_RIGHT, BEATS_PER_SYSTEM, MEASURES_PER_SYSTEM, SVG_WIDTH are now dynamic
 // based on time signature - use getLayoutConfig(timeSignature)
@@ -170,24 +171,19 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
 }
 
-function snapX(x: number, staffRight: number, beatsPerMeasure: number): number {
+function snapX(x: number, staffRight: number): number {
+  // Snap to half-beat positions, offset from bar lines
+  const xWithoutOffset = x - NOTE_OFFSET;
   const snapped =
-    Math.round((x - LEFT_MARGIN) / (BEAT_WIDTH / 2)) * (BEAT_WIDTH / 2) +
-    LEFT_MARGIN;
-  const clamped = Math.max(LEFT_MARGIN, Math.min(staffRight - 20, snapped));
-
-  // Check if this position is on a bar line (avoid placing notes there)
-  const beatsFromLeft = (clamped - LEFT_MARGIN) / BEAT_WIDTH;
-  const isOnBarLine = beatsFromLeft % beatsPerMeasure === 0;
-
-  if (isOnBarLine) {
-    // Shift note to the right by half a beat to avoid bar line
-    const shifted = clamped + BEAT_WIDTH / 2;
-    // Make sure we don't exceed the staff
-    return Math.min(shifted, staffRight - 20);
-  }
-
-  return clamped;
+    Math.round((xWithoutOffset - LEFT_MARGIN) / (BEAT_WIDTH / 2)) *
+      (BEAT_WIDTH / 2) +
+    LEFT_MARGIN +
+    NOTE_OFFSET;
+  // Clamp to valid range (notes are offset so they don't overlap bar lines)
+  return Math.max(
+    LEFT_MARGIN + NOTE_OFFSET,
+    Math.min(staffRight - 20, snapped),
+  );
 }
 
 // Get measure from X position
@@ -496,7 +492,7 @@ export function NoteEditor({
       if (selectedTool === "delete") return;
 
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight, beatsPerMeasure);
+      const snappedX = snapX(x, staffRight);
       const snappedY = getYFromPitch(pitch, system);
 
       const existingNote = notes.find(
@@ -611,7 +607,7 @@ export function NoteEditor({
       if (!draggedNote) return;
       const system = getSystemFromY(y, systemCount);
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight, beatsPerMeasure);
+      const snappedX = snapX(x, staffRight);
       const snappedY = getYFromPitch(pitch, system);
 
       // Check if another note exists at this position (excluding the dragged note)
@@ -837,8 +833,8 @@ export function NoteEditor({
           strokeWidth={isActive ? 2.5 : strokeWidth}
           transform={`rotate(-20 ${note.x} ${note.y})`}
         />
-        {/* Stem */}
-        {type !== "whole" && (
+        {/* Stem - skip for beamed eighth notes (beam section draws their stems) */}
+        {type !== "whole" && !(type === "eighth" && isBeamed) && (
           <line
             x1={stemX}
             y1={stemY1}
@@ -921,10 +917,8 @@ export function NoteEditor({
         {showGrid &&
           Array.from({ length: beatsPerSystem * 2 }, (_, i) => {
             const beatPosition = i * 0.5;
-            const isOnBarLine = beatPosition % beatsPerMeasure === 0;
-            // Skip bar line positions (notes can't be placed there)
-            if (isOnBarLine) return null;
-            const gridX = LEFT_MARGIN + beatPosition * BEAT_WIDTH;
+            // Grid lines are offset from bar lines, so all positions are valid
+            const gridX = LEFT_MARGIN + beatPosition * BEAT_WIDTH + NOTE_OFFSET;
             const isFullBeat = beatPosition % 1 === 0;
             return (
               <line
@@ -933,10 +927,10 @@ export function NoteEditor({
                 y1={staffCenterY - LINE_SPACING - 15}
                 x2={gridX}
                 y2={staffCenterY + LINE_SPACING + 15}
-                stroke={isFullBeat ? "#10b981" : "#a7f3d0"}
+                stroke="#10b981"
                 strokeWidth={isFullBeat ? 1.5 : 1}
-                strokeDasharray={isFullBeat ? "none" : "4 4"}
-                opacity={0.6}
+                strokeDasharray="4 3"
+                opacity={isFullBeat ? 0.8 : 0.5}
               />
             );
           })}
@@ -1259,9 +1253,33 @@ export function NoteEditor({
             return stemDirection === "up" ? note.y - stemH : note.y + stemH;
           });
 
-          // Use the average Y for a straight beam, or slope for melodic contour
-          const firstY = stemYs[0];
-          const lastY = stemYs[stemYs.length - 1];
+          // Limit beam slope to max one staff space (engraver's rule)
+          const MAX_BEAM_SLOPE = LINE_SPACING / 2; // 16px max
+          const rawFirstY = stemYs[0];
+          const rawLastY = stemYs[stemYs.length - 1];
+          const rawSlope = rawLastY - rawFirstY;
+          const limitedSlope = Math.max(
+            -MAX_BEAM_SLOPE,
+            Math.min(MAX_BEAM_SLOPE, rawSlope),
+          );
+
+          // Position beam so ALL stems can reach it (anchor at the extremity)
+          // For stems up: beam must be at or above all note positions
+          // For stems down: beam must be at or below all note positions
+          let firstY: number;
+          let lastY: number;
+
+          if (stemDirection === "up") {
+            // Find the highest stem tip (smallest Y) - beam must be at or above this
+            const minStemY = Math.min(...stemYs);
+            firstY = minStemY;
+            lastY = minStemY + limitedSlope;
+          } else {
+            // Find the lowest stem tip (largest Y) - beam must be at or below this
+            const maxStemY = Math.max(...stemYs);
+            firstY = maxStemY;
+            lastY = maxStemY + limitedSlope;
+          }
 
           // Get colors
           const colors = groupNotes.map((n) => getNoteColor(n.pitch));
@@ -1279,8 +1297,31 @@ export function NoteEditor({
           const firstX = stemXs[0];
           const lastX = stemXs[stemXs.length - 1];
 
+          // Calculate beam Y at each note's X position (linear interpolation)
+          const getBeamYAtX = (x: number) => {
+            if (firstX === lastX) return firstY;
+            const t = (x - firstX) / (lastX - firstX);
+            return firstY + t * (lastY - firstY);
+          };
+
           return (
             <g key={`beam-group-${groupIndex}`}>
+              {/* Draw stems from each note to the beam */}
+              {groupNotes.map((note, i) => {
+                const stemX = stemXs[i];
+                const beamY = getBeamYAtX(stemX);
+                return (
+                  <line
+                    key={`beam-stem-${groupIndex}-${i}`}
+                    x1={stemX}
+                    y1={note.y}
+                    x2={stemX}
+                    y2={beamY}
+                    stroke={colors[i]}
+                    strokeWidth={2.5}
+                  />
+                );
+              })}
               {/* The beam itself */}
               <polygon
                 points={`

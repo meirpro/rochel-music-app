@@ -3,7 +3,10 @@ import { SavedSong, Pitch } from "./types";
 // Layout constants (must match NoteEditor)
 const LEFT_MARGIN = 100;
 const BEAT_WIDTH = 60;
+const NOTE_OFFSET = 15; // Center notes within beat columns
 const SYSTEM_HEIGHT = 180;
+const SYSTEM_TOP_MARGIN = 60;
+const STAFF_CENTER_OFFSET = 80;
 const LINE_SPACING = 32;
 const BEATS_PER_MEASURE = 4; // For 4/4 time
 const MEASURES_PER_SYSTEM = 2;
@@ -23,7 +26,7 @@ const PITCH_POSITIONS: Record<Pitch, number> = {
 };
 
 function getStaffCenterY(system: number): number {
-  return 90 + system * SYSTEM_HEIGHT;
+  return SYSTEM_TOP_MARGIN + system * SYSTEM_HEIGHT + STAFF_CENTER_OFFSET;
 }
 
 function getYFromPitch(pitch: Pitch, system: number): number {
@@ -35,7 +38,6 @@ function getYFromPitch(pitch: Pitch, system: number): number {
 }
 
 // Helper to create EditorNote from pitch and beat position
-// Avoids placing notes exactly on bar lines (beat 0, 4 in each system)
 function createNote(
   pitch: Pitch,
   duration: number,
@@ -44,15 +46,8 @@ function createNote(
   const system = Math.floor(beatPosition / BEATS_PER_SYSTEM);
   const beatInSystem = beatPosition % BEATS_PER_SYSTEM;
 
-  let x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH;
-
-  // Check if this beat would land exactly on a bar line (at beat 0 or 4 in the system)
-  // If so, offset by a small amount (15 pixels) to avoid the bar line
-  const isOnBarLine = beatInSystem % BEATS_PER_MEASURE === 0;
-  if (isOnBarLine) {
-    x += 15; // Small offset to clear the bar line, not a full half beat
-  }
-
+  // Place notes with offset so they sit inside beat columns, not on boundaries
+  const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
   const y = getYFromPitch(pitch, system);
   return { pitch, duration, x, y, system };
 }
