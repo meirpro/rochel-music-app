@@ -105,8 +105,7 @@ export interface EditorNote {
   id: string;
   pitch: Pitch;
   duration: number; // 0.5, 1, 2, or 4 beats
-  x: number;
-  y: number;
+  beat: number; // Position within system (0, 0.5, 1, 1.5, etc.)
   system: number; // Which system/row (0-indexed)
 }
 

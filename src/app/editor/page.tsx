@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
 import {
@@ -12,6 +12,7 @@ import {
   LEFT_MARGIN,
   BEAT_WIDTH,
   getLayoutConfig,
+  getBeatFromX,
 } from "@/components/NoteEditor";
 import {
   Tooltip,
@@ -98,6 +99,28 @@ const DEFAULT_UI: EditorUI = {
   showPiano: false,
 };
 
+// Migration function to convert old coordinate-based notes to beat-based
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateNote(note: any): EditorNote {
+  if ("x" in note && !("beat" in note)) {
+    // Old format - convert x to beat
+    return {
+      id: note.id,
+      pitch: note.pitch,
+      duration: note.duration,
+      beat: getBeatFromX(note.x),
+      system: note.system,
+    };
+  }
+  return note; // Already new format
+}
+
+// Migrate an array of notes
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateNotes(notes: any[]): EditorNote[] {
+  return notes.map(migrateNote);
+}
+
 export default function EditorPage() {
   // Persisted state - composition (notes, markers, layout)
   const [composition, setComposition] = useLocalStorage<EditorComposition>(
@@ -139,6 +162,52 @@ export default function EditorPage() {
   const playbackStartTimeRef = useRef<number>(0);
   const msPerBeatRef = useRef<number>(600);
   const playedNotesRef = useRef<Set<number>>(new Set());
+
+  // Migration effect - convert old coordinate-based notes to beat-based
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Check if any notes need migration (have x property but no beat property)
+    const needsMigration = composition.notes.some(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (note: any) => "x" in note && !("beat" in note),
+    );
+    if (needsMigration) {
+      setComposition((prev) => ({
+        ...prev,
+        notes: migrateNotes(prev.notes),
+      }));
+    }
+  }, []); // Only run once on mount - intentionally omit deps
+
+  // Migration for saved songs library
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let needsMigration = false;
+    const migratedSongs: SavedSongsMap = {};
+
+    for (const [id, song] of Object.entries(savedSongs)) {
+      const songNeedsMigration = song.composition.notes.some(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (note: any) => "x" in note && !("beat" in note),
+      );
+      if (songNeedsMigration) {
+        needsMigration = true;
+        migratedSongs[id] = {
+          ...song,
+          composition: {
+            ...song.composition,
+            notes: migrateNotes(song.composition.notes),
+          },
+        };
+      } else {
+        migratedSongs[id] = song;
+      }
+    }
+
+    if (needsMigration) {
+      setSavedSongs(migratedSongs);
+    }
+  }, []); // Only run once on mount - intentionally omit deps
 
   // Destructure for easier access
   const { notes, repeatMarkers, systemCount } = composition;
@@ -452,7 +521,7 @@ export default function EditorPage() {
     // Sort notes by position for playback
     const sortedNotes = [...notes].sort((a, b) => {
       if (a.system !== b.system) return a.system - b.system;
-      return a.x - b.x;
+      return a.beat - b.beat;
     });
 
     // Build repeat sections from paired markers (supports cross-system repeats)
@@ -504,7 +573,7 @@ export default function EditorPage() {
 
     // Helper to get absolute beat for a note
     const getNoteAbsoluteBeat = (note: EditorNote) =>
-      note.system * BEATS_PER_SYSTEM + (note.x - LEFT_MARGIN) / BEAT_WIDTH;
+      note.system * BEATS_PER_SYSTEM + note.beat;
 
     // Build timeline with repeats
     let currentBeatOffset = 0;

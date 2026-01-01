@@ -1,81 +1,25 @@
-import { SavedSong, Pitch } from "./types";
+import { SavedSong, Pitch, EditorNote } from "./types";
 
-// Layout constants (must match NoteEditor)
-const LEFT_MARGIN = 100;
-const BEAT_WIDTH = 60;
-const NOTE_OFFSET = 15; // Center notes within beat columns
-const SYSTEM_HEIGHT = 180;
-const SYSTEM_TOP_MARGIN = 60;
-const STAFF_CENTER_OFFSET = 80;
-const LINE_SPACING = 32;
 const BEATS_PER_MEASURE = 4; // For 4/4 time
 const MEASURES_PER_SYSTEM = 2;
 const BEATS_PER_SYSTEM = BEATS_PER_MEASURE * MEASURES_PER_SYSTEM; // 8
 
-// Pitch positions on staff (sharps included for type completeness)
-const PITCH_POSITIONS: Record<Pitch, number> = {
-  C4: 0,
-  "C#4": 0.5,
-  D4: 1,
-  "D#4": 1.5,
-  E4: 2,
-  F4: 3,
-  "F#4": 3.5,
-  G4: 4,
-  "G#4": 4.5,
-  A4: 5,
-  "A#4": 5.5,
-  B4: 6,
-  C5: 7,
-  REST: -1,
-};
-
-function getStaffCenterY(system: number): number {
-  return SYSTEM_TOP_MARGIN + system * SYSTEM_HEIGHT + STAFF_CENTER_OFFSET;
-}
-
-function getYFromPitch(pitch: Pitch, system: number): number {
-  const pos = PITCH_POSITIONS[pitch];
-  const staffCenterY = getStaffCenterY(system);
-  if (pos < 0) return staffCenterY;
-  // Round position to handle sharps (fractional positions)
-  const roundedPos = Math.round(pos);
-  const bottomLineY = staffCenterY + LINE_SPACING;
-  return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
-}
-
-// Helper to create EditorNote from pitch and beat position
-function createNote(
-  pitch: Pitch,
-  duration: number,
-  beatPosition: number,
-): { pitch: Pitch; duration: number; x: number; y: number; system: number } {
-  const system = Math.floor(beatPosition / BEATS_PER_SYSTEM);
-  const beatInSystem = beatPosition % BEATS_PER_SYSTEM;
-
-  // Place notes with offset so they sit inside beat columns, not on boundaries
-  const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
-  const y = getYFromPitch(pitch, system);
-  return { pitch, duration, x, y, system };
-}
-
-// Convert array of {pitch, duration} to EditorNote array
+// Convert array of {pitch, duration} to EditorNote array with beat-based positions
 function convertToEditorNotes(
   notes: Array<{ pitch: Pitch; duration: number }>,
-): Array<{
-  id: string;
-  pitch: Pitch;
-  duration: number;
-  x: number;
-  y: number;
-  system: number;
-}> {
+): EditorNote[] {
   let currentBeat = 0;
   const timestamp = Date.now();
   return notes.map((note, index) => {
-    const editorNote = {
+    const system = Math.floor(currentBeat / BEATS_PER_SYSTEM);
+    const beatInSystem = currentBeat % BEATS_PER_SYSTEM;
+
+    const editorNote: EditorNote = {
       id: `default-${timestamp}-${index}`,
-      ...createNote(note.pitch, note.duration, currentBeat),
+      pitch: note.pitch,
+      duration: note.duration,
+      beat: beatInSystem,
+      system,
     };
     currentBeat += note.duration;
     return editorNote;

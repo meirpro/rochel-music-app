@@ -63,8 +63,7 @@ export interface EditorNote {
   id: string;
   pitch: Pitch;
   duration: number; // 0.5, 1, 2, or 4 beats
-  x: number;
-  y: number;
+  beat: number; // Position within system (0, 0.5, 1, 1.5, etc.)
   system: number; // Which system/row (0-indexed)
 }
 
@@ -182,6 +181,17 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
 }
 
+// Convert beat position to X coordinate (for rendering)
+function getXFromBeat(beat: number): number {
+  return LEFT_MARGIN + beat * BEAT_WIDTH + NOTE_OFFSET;
+}
+
+// Convert X coordinate to beat position (for placement)
+function getBeatFromX(x: number): number {
+  const rawBeat = (x - LEFT_MARGIN - NOTE_OFFSET) / BEAT_WIDTH;
+  return Math.round(rawBeat * 2) / 2; // Snap to half-beats
+}
+
 function snapX(x: number, staffRight: number): number {
   // Snap to half-beat positions, offset from bar lines
   const xWithoutOffset = x - NOTE_OFFSET;
@@ -228,28 +238,28 @@ function groupEighthNotes(
   const config = TIME_SIG_CONFIG[timeSignature];
   const eighthNotes = allNotes.filter((n) => n.duration === 0.5);
 
-  // Sort all notes by system, then by x position (for checking notes in between)
+  // Sort all notes by system, then by beat position (for checking notes in between)
   const allSorted = [...allNotes].sort((a, b) => {
     if (a.system !== b.system) return a.system - b.system;
-    return a.x - b.x;
+    return a.beat - b.beat;
   });
 
-  // Sort eighth notes by system, then by x position
+  // Sort eighth notes by system, then by beat position
   const sorted = [...eighthNotes].sort((a, b) => {
     if (a.system !== b.system) return a.system - b.system;
-    return a.x - b.x;
+    return a.beat - b.beat;
   });
 
   // Helper to check if there's any note between two notes
   const hasNoteBetween = (note1: EditorNote, note2: EditorNote): boolean => {
     if (note1.system !== note2.system) return true; // Different systems = don't beam
-    const minX = Math.min(note1.x, note2.x);
-    const maxX = Math.max(note1.x, note2.x);
+    const minBeat = Math.min(note1.beat, note2.beat);
+    const maxBeat = Math.max(note1.beat, note2.beat);
     return allSorted.some(
       (n) =>
         n.system === note1.system &&
-        n.x > minX + 5 &&
-        n.x < maxX - 5 &&
+        n.beat > minBeat + 0.1 &&
+        n.beat < maxBeat - 0.1 &&
         n.id !== note1.id &&
         n.id !== note2.id,
     );
@@ -261,8 +271,7 @@ function groupEighthNotes(
 
   for (const note of sorted) {
     // Calculate which beat group this note belongs to
-    const beatFromLeft = (note.x - LEFT_MARGIN) / BEAT_WIDTH;
-    const measureBeat = beatFromLeft % config.beatsPerMeasure;
+    const measureBeat = note.beat % config.beatsPerMeasure;
 
     // Find which beam group this beat belongs to
     let beatGroup = 0;
@@ -276,7 +285,7 @@ function groupEighthNotes(
     }
 
     // Calculate absolute beat group (including system and measure)
-    const measure = Math.floor(beatFromLeft / config.beatsPerMeasure);
+    const measure = Math.floor(note.beat / config.beatsPerMeasure);
     const absoluteBeatGroup = note.system * 1000 + measure * 100 + beatGroup;
 
     // Check if this note should join the current group
@@ -286,13 +295,9 @@ function groupEighthNotes(
     } else if (absoluteBeatGroup === currentBeatGroup) {
       // Same beat group - check if consecutive AND no notes in between
       const lastNote = currentGroup[currentGroup.length - 1];
-      const xDiff = note.x - lastNote.x;
-      // Only beam if adjacent AND no other notes in between
-      if (
-        xDiff > 0 &&
-        xDiff <= BEAT_WIDTH * 1.5 &&
-        !hasNoteBetween(lastNote, note)
-      ) {
+      const beatDiff = note.beat - lastNote.beat;
+      // Only beam if adjacent (within 1.5 beats) AND no other notes in between
+      if (beatDiff > 0 && beatDiff <= 1.5 && !hasNoteBetween(lastNote, note)) {
         currentGroup.push(note);
       } else {
         // Not consecutive or has notes in between, finish current group
@@ -328,11 +333,12 @@ function createBeamGroup(notes: EditorNote[]): BeamGroup {
 
   for (const note of notes) {
     const staffCenterY = getStaffCenterY(note.system);
-    const distance = Math.abs(note.y - staffCenterY);
+    const noteY = getYFromPitch(note.pitch, note.system);
+    const distance = Math.abs(noteY - staffCenterY);
     if (distance > maxDistance) {
       maxDistance = distance;
       // If the furthest note is above center, stems go down; otherwise up
-      stemDirection = note.y < staffCenterY ? "down" : "up";
+      stemDirection = noteY < staffCenterY ? "down" : "up";
     }
   }
 
@@ -554,10 +560,11 @@ export function NoteEditor({
 
       const pitch = getPitchFromY(y, system);
       const snappedX = snapX(x, staffRight);
-      const snappedY = getYFromPitch(pitch, system);
+      const beat = getBeatFromX(snappedX);
 
+      // Check for collision using beat position
       const existingNote = notes.find(
-        (n) => Math.abs(n.x - snappedX) < 5 && n.system === system,
+        (n) => Math.abs(n.beat - beat) < 0.25 && n.system === system,
       );
       if (existingNote) {
         onDuplicateNote?.();
@@ -568,8 +575,7 @@ export function NoteEditor({
         id: String(Date.now()),
         pitch,
         duration: getDurationFromTool(selectedTool),
-        x: snappedX,
-        y: snappedY,
+        beat,
         system,
       };
 
@@ -671,22 +677,20 @@ export function NoteEditor({
       const system = getSystemFromY(y, systemCount);
       const pitch = getPitchFromY(y, system);
       const snappedX = snapX(x, staffRight);
-      const snappedY = getYFromPitch(pitch, system);
+      const beat = getBeatFromX(snappedX);
 
       // Check if another note exists at this position (excluding the dragged note)
       const collision = notes.find(
         (n) =>
           n.id !== draggedNote &&
-          Math.abs(n.x - snappedX) < 5 &&
+          Math.abs(n.beat - beat) < 0.25 &&
           n.system === system,
       );
       if (collision) return; // Don't allow moving to occupied position
 
       onNotesChange(
         notes.map((n) =>
-          n.id === draggedNote
-            ? { ...n, x: snappedX, y: snappedY, pitch, system }
-            : n,
+          n.id === draggedNote ? { ...n, beat, pitch, system } : n,
         ),
       );
     },
@@ -725,6 +729,10 @@ export function NoteEditor({
   };
 
   const renderNote = (note: EditorNote) => {
+    // Calculate x and y from beat and pitch at render time
+    const x = getXFromBeat(note.beat);
+    const y = getYFromPitch(note.pitch, note.system);
+
     const color = getNoteColor(note.pitch);
     const isSelected = draggedNote === note.id;
     const isActive = activeNoteId === note.id;
@@ -733,7 +741,7 @@ export function NoteEditor({
     const isBeamed = beamedNoteIds.has(note.id);
 
     // For beamed notes, use the beam group's stem direction
-    let stemDir: "up" | "down" = note.y > staffCenterY ? "up" : "down";
+    let stemDir: "up" | "down" = y > staffCenterY ? "up" : "down";
     if (isBeamed) {
       const beamGroup = beamGroups.find((g) =>
         g.notes.some((n) => n.id === note.id),
@@ -745,9 +753,9 @@ export function NoteEditor({
 
     const stemH = 40;
     const isHollow = type === "half" || type === "whole";
-    const stemX = stemDir === "up" ? note.x + 12 : note.x - 12;
-    const stemY1 = note.y;
-    const stemY2 = stemDir === "up" ? note.y - stemH : note.y + stemH;
+    const stemX = stemDir === "up" ? x + 12 : x - 12;
+    const stemY1 = y;
+    const stemY2 = stemDir === "up" ? y - stemH : y + stemH;
 
     // Kid-friendly note with face
     if (showKidFaces) {
@@ -762,22 +770,20 @@ export function NoteEditor({
         >
           {note.pitch === "C4" && (
             <line
-              x1={note.x - 18}
-              y1={note.y}
-              x2={note.x + 18}
-              y2={note.y}
+              x1={x - 18}
+              y1={y}
+              x2={x + 18}
+              y2={y}
               stroke="#4a5568"
               strokeWidth={2}
             />
           )}
-          {isSelected && (
-            <circle cx={note.x} cy={note.y - 22} r={4} fill="#3B82F6" />
-          )}
+          {isSelected && <circle cx={x} cy={y - 22} r={4} fill="#3B82F6" />}
           {/* Active glow effect */}
           {isActive && (
             <circle
-              cx={note.x}
-              cy={note.y}
+              cx={x}
+              cy={y}
               r={faceRadius + 8}
               fill="none"
               stroke={color}
@@ -788,22 +794,22 @@ export function NoteEditor({
           )}
           {/* Face circle */}
           <circle
-            cx={note.x}
-            cy={note.y}
+            cx={x}
+            cy={y}
             r={faceRadius}
             fill={color}
             stroke={isActive ? "#fff" : "#000"}
             strokeWidth={isActive ? 3 : 2}
           />
           {/* Eyes */}
-          <circle cx={note.x - 4} cy={note.y - 3} r={2.5} fill="#000" />
-          <circle cx={note.x + 4} cy={note.y - 3} r={2.5} fill="#000" />
+          <circle cx={x - 4} cy={y - 3} r={2.5} fill="#000" />
+          <circle cx={x + 4} cy={y - 3} r={2.5} fill="#000" />
           {/* Eye shine */}
-          <circle cx={note.x - 3} cy={note.y - 4} r={1} fill="#fff" />
-          <circle cx={note.x + 5} cy={note.y - 4} r={1} fill="#fff" />
+          <circle cx={x - 3} cy={y - 4} r={1} fill="#fff" />
+          <circle cx={x + 5} cy={y - 4} r={1} fill="#fff" />
           {/* Smile */}
           <path
-            d={`M ${note.x - 5} ${note.y + 4} Q ${note.x} ${note.y + 9} ${note.x + 5} ${note.y + 4}`}
+            d={`M ${x - 5} ${y + 4} Q ${x} ${y + 9} ${x + 5} ${y + 4}`}
             stroke="#000"
             strokeWidth={2}
             fill="none"
@@ -812,18 +818,10 @@ export function NoteEditor({
           {/* Stem (not for whole notes) */}
           {type !== "whole" && (
             <line
-              x1={
-                stemDir === "up"
-                  ? note.x + faceRadius - 2
-                  : note.x - faceRadius + 2
-              }
-              y1={note.y}
-              x2={
-                stemDir === "up"
-                  ? note.x + faceRadius - 2
-                  : note.x - faceRadius + 2
-              }
-              y2={stemDir === "up" ? note.y - 38 : note.y + 38}
+              x1={stemDir === "up" ? x + faceRadius - 2 : x - faceRadius + 2}
+              y1={y}
+              x2={stemDir === "up" ? x + faceRadius - 2 : x - faceRadius + 2}
+              y2={stemDir === "up" ? y - 38 : y + 38}
               stroke="#000"
               strokeWidth={3.5}
             />
@@ -831,8 +829,8 @@ export function NoteEditor({
           {/* Note name label */}
           {showLabels && (
             <text
-              x={note.x}
-              y={note.y - faceRadius - 8}
+              x={x}
+              y={y - faceRadius - 8}
               textAnchor="middle"
               fill={color}
               fontSize={12}
@@ -863,30 +861,28 @@ export function NoteEditor({
         {/* Ledger line for C4 */}
         {note.pitch === "C4" && (
           <line
-            x1={note.x - 20}
-            y1={note.y}
-            x2={note.x + 20}
-            y2={note.y}
+            x1={x - 20}
+            y1={y}
+            x2={x + 20}
+            y2={y}
             stroke="#4a5568"
             strokeWidth={2}
           />
         )}
         {/* Selection indicator */}
-        {isSelected && (
-          <circle cx={note.x} cy={note.y - 28} r={4} fill="#3B82F6" />
-        )}
+        {isSelected && <circle cx={x} cy={y - 28} r={4} fill="#3B82F6" />}
         {/* Active glow effect */}
         {isActive && (
           <ellipse
-            cx={note.x}
-            cy={note.y}
+            cx={x}
+            cy={y}
             rx={18}
             ry={15}
             fill="none"
             stroke={color}
             strokeWidth={4}
             opacity={0.6}
-            transform={`rotate(-20 ${note.x} ${note.y})`}
+            transform={`rotate(-20 ${x} ${y})`}
           />
         )}
         {/* Stem - skip for beamed eighth notes (beam section draws their stems) */}
@@ -902,14 +898,14 @@ export function NoteEditor({
         )}
         {/* Notehead - sized to span between staff lines */}
         <ellipse
-          cx={note.x}
-          cy={note.y}
+          cx={x}
+          cy={y}
           rx={13}
           ry={11}
           fill={fill}
           stroke={isActive ? "#fff" : stroke}
           strokeWidth={isActive ? 2.5 : strokeWidth}
-          transform={`rotate(-20 ${note.x} ${note.y})`}
+          transform={`rotate(-20 ${x} ${y})`}
         />
         {/* Flag for eighth notes (only if not beamed) */}
         {type === "eighth" && !isBeamed && (
@@ -927,8 +923,8 @@ export function NoteEditor({
         {/* Dot for dotted notes - positioned to the right, in a space (not on a line) */}
         {type === "dotted-quarter" && (
           <circle
-            cx={note.x + 20}
-            cy={note.y - LINE_SPACING / 4} // Offset up slightly to sit in a space
+            cx={x + 20}
+            cy={y - LINE_SPACING / 4} // Offset up slightly to sit in a space
             r={4}
             fill={color}
           />
@@ -936,8 +932,8 @@ export function NoteEditor({
         {/* Note label */}
         {showLabels && (
           <text
-            x={note.x}
-            y={note.y + 5}
+            x={x}
+            y={y + 5}
             textAnchor="middle"
             fill="#1a1a1a"
             fontSize={11}
@@ -1329,7 +1325,8 @@ export function NoteEditor({
 
           // Calculate beam Y position (at the end of stems)
           const stemYs = groupNotes.map((note) => {
-            return stemDirection === "up" ? note.y - stemH : note.y + stemH;
+            const noteY = getYFromPitch(note.pitch, note.system);
+            return stemDirection === "up" ? noteY - stemH : noteY + stemH;
           });
 
           // Limit beam slope to max one staff space (engraver's rule)
@@ -1369,9 +1366,10 @@ export function NoteEditor({
               : colors[0];
 
           // Calculate stem X positions
-          const stemXs = groupNotes.map((note) =>
-            stemDirection === "up" ? note.x + 13 : note.x - 13,
-          );
+          const stemXs = groupNotes.map((note) => {
+            const noteX = getXFromBeat(note.beat);
+            return stemDirection === "up" ? noteX + 13 : noteX - 13;
+          });
 
           const firstX = stemXs[0];
           const lastX = stemXs[stemXs.length - 1];
@@ -1388,12 +1386,13 @@ export function NoteEditor({
               {/* Draw stems from each note to the beam */}
               {groupNotes.map((note, i) => {
                 const stemX = stemXs[i];
+                const noteY = getYFromPitch(note.pitch, note.system);
                 const beamY = getBeamYAtX(stemX);
                 return (
                   <line
                     key={`beam-stem-${groupIndex}-${i}`}
                     x1={stemX}
-                    y1={note.y}
+                    y1={noteY}
                     x2={stemX}
                     y2={beamY}
                     stroke={colors[i]}
@@ -1502,4 +1501,4 @@ export function NoteEditor({
 }
 
 // Export constants and helpers for use in page
-export { LEFT_MARGIN, BEAT_WIDTH, getLayoutConfig };
+export { LEFT_MARGIN, BEAT_WIDTH, getLayoutConfig, getBeatFromX };
