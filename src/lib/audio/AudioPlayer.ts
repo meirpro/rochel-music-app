@@ -22,7 +22,7 @@ export class AudioPlayer {
     return (60 / this.tempo) * beats;
   }
 
-  // Play a single note (for click-to-play)
+  // Play a single note (for click-to-play) with piano-like sound
   // startDelay allows scheduling notes slightly in the future for sync
   playNote(midi: number, durationSeconds = 0.35, startDelay = 0): void {
     if (midi === 0) return; // REST
@@ -30,25 +30,73 @@ export class AudioPlayer {
     const ctx = this.getContext();
     const startTime = ctx.currentTime + startDelay;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
     // Calculate frequency from MIDI note number
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
 
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, startTime);
+    // Create main oscillator (triangle for warmer tone)
+    const osc1 = ctx.createOscillator();
+    osc1.type = "triangle";
+    osc1.frequency.setValueAtTime(freq, startTime);
 
-    // ADSR envelope
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.25, startTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSeconds);
+    // Create second oscillator slightly detuned for richness
+    const osc2 = ctx.createOscillator();
+    osc2.type = "triangle";
+    osc2.frequency.setValueAtTime(freq * 1.003, startTime); // Slight detune
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    // Create third oscillator one octave higher (soft)
+    const osc3 = ctx.createOscillator();
+    osc3.type = "sine";
+    osc3.frequency.setValueAtTime(freq * 2, startTime);
 
-    osc.start(startTime);
-    osc.stop(startTime + durationSeconds + 0.02);
+    // Individual gains for mixing
+    const gain1 = ctx.createGain();
+    const gain2 = ctx.createGain();
+    const gain3 = ctx.createGain();
+
+    // Low-pass filter for warmer piano tone
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(freq * 6, startTime);
+    filter.Q.setValueAtTime(1, startTime);
+
+    // Master gain with piano-like ADSR envelope
+    const masterGain = ctx.createGain();
+
+    // Piano envelope: quick attack, gradual decay
+    masterGain.gain.setValueAtTime(0.0001, startTime);
+    masterGain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.008); // Fast attack
+    masterGain.gain.exponentialRampToValueAtTime(0.15, startTime + 0.1); // Initial decay
+    masterGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startTime + durationSeconds,
+    ); // Release
+
+    // Mix levels
+    gain1.gain.setValueAtTime(0.5, startTime);
+    gain2.gain.setValueAtTime(0.3, startTime);
+    gain3.gain.setValueAtTime(0.1, startTime); // Subtle octave
+
+    // Connect oscillators through gains to filter
+    osc1.connect(gain1);
+    osc2.connect(gain2);
+    osc3.connect(gain3);
+
+    gain1.connect(filter);
+    gain2.connect(filter);
+    gain3.connect(filter);
+
+    filter.connect(masterGain);
+    masterGain.connect(ctx.destination);
+
+    // Start and stop all oscillators
+    osc1.start(startTime);
+    osc2.start(startTime);
+    osc3.start(startTime);
+
+    const stopTime = startTime + durationSeconds + 0.02;
+    osc1.stop(stopTime);
+    osc2.stop(stopTime);
+    osc3.stop(stopTime);
   }
 
   // Play a pitch by name
