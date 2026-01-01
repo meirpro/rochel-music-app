@@ -38,6 +38,19 @@ const NOTE_COLORS = {
   B: "#ff77c8",
 };
 
+// Playback types for seek functionality
+interface PlaybackNote extends EditorNote {
+  playBeat: number;
+}
+
+interface TimelineSegment {
+  startBeat: number;
+  endBeat: number;
+  system: number;
+  startX: number;
+  endX: number;
+}
+
 // Types for localStorage persistence
 interface EditorComposition {
   notes: EditorNote[];
@@ -119,6 +132,13 @@ export default function EditorPage() {
   const isPlayingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Refs for seek functionality
+  const playbackSequenceRef = useRef<PlaybackNote[]>([]);
+  const timelineRef = useRef<TimelineSegment[]>([]);
+  const playbackStartTimeRef = useRef<number>(0);
+  const msPerBeatRef = useRef<number>(600);
+  const playedNotesRef = useRef<Set<number>>(new Set());
 
   // Destructure for easier access
   const { notes, repeatMarkers, systemCount } = composition;
@@ -654,6 +674,13 @@ export default function EditorPage() {
     const activeNotes = new Map<string, number>(); // noteId -> end time in ms
     const startTime = performance.now();
 
+    // Store in refs for seek functionality
+    playbackSequenceRef.current = playbackSequence;
+    timelineRef.current = timeline;
+    msPerBeatRef.current = msPerBeat;
+    playbackStartTimeRef.current = startTime;
+    playedNotesRef.current = playedNotes;
+
     const animate = () => {
       if (!isPlayingRef.current) {
         setPlayheadX(null);
@@ -663,8 +690,8 @@ export default function EditorPage() {
         return;
       }
 
-      const elapsed = performance.now() - startTime;
-      const currentBeat = elapsed / msPerBeat;
+      const elapsed = performance.now() - playbackStartTimeRef.current;
+      const currentBeat = elapsed / msPerBeatRef.current;
 
       // Find current timeline segment and interpolate position
       let currentSystem = 0;
@@ -690,7 +717,7 @@ export default function EditorPage() {
 
       // Check for notes to play
       for (let i = 0; i < playbackSequence.length; i++) {
-        if (playedNotes.has(i)) continue;
+        if (playedNotesRef.current.has(i)) continue;
         const note = playbackSequence[i];
         if (currentBeat >= note.playBeat) {
           // Play this note
@@ -699,10 +726,10 @@ export default function EditorPage() {
             const durationSeconds = (note.duration * 60) / tempo;
             player.playNote(midi, durationSeconds * 0.9);
           }
-          playedNotes.add(i);
+          playedNotesRef.current.add(i);
 
           // Set as active note
-          const noteEndTime = elapsed + note.duration * msPerBeat;
+          const noteEndTime = elapsed + note.duration * msPerBeatRef.current;
           activeNotes.set(note.id, noteEndTime);
           setActiveNoteId(note.id);
           setActivePitch(note.pitch);
@@ -1128,6 +1155,7 @@ export default function EditorPage() {
               onDuplicateNote={handleDuplicateNote}
               svgRef={svgRef}
               timeSignature={timeSignature}
+              onStaffClick={handleSeek}
             />
           </div>
 

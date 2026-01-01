@@ -109,6 +109,7 @@ interface NoteEditorProps {
   onDuplicateNote?: () => void;
   svgRef?: React.RefObject<SVGSVGElement | null>;
   timeSignature?: TimeSignature;
+  onStaffClick?: (x: number, system: number) => void;
 }
 
 // Constants - adjusted for better fit
@@ -173,8 +174,11 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   const pos = PITCH_POSITIONS[pitch];
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;
+  // Round position to handle sharps (which have fractional positions like 0.5)
+  // This ensures they render at valid staff positions
+  const roundedPos = Math.round(pos);
   const bottomLineY = staffCenterY + LINE_SPACING;
-  return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
+  return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
 }
 
 function snapX(x: number, staffRight: number): number {
@@ -349,6 +353,7 @@ export function NoteEditor({
   onDuplicateNote,
   svgRef: externalSvgRef,
   timeSignature = "4/4",
+  onStaffClick,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -466,6 +471,11 @@ export function NoteEditor({
       if (y < staffCenterY - LINE_SPACING * 2 - 30) return;
       if (y > staffCenterY + LINE_SPACING * 2 + 30) return;
 
+      // Call onStaffClick for seek functionality
+      if (onStaffClick) {
+        onStaffClick(x, system);
+      }
+
       // No action when no tool is selected
       if (selectedTool === null) return;
 
@@ -569,6 +579,7 @@ export function NoteEditor({
       onRepeatMarkersChange,
       repeatStart,
       contextMenu,
+      onStaffClick,
     ],
   );
 
@@ -724,13 +735,13 @@ export function NoteEditor({
 
     const stemH = 40;
     const isHollow = type === "half" || type === "whole";
-    const stemX = stemDir === "up" ? note.x + 13 : note.x - 13;
+    const stemX = stemDir === "up" ? note.x + 10 : note.x - 10;
     const stemY1 = note.y;
     const stemY2 = stemDir === "up" ? note.y - stemH : note.y + stemH;
 
     // Kid-friendly note with face
     if (showKidFaces) {
-      const faceRadius = 14;
+      const faceRadius = 12;
       return (
         <g
           key={note.id}
@@ -826,9 +837,10 @@ export function NoteEditor({
     }
 
     // Standard note rendering with SVG ellipse
+    // All notes have color outline; filled notes have color fill, hollow have white fill
     const fill = isHollow ? "#ffffff" : color;
-    const stroke = isHollow ? color : "#000";
-    const strokeWidth = isHollow ? 2.5 : 1;
+    const stroke = color; // Always use color outline
+    const strokeWidth = 2.5;
 
     return (
       <g
@@ -858,8 +870,8 @@ export function NoteEditor({
           <ellipse
             cx={note.x}
             cy={note.y}
-            rx={22}
-            ry={18}
+            rx={18}
+            ry={15}
             fill="none"
             stroke={color}
             strokeWidth={4}
@@ -871,8 +883,8 @@ export function NoteEditor({
         <ellipse
           cx={note.x}
           cy={note.y}
-          rx={16}
-          ry={14}
+          rx={13}
+          ry={11}
           fill={fill}
           stroke={isActive ? "#fff" : stroke}
           strokeWidth={isActive ? 2.5 : strokeWidth}
@@ -908,7 +920,7 @@ export function NoteEditor({
             x={note.x}
             y={note.y + 5}
             textAnchor="middle"
-            fill={isHollow ? "#1a1a1a" : "#ffffff"}
+            fill="#1a1a1a"
             fontSize={11}
             fontWeight="bold"
             fontFamily="system-ui, sans-serif"

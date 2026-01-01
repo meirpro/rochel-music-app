@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leland Font Test</title>
+    <style>
+        @font-face {
+            font-family: "Leland Text";
+            src: url("/fonts/LelandText.woff2") format("woff2"),
+                 url("/fonts/LelandText.woff") format("woff");
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f0f0f0;
+        }
+
+        .test-container {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .notehead {
+            font-family: 'Leland Text', serif;
+            font-size: 48px;
+            display: inline-block;
+            margin: 0 10px;
+        }
+
+        .code {
+            font-family: monospace;
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        svg text {
+            font-family: 'Leland Text', serif;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leland Font Test</h1>
+
+    <div class="test-container">
+        <h2>HTML Text Elements</h2>
+        <p>Whole note: <span class="notehead"></span> <span class="code">U+E0A2</span></p>
+        <p>Half note: <span class="notehead"></span> <span class="code">U+E0A3</span></p>
+        <p>Quarter/Eighth note: <span class="notehead"></span> <span class="code">U+E0A4</span></p>
+    </div>
+
+    <div class="test-container">
+        <h2>SVG Text Elements (as used in NoteEditor)</h2>
+        <svg width="400" height="200" style="background: white; border: 1px solid #ccc;">
+            <!-- Test with different colors like in the app -->
+            <text x="50" y="60" font-size="48" fill="#ef4444"><!-- Red (C) --></text>
+            <text x="150" y="60" font-size="48" fill="#f97316"><!-- Orange (D) --></text>
+            <text x="250" y="60" font-size="48" fill="#eab308"><!-- Yellow (E) --></text>
+
+            <text x="50" y="140" font-size="38" fill="#22c55e"><!-- Green (F) --></text>
+            <text x="150" y="140" font-size="38" fill="#3b82f6"><!-- Blue (G) --></text>
+            <text x="250" y="140" font-size="38" fill="#a855f7"><!-- Purple (A) --></text>
+        </svg>
+    </div>
+
+    <div class="test-container">
+        <h2>Font Loading Check</h2>
+        <p id="status">Checking font...</p>
+    </div>
+
+    <script>
+        // Check if font is loaded
+        document.fonts.ready.then(function() {
+            const lelandLoaded = document.fonts.check("1em 'Leland Text'");
+            const statusEl = document.getElementById('status');
+            if (lelandLoaded) {
+                statusEl.textContent = '✅ Leland Text font loaded successfully!';
+                statusEl.style.color = 'green';
+            } else {
+                statusEl.textContent = '❌ Leland Text font failed to load';
+                statusEl.style.color = 'red';
+
+                // List all loaded fonts
+                const loadedFonts = Array.from(document.fonts.values()).map(f => f.family);
+                console.log('Loaded fonts:', loadedFonts);
+            }
+        });
+
+        // Log font loading errors
+        document.fonts.addEventListener('loadingerror', (event) => {
+            console.error('Font loading error:', event);
+        });
+    </script>
+</body>
+</html>

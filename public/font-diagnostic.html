@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Diagnostic</title>
+    <style>
+        @font-face {
+            font-family: "Leland Text";
+            src: url("/fonts/LelandText.woff2") format("woff2"),
+                 url("/fonts/LelandText.woff") format("woff");
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        #diagnostics {
+            background: #f8f8f8;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            border-left-color: #f44336;
+        }
+
+        svg {
+            border: 1px solid #ccc;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leland Font Diagnostic</h1>
+
+    <div class="test-section">
+        <h2>Font Loading Status</h2>
+        <div id="diagnostics">Checking...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>SVG Rendering Test (Matching NoteEditor.tsx)</h2>
+        <p>These should look like proper noteheads:</p>
+        <svg width="600" height="200">
+            <!-- Whole note (red like C) -->
+            <text x="100" y="80" font-size="38" fill="#ef4444" font-family="'Leland Text', serif"></text>
+            <text x="100" y="120" font-size="14" fill="#666" font-family="system-ui">Whole (U+E0A2)</text>
+
+            <!-- Half note (orange like D) -->
+            <text x="250" y="80" font-size="38" fill="#f97316" font-family="'Leland Text', serif"></text>
+            <text x="250" y="120" font-size="14" fill="#666" font-family="system-ui">Half (U+E0A3)</text>
+
+            <!-- Quarter note (yellow like E) -->
+            <text x="400" y="80" font-size="38" fill="#eab308" font-family="'Leland Text', serif"></text>
+            <text x="400" y="120" font-size="14" fill="#666" font-family="system-ui">Quarter (U+E0A4)</text>
+        </svg>
+    </div>
+
+    <div class="test-section">
+        <h2>Font Feature Detection</h2>
+        <div id="features">Checking...</div>
+    </div>
+
+    <script>
+        async function runDiagnostics() {
+            const diagnosticsEl = document.getElementById('diagnostics');
+            const featuresEl = document.getElementById('features');
+            let output = '';
+
+            try {
+                // Wait for fonts to load
+                await document.fonts.ready;
+
+                // Check if Leland Text is loaded
+                const lelandLoaded = document.fonts.check("1em 'Leland Text'");
+                output += `Font loaded: ${lelandLoaded ? '✅ YES' : '❌ NO'}\n\n`;
+
+                // List all loaded fonts
+                const loadedFonts = Array.from(document.fonts.values())
+                    .map(f => `${f.family} (${f.status})`)
+                    .filter((v, i, a) => a.indexOf(v) === i);
+                output += `Loaded fonts (${loadedFonts.length}):\n`;
+                loadedFonts.forEach(f => output += `  - ${f}\n`);
+
+                // Check font file accessibility
+                output += '\nFont file accessibility:\n';
+                const fontUrls = [
+                    '/fonts/LelandText.woff2',
+                    '/fonts/LelandText.woff'
+                ];
+
+                for (const url of fontUrls) {
+                    try {
+                        const response = await fetch(url, { method: 'HEAD' });
+                        output += `  ${url}: ${response.ok ? '✅' : '❌'} (${response.status})\n`;
+                    } catch (e) {
+                        output += `  ${url}: ❌ Error: ${e.message}\n`;
+                    }
+                }
+
+                // Check computed font family on SVG text elements
+                output += '\nComputed font-family on SVG text elements:\n';
+                const svgTexts = document.querySelectorAll('svg text');
+                svgTexts.forEach((text, i) => {
+                    const computed = window.getComputedStyle(text).fontFamily;
+                    output += `  Text ${i + 1}: ${computed}\n`;
+                });
+
+                diagnosticsEl.textContent = output;
+                diagnosticsEl.classList.remove('error');
+
+                // Font features
+                let featuresOutput = '';
+                const font = Array.from(document.fonts.values())
+                    .find(f => f.family.includes('Leland'));
+
+                if (font) {
+                    featuresOutput += `Font object found:\n`;
+                    featuresOutput += `  Family: ${font.family}\n`;
+                    featuresOutput += `  Status: ${font.status}\n`;
+                    featuresOutput += `  Weight: ${font.weight}\n`;
+                    featuresOutput += `  Style: ${font.style}\n`;
+                } else {
+                    featuresOutput += 'No Leland font object found in document.fonts\n';
+                }
+
+                featuresEl.textContent = featuresOutput;
+
+            } catch (error) {
+                output += `\n❌ Error: ${error.message}\n${error.stack}`;
+                diagnosticsEl.textContent = output;
+                diagnosticsEl.classList.add('error');
+            }
+        }
+
+        // Run diagnostics when page loads
+        window.addEventListener('load', () => {
+            runDiagnostics();
+        });
+
+        // Also run after a short delay to catch any late-loading fonts
+        setTimeout(runDiagnostics, 1000);
+    </script>
+</body>
+</html>

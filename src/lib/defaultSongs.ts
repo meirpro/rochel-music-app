@@ -38,8 +38,10 @@ function getYFromPitch(pitch: Pitch, system: number): number {
   const pos = PITCH_POSITIONS[pitch];
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;
+  // Round position to handle sharps (fractional positions)
+  const roundedPos = Math.round(pos);
   const bottomLineY = staffCenterY + LINE_SPACING;
-  return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
+  return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
 }
 
 // Helper to create EditorNote from pitch and beat position

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:chat.z.ai)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run lint:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:www.musicnotes.com)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:www.musicreadingsavant.com)",
+      "WebFetch(domain:mymusictheory.com)",
+      "WebFetch(domain:vintagevinylnews.com)",
+      "WebFetch(domain:davidkulma.com)",
+      "WebFetch(domain:ultimatemusictheory.com)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "Puppeteer"
+  ],
+  "disabledMcpjsonServers": [
+    "playwright"
+  ]
+}

@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kid Staff (3-line treble) • Songs</title>
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --panel:#11131a;
+      --ink:#eaeef6;
+      --muted:#a7b0c3;
+      --line:#d9deea;
+      --shadow: 0 12px 28px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(110,231,183,.18), transparent 60%),
+        radial-gradient(900px 600px at 80% 10%, rgba(96,165,250,.10), transparent 55%),
+        var(--bg);
+      color:var(--ink);
+    }
+    header{
+      padding:18px 16px 10px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size:20px;
+      letter-spacing:.2px;
+      font-weight:700;
+    }
+    .sub{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:12px 16px 28px;
+      display:grid;
+      grid-template-columns: 380px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .card .hd .title{
+      font-weight:700;
+      font-size:14px;
+    }
+    .card .bd{ padding:12px 14px 14px; }
+
+    .controls{ display:grid; gap:10px; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    label{ font-size:12px; color:var(--muted); }
+
+    select, input[type="range"], button{ font:inherit; }
+
+    select{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color:var(--ink);
+      outline:none;
+    }
+
+    .btn{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color:var(--ink);
+      cursor:pointer;
+      transition: transform .06s ease;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .mini{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .legend{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+    .sw{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+    }
+    .dot{
+      width:14px; height:14px;
+      border-radius:5px;
+      border:1px solid rgba(255,255,255,.25);
+      flex:0 0 auto;
+    }
+    .sw b{ font-size:12px; }
+    .sw span{ font-size:12px; color:var(--muted); }
+
+    .scoreWrap{ padding:10px; }
+    canvas{
+      width:100%;
+      height:auto;
+      display:block;
+      background: rgba(0,0,0,.18);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .footer{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+    }
+
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size:11px;
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      color:var(--ink);
+    }
+
+    .warn{
+      margin-top:8px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>3‑Line Treble Kid Staff • Songs</h1>
+    <p class="sub">3 lines (E, G, B) plus optional ledger line below for middle C. Long songs automatically wrap to the next line like normal sheet music. Click notes to hear them.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <div class="hd">
+        <div class="title">Controls</div>
+        <div class="mini"><span class="kbd">Space</span> play / pause</div>
+      </div>
+      <div class="bd">
+        <div class="controls">
+          <div>
+            <label for="song">Song</label>
+            <select id="song">
+              <option value="dayenu" selected>Dayenu (דיינו)</option>
+              <option value="mashiach">Mashiach Now</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="part">Song section</label>
+            <select id="part"></select>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="btnPlay">Play</button>
+            <button class="btn" id="btnStop">Stop</button>
+            <button class="btn" id="btnReset">Reset</button>
+          </div>
+
+          <div>
+            <label for="tempo">Tempo (beats per minute): <b id="tempoVal">92</b></label>
+            <input id="tempo" type="range" min="60" max="150" value="92" />
+            <div class="mini">4/4 time. Quarter note = 1 beat.</div>
+          </div>
+
+          <div>
+            <label for="labels">Show note labels</label>
+            <select id="labels">
+              <option value="on" selected>On (letters above notes)</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="colorMode">Color mode</label>
+            <select id="colorMode">
+              <option value="song" selected>Use each song’s color coding</option>
+              <option value="mono">Monochrome (no colors)</option>
+            </select>
+          </div>
+
+          <div class="mini">
+            <b>Kid staff mapping (real treble positions):</b><br>
+            Ledger below = C, space below = D, bottom line = E, space = F, middle line = G, space = A, top line = B, space above = C.
+          </div>
+
+          <div class="legend" id="legend"></div>
+
+          <div class="footer" id="pills"></div>
+
+          <div class="warn" id="songNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="hd">
+        <div class="title">Score</div>
+        <div class="mini">Click a note to hear it</div>
+      </div>
+      <div class="scoreWrap">
+        <canvas id="cv" width="1200" height="700" aria-label="Kid staff score"></canvas>
+      </div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  // =============================
+  // STAFF NOTE POSITIONS (3-line kid staff)
+  // =============================
+  // Positions from bottom to top in half-steps of staff movement (line/space):
+  // 0: ledger below = C4
+  // 1: space below = D4
+  // 2: bottom line = E4
+  // 3: space = F4
+  // 4: middle line = G4
+  // 5: space = A4
+  // 6: top line = B4
+  // 7: space above = C5
+
+  const NOTE_TABLE = {
+    C:  { midi: 60, pos: 0, label: 'C' },
+    D:  { midi: 62, pos: 1, label: 'D' },
+    E:  { midi: 64, pos: 2, label: 'E' },
+    F:  { midi: 65, pos: 3, label: 'F' },
+    G:  { midi: 67, pos: 4, label: 'G' },
+    A:  { midi: 69, pos: 5, label: 'A' },
+    B:  { midi: 71, pos: 6, label: 'B' },
+    C5: { midi: 72, pos: 7, label: 'C' },
+  };
+
+  const ALLOWED = new Set(['C','D','E','F','G','A','B','C5']);
+
+  // =============================
+  // SONG DEFINITIONS
+  // =============================
+  const Dur = { E8: 0.5, Q: 1, H: 2, DQ: 1.5 };
+  const ev = (name, beats, lyric='') => ({ name, beats, lyric });
+
+  // Dayenu (from the earlier sheet)
+  const dayenu = {
+    id: 'dayenu',
+    title: 'Dayenu (דיינו)',
+    timeSig: '4/4',
+    key: 'No sharps / flats',
+    range: 'C4 → C5',
+    note: 'Dayenu uses the full white-key set C D E F G A B (within the kid staff range).',
+    colorScheme: {
+      type: 'map',
+      // letter color coding
+      map: {
+        C: '#ff5a5f',
+        D: '#ffb020',
+        E: '#ffe14d',
+        F: '#4ade80',
+        G: '#60a5fa',
+        A: '#a78bfa',
+        B: '#ff77c8',
+      },
+      legendNotes: ['C','D','E','F','G','A','B'],
+    },
+    parts: {
+      A: { label: 'Section A (measures 1–4)', build: () => ([
+        // M1
+        ev('E',Dur.E8,'I'), ev('G',Dur.E8,'lu'), ev('G',Dur.E8,'ho'), ev('G',Dur.E8,'tzi'),
+        ev('G',Dur.E8,'ho'), ev('A',Dur.E8,'tzi'), ev('G',Dur.E8,'a'), ev('F',Dur.E8,'nu'),
+        // M2
+        ev('E',Dur.E8,'ho'), ev('G',Dur.E8,'tzi'), ev('G',Dur.E8,'a'), ev('G',Dur.E8,'nu'),
+        ev('G',Dur.E8,'mi'), ev('A',Dur.E8,'mitz'), ev('G',Dur.E8,'ra'), ev('F',Dur.E8,'im'),
+        // M3
+        ev('E',Dur.E8,'ho'), ev('G',Dur.E8,'tzi'), ev('D',Dur.E8,'a'), ev('F',Dur.E8,'nu'),
+        ev('E',Dur.E8,'mi'), ev('G',Dur.E8,'mitz'), ev('D',Dur.E8,'ra'), ev('F',Dur.E8,'im'),
+        // M4
+        ev('E',Dur.Q,'Dai'), ev('D',Dur.Q,'e'), ev('C',Dur.H,'nu'),
+      ]) },
+      B: { label: 'Section B (repeat ending)', build: () => ([
+        // M5
+        ev('E',Dur.Q,'Dai'), ev('E',Dur.Q,'dai'), ev('G',Dur.E8,'ein'), ev('F',Dur.DQ,'u'),
+        // M6
+        ev('F',Dur.Q,'Dai'), ev('F',Dur.Q,'dai'), ev('A',Dur.E8,'ein'), ev('G',Dur.DQ,'u'),
+        // M7
+        ev('G',Dur.Q,'dai'), ev('G',Dur.Q,'ein'), ev('C',Dur.E8,'u'), ev('B',Dur.Q,'dai'), ev('B',Dur.E8,'ein'),
+        // M8
+        ev('B',Dur.E8,'u'), ev('G',Dur.E8,'dai'), ev('A',Dur.E8,'ei'), ev('B',Dur.E8,'nu'), ev('C',Dur.H,''),
+      ]) },
+      FULL: { label: 'Full play order (A + B + B)', build: () => {
+        const A = dayenu.parts.A.build();
+        const B = dayenu.parts.B.build();
+        return [...A, ...B, ...B];
+      } }
+    },
+    defaultPart: 'FULL'
+  };
+
+  // Mashiach Now (from your color-coded handwritten version)
+  // Color coding taken from your sheet:
+  // Purple = B, Blue = A, Teal = G, Yellow = F, Orange = E
+  // (This keeps everything inside the 3-line kid staff without needing red-zone notes.)
+  const mashiach = {
+    id: 'mashiach',
+    title: 'Mashiach Now',
+    timeSig: '4/4',
+    key: 'Kid range (no red-zone notes)',
+    range: 'E4 → B4',
+    note: 'Uses the same colors as your handwritten sheet: Orange(E), Yellow(F), Teal(G), Blue(A), Purple(B).',
+    colorScheme: {
+      type: 'map',
+      map: {
+        E: '#f59e0b', // orange
+        F: '#facc15', // yellow
+        G: '#14b8a6', // teal
+        A: '#3b82f6', // blue
+        B: '#8b5cf6', // purple
+        // any other note (if used) falls back to neutral
+      },
+      legendNotes: ['E','F','G','A','B'],
+    },
+    parts: {
+      VERSE: { label: 'Verse (Am Yisrael… / will be here this year)', build: () => ([
+        // Am Yisrael have no fear
+        ev('E',Dur.Q,'Am'), ev('E',Dur.Q,'Yis'), ev('E',Dur.Q,'ra-el'), ev('F',Dur.Q,'have'),
+        ev('G',Dur.Q,'no'), ev('G',Dur.Q,'fear'), ev('G',Dur.Q,'Ma-'), ev('A',Dur.Q,'shi-ach'),
+        // Mashiach will be here this year
+        ev('B',Dur.Q,'will'), ev('B',Dur.Q,'be'), ev('B',Dur.Q,'here'), ev('A',Dur.Q,'this'),
+        ev('G',Dur.Q,'year'), ev('F',Dur.Q,''), ev('E',Dur.H,''),
+      ]) },
+      CHORUS: { label: 'Chorus (We want Mashiach now…)', build: () => ([
+        // We want Mashiach now (x2)
+        ev('A',Dur.Q,'We'), ev('A',Dur.Q,'want'), ev('F',Dur.Q,'Ma-'), ev('A',Dur.Q,'shi-ach'),
+        ev('F',Dur.Q,'now'), ev('A',Dur.Q,'we'), ev('G',Dur.Q,'want'), ev('G',Dur.Q,'now'),
+
+        ev('A',Dur.Q,'We'), ev('A',Dur.Q,'want'), ev('F',Dur.Q,'Ma-'), ev('A',Dur.Q,'shi-ach'),
+        ev('F',Dur.Q,'now'), ev('A',Dur.Q,'we'), ev('G',Dur.Q,'want'), ev('G',Dur.Q,'now'),
+
+        // Tag: We don't want to wait
+        ev('B',Dur.Q,"We"), ev('A',Dur.Q,"don’t"), ev('G',Dur.Q,'want'), ev('F',Dur.Q,'to'),
+        ev('E',Dur.H,'wait'),
+      ]) },
+      FULL: { label: 'Full song (Verse + Chorus)', build: () => {
+        const V = mashiach.parts.VERSE.build();
+        const C = mashiach.parts.CHORUS.build();
+        return [...V, ...C];
+      } }
+    },
+    defaultPart: 'FULL'
+  };
+
+  const SONGS = { dayenu, mashiach };
+
+  // =============================
+  // UI
+  // =============================
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  const songSel = document.getElementById('song');
+  const partSel = document.getElementById('part');
+  const tempo = document.getElementById('tempo');
+  const tempoVal = document.getElementById('tempoVal');
+  const labelsSel = document.getElementById('labels');
+  const colorModeSel = document.getElementById('colorMode');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnStop = document.getElementById('btnStop');
+  const btnReset = document.getElementById('btnReset');
+  const legend = document.getElementById('legend');
+  const pills = document.getElementById('pills');
+  const songNote = document.getElementById('songNote');
+
+  function setPills(song){
+    pills.innerHTML='';
+    const items = [
+      `Time signature: ${song.timeSig}`,
+      `Key: ${song.key}`,
+      `Range: ${song.range}`,
+    ];
+    items.forEach(t=>{
+      const d = document.createElement('div');
+      d.className='pill';
+      d.textContent = t;
+      pills.appendChild(d);
+    });
+    songNote.textContent = song.note;
+  }
+
+  function renderLegend(song){
+    legend.innerHTML='';
+    const mono = colorModeSel.value === 'mono';
+    const notes = song.colorScheme.legendNotes;
+    notes.forEach(n=>{
+      const d = document.createElement('div');
+      d.className='sw';
+      const dot = document.createElement('div');
+      dot.className='dot';
+      dot.style.background = mono ? 'rgba(255,255,255,.15)' : (song.colorScheme.map[n] || 'rgba(234,238,246,.7)');
+      const b = document.createElement('b');
+      b.textContent = n;
+      const s = document.createElement('span');
+      s.textContent = '';
+      d.appendChild(dot); d.appendChild(b); d.appendChild(s);
+      legend.appendChild(d);
+    });
+  }
+
+  function populateParts(song){
+    partSel.innerHTML='';
+    Object.entries(song.parts).forEach(([key, part])=>{
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = part.label;
+      partSel.appendChild(opt);
+    });
+    partSel.value = song.defaultPart;
+  }
+
+  // =============================
+  // CANVAS LAYOUT + DRAWING (with wrapping)
+  // =============================
+  const PAD = 30;
+  const CLEF_X = PAD + 6;
+  const LEFT_X = PAD + 150;
+  const RIGHT_PAD = PAD;
+  const STAFF_GAP = 24;
+  const LINES = 3;
+  const NOTE_R = 10;
+
+  const SYSTEM_TOP = 110;
+  const SYSTEM_GAP = 120; // distance between staff systems (wrap)
+
+  function yForPos(pos, systemTop){
+    // bottom line at systemTop + (LINES-1)*STAFF_GAP
+    const bottomLineY = systemTop + (LINES-1)*STAFF_GAP;
+    return bottomLineY - (pos-2)*(STAFF_GAP/2);
+  }
+
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+  function colorFor(song, noteName){
+    if(colorModeSel.value === 'mono') return 'rgba(234,238,246,.95)';
+    const base = noteName === 'C5' ? 'C' : noteName;
+    return song.colorScheme.map[base] || 'rgba(234,238,246,.95)';
+  }
+
+  // Convert events to drawable notes, wrapping at measure boundaries.
+  function layoutEvents(song, events){
+    const beatsPerMeasure = 4;
+    const totalBeats = events.reduce((s,e)=>s+e.beats,0);
+    const measures = Math.ceil(totalBeats / beatsPerMeasure);
+
+    // measures per system depends on available width
+    const usableW = cv.width - LEFT_X - RIGHT_PAD;
+    const targetMeasureW = 180;
+    const measuresPerSystem = clamp(Math.floor(usableW / targetMeasureW), 2, 6);
+    const systems = Math.ceil(measures / measuresPerSystem);
+
+    // set canvas height based on systems
+    const neededH = SYSTEM_TOP + systems*SYSTEM_GAP + 110;
+    cv.height = Math.max(520, neededH);
+
+    // For each system, compute pxPerBeat
+    const notes = [];
+    const barsBySystem = [];
+
+    let t = 0; // beat time
+    for(let i=0;i<events.length;i++){
+      const e = events[i];
+      const info = NOTE_TABLE[e.name];
+      if(!info || !ALLOWED.has(e.name)){
+        // Skip unknown notes safely
+        t += e.beats;
+        continue;
+      }
+
+      const measureIndex = Math.floor(t / beatsPerMeasure);
+      const beatInMeasure = t % beatsPerMeasure;
+      const systemIndex = Math.floor(measureIndex / measuresPerSystem);
+      const measureInSystem = measureIndex % measuresPerSystem;
+
+      const measuresThisSystem = Math.min(measuresPerSystem, measures - systemIndex*measuresPerSystem);
+      const pxPerBeat = usableW / (measuresThisSystem * beatsPerMeasure);
+
+      const systemTop = SYSTEM_TOP + systemIndex*SYSTEM_GAP;
+      const x = LEFT_X + (measureInSystem*beatsPerMeasure + beatInMeasure)*pxPerBeat;
+      const y = yForPos(info.pos, systemTop);
+
+      notes.push({
+        ...e,
+        midi: info.midi,
+        pos: info.pos,
+        label: info.label,
+        x, y,
+        systemIndex,
+      });
+
+      t += e.beats;
+    }
+
+    // bars per system
+    for(let s=0;s<systems;s++){
+      const measuresThisSystem = Math.min(measuresPerSystem, measures - s*measuresPerSystem);
+      const pxPerBeat = usableW / (measuresThisSystem * beatsPerMeasure);
+      const bars=[];
+      for(let m=0;m<=measuresThisSystem;m++){
+        bars.push(LEFT_X + (m*beatsPerMeasure)*pxPerBeat);
+      }
+      barsBySystem.push({ bars, systemTop: SYSTEM_TOP + s*SYSTEM_GAP, measuresThisSystem, pxPerBeat });
+    }
+
+    return { notes, barsBySystem, beatsPerMeasure, totalBeats, measures, measuresPerSystem, systems };
+  }
+
+  function drawStaffSystem(systemTop, systemIdx, totalSystems){
+    // staff lines
+    ctx.strokeStyle = 'rgba(217,222,234,.95)';
+    ctx.lineWidth = 2;
+    for(let i=0;i<LINES;i++){
+      const y = systemTop + i*STAFF_GAP;
+      ctx.beginPath();
+      ctx.moveTo(PAD, y);
+      ctx.lineTo(cv.width-PAD, y);
+      ctx.stroke();
+    }
+
+    // clef
+    ctx.fillStyle = 'rgba(217,222,234,.85)';
+    ctx.font = '48px serif';
+    ctx.fillText('𝄞', CLEF_X, systemTop + STAFF_GAP*2 + 18);
+
+    // system label (small)
+    ctx.fillStyle = 'rgba(167,176,195,.85)';
+    ctx.font = '11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+    ctx.fillText(`Line ${systemIdx+1} of ${totalSystems}`, cv.width - PAD - 92, systemTop - 18);
+  }
+
+  function drawBarsForSystem(sys){
+    ctx.strokeStyle = 'rgba(217,222,234,.55)';
+    ctx.lineWidth = 2;
+    sys.bars.forEach((x, idx)=>{
+      if(x < LEFT_X-2 || x > cv.width-PAD) return;
+      ctx.beginPath();
+      ctx.moveTo(x, sys.systemTop-8);
+      ctx.lineTo(x, sys.systemTop + STAFF_GAP*2 + 8);
+      ctx.stroke();
+
+      if(idx>0 && idx<sys.bars.length-1){
+        ctx.fillStyle = 'rgba(167,176,195,.7)';
+        ctx.font = '11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+        ctx.fillText(String(idx + (sys.systemTop - SYSTEM_TOP)/SYSTEM_GAP * 0 + 0), x-4, sys.systemTop-18);
+      }
+    });
+  }
+
+  function drawNote(song, n, isActive=false){
+    const showLabels = labelsSel.value==='on';
+    const col = colorFor(song, n.name);
+
+    // stem direction
+    const stemUp = n.pos <= 4;
+
+    // ledger line if C4
+    if(n.pos === 0){
+      ctx.strokeStyle = 'rgba(217,222,234,.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(n.x-16, n.y);
+      ctx.lineTo(n.x+16, n.y);
+      ctx.stroke();
+    }
+
+    // note head
+    ctx.beginPath();
+    ctx.fillStyle = col;
+    ctx.strokeStyle = 'rgba(0,0,0,.35)';
+    ctx.lineWidth = 2;
+
+    if(isActive){
+      ctx.save();
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 18;
+      ctx.ellipse(n.x, n.y, NOTE_R+1, NOTE_R-2, -0.35, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.ellipse(n.x, n.y, NOTE_R, NOTE_R-3, -0.35, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    // stem
+    ctx.strokeStyle = 'rgba(234,238,246,.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if(stemUp){
+      ctx.moveTo(n.x+NOTE_R-2, n.y);
+      ctx.lineTo(n.x+NOTE_R-2, n.y-34);
+    } else {
+      ctx.moveTo(n.x-NOTE_R+2, n.y);
+      ctx.lineTo(n.x-NOTE_R+2, n.y+34);
+    }
+    ctx.stroke();
+
+    // label above note (per system)
+    if(showLabels){
+      ctx.fillStyle = col;
+      ctx.font = '700 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+      // place just above the system
+      const top = SYSTEM_TOP + n.systemIndex*SYSTEM_GAP;
+      ctx.fillText(n.label, n.x-5, top-30);
+    }
+
+    // lyric under note
+    if(n.lyric){
+      ctx.fillStyle = 'rgba(234,238,246,.9)';
+      ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+      const base = SYSTEM_TOP + n.systemIndex*SYSTEM_GAP;
+      ctx.fillText(n.lyric, n.x-10, base + STAFF_GAP*2 + 44);
+    }
+  }
+
+  function drawTitle(song, partLabel){
+    // background
+    ctx.clearRect(0,0,cv.width,cv.height);
+
+    const g = ctx.createLinearGradient(0,0,0,cv.height);
+    g.addColorStop(0,'rgba(255,255,255,0.04)');
+    g.addColorStop(1,'rgba(255,255,255,0.01)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,cv.width,cv.height);
+
+    ctx.fillStyle = 'rgba(234,238,246,.92)';
+    ctx.font = '700 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+    ctx.fillText(song.title, PAD, 46);
+
+    ctx.fillStyle = 'rgba(167,176,195,.95)';
+    ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+    ctx.fillText(partLabel, PAD, 68);
+
+    ctx.fillStyle = 'rgba(167,176,195,.85)';
+    ctx.font = '11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+    ctx.fillText('Wrapped layout: measures flow left→right, then continue on the next line.', PAD, 88);
+  }
+
+  function hitNote(mx,my, notes){
+    for(let i=0;i<notes.length;i++){
+      const n = notes[i];
+      const dx = mx - n.x;
+      const dy = my - n.y;
+      if(dx*dx + dy*dy <= (NOTE_R+6)*(NOTE_R+6)) return i;
+    }
+    return -1;
+  }
+
+  // =============================
+  // AUDIO
+  // =============================
+  let audioCtx = null;
+  function getAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function playTone(midi, seconds=0.25){
+    const ctxA = getAudio();
+    const now = ctxA.currentTime;
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    const freq = 440 * Math.pow(2, (midi - 69)/12);
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+
+    osc.connect(gain);
+    gain.connect(ctxA.destination);
+
+    osc.start(now);
+    osc.stop(now + seconds + 0.03);
+  }
+
+  // =============================
+  // PLAYER STATE
+  // =============================
+  const state = {
+    songId: 'dayenu',
+    partId: 'FULL',
+    song: SONGS.dayenu,
+    events: [],
+    layout: null,
+    bpm: 92,
+    isPlaying: false,
+    idx: 0,
+    nextAt: 0,
+    raf: 0,
+  };
+
+  function beatsToSeconds(beats){
+    return (60/state.bpm) * beats;
+  }
+
+  function buildCurrentEvents(){
+    const song = SONGS[state.songId];
+    const part = song.parts[state.partId];
+    return part.build();
+  }
+
+  function rebuild(){
+    state.song = SONGS[state.songId];
+    state.events = buildCurrentEvents();
+    state.layout = layoutEvents(state.song, state.events);
+
+    setPills(state.song);
+    renderLegend(state.song);
+
+    draw(-1);
+  }
+
+  function draw(activeIdx=-1){
+    const song = state.song;
+    const partLabel = song.parts[state.partId]?.label || '';
+
+    drawTitle(song, partLabel);
+
+    // systems
+    for(let s=0;s<state.layout.systems;s++){
+      const sysTop = SYSTEM_TOP + s*SYSTEM_GAP;
+      drawStaffSystem(sysTop, s, state.layout.systems);
+      drawBarsForSystem(state.layout.barsBySystem[s]);
+    }
+
+    // notes
+    for(let i=0;i<state.layout.notes.length;i++){
+      drawNote(song, state.layout.notes[i], i===activeIdx);
+    }
+
+    // playhead
+    if(state.isPlaying){
+      const active = Math.max(0, Math.min(state.layout.notes.length-1, state.idx));
+      const n = state.layout.notes[active];
+      if(n){
+        ctx.strokeStyle = 'rgba(110,231,183,.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(n.x, (SYSTEM_TOP + n.systemIndex*SYSTEM_GAP)-12);
+        ctx.lineTo(n.x, (SYSTEM_TOP + n.systemIndex*SYSTEM_GAP) + STAFF_GAP*2 + 12);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function scheduleNext(){
+    if(!state.isPlaying) return;
+    const ctxA = getAudio();
+    const now = ctxA.currentTime;
+
+    if(state.nextAt === 0) state.nextAt = now;
+
+    while(state.idx < state.layout.notes.length && state.nextAt < now + 0.12){
+      const n = state.layout.notes[state.idx];
+      playTone(n.midi, Math.max(0.12, beatsToSeconds(n.beats)*0.9));
+      state.nextAt += beatsToSeconds(n.beats);
+      state.idx++;
+    }
+
+    const active = Math.max(0, Math.min(state.layout.notes.length-1, state.idx-1));
+    draw(active);
+
+    if(state.idx >= state.layout.notes.length){
+      state.isPlaying = false;
+      state.nextAt = 0;
+      cancelAnimationFrame(state.raf);
+      draw(-1);
+      btnPlay.textContent = 'Play';
+      return;
+    }
+
+    state.raf = requestAnimationFrame(scheduleNext);
+  }
+
+  function play(){
+    if(state.isPlaying){
+      state.isPlaying = false;
+      btnPlay.textContent = 'Play';
+      state.nextAt = 0;
+      cancelAnimationFrame(state.raf);
+      draw(-1);
+      return;
+    }
+
+    getAudio();
+    state.isPlaying = true;
+    btnPlay.textContent = 'Pause';
+    state.nextAt = 0;
+    state.raf = requestAnimationFrame(scheduleNext);
+  }
+
+  function stop(){
+    state.isPlaying = false;
+    state.idx = 0;
+    state.nextAt = 0;
+    cancelAnimationFrame(state.raf);
+    btnPlay.textContent = 'Play';
+    draw(-1);
+  }
+
+  function reset(){
+    state.idx = 0;
+    state.nextAt = 0;
+    draw(-1);
+  }
+
+  // =============================
+  // UI WIRING
+  // =============================
+  function syncPartDropdown(){
+    const song = SONGS[state.songId];
+    populateParts(song);
+    state.partId = song.defaultPart;
+    partSel.value = state.partId;
+  }
+
+  songSel.addEventListener('change', () => {
+    stop();
+    state.songId = songSel.value;
+    syncPartDropdown();
+    rebuild();
+  });
+
+  partSel.addEventListener('change', () => {
+    stop();
+    state.partId = partSel.value;
+    rebuild();
+  });
+
+  tempo.addEventListener('input', () => {
+    state.bpm = Number(tempo.value);
+    tempoVal.textContent = String(state.bpm);
+  });
+
+  labelsSel.addEventListener('change', () => draw(state.isPlaying ? Math.max(0,state.idx-1) : -1));
+  colorModeSel.addEventListener('change', () => { renderLegend(state.song); draw(state.isPlaying ? Math.max(0,state.idx-1) : -1); });
+
+  btnPlay.addEventListener('click', play);
+  btnStop.addEventListener('click', stop);
+  btnReset.addEventListener('click', reset);
+
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'Space'){
+      e.preventDefault();
+      play();
+    }
+  });
+
+  // Click notes to hear
+  cv.addEventListener('pointerdown', (e) => {
+    const rect = cv.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (cv.width / rect.width);
+    const my = (e.clientY - rect.top) * (cv.height / rect.height);
+    const i = hitNote(mx,my,state.layout.notes);
+    if(i>=0){
+      const n = state.layout.notes[i];
+      playTone(n.midi, 0.35);
+      draw(i);
+      setTimeout(()=> draw(state.isPlaying ? Math.max(0,state.idx-1) : -1), 160);
+    }
+  });
+
+  // =============================
+  // INIT
+  // =============================
+  tempoVal.textContent = tempo.value;
+  state.bpm = Number(tempo.value);
+
+  // initial parts
+  syncPartDropdown();
+  state.partId = partSel.value;
+
+  setPills(SONGS[state.songId]);
+  renderLegend(SONGS[state.songId]);
+  rebuild();
+
+})();
+</script>
+</body>
+</html>
