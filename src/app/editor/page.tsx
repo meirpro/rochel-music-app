@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/tooltip";
 import { MusicRulesSidebar } from "@/components/MusicRulesSidebar";
 import { SongLibrarySidebar } from "@/components/SongLibrarySidebar";
+import { PianoDrawer } from "@/components/PianoDrawer";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
-import { SavedSong, SavedSongsMap } from "@/lib/types";
+import { Pitch, SavedSong, SavedSongsMap } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
 
 // Note colors matching the color legend
@@ -51,11 +52,13 @@ interface EditorSettings {
   showGrid: boolean;
   tempo: number;
   timeSignature: TimeSignature;
+  pianoUseColors: boolean;
 }
 
 interface EditorUI {
   showRulesSidebar: boolean;
   showSongLibrary: boolean;
+  showPiano: boolean;
 }
 
 const DEFAULT_COMPOSITION: EditorComposition = {
@@ -71,11 +74,13 @@ const DEFAULT_SETTINGS: EditorSettings = {
   showGrid: false,
   tempo: 100,
   timeSignature: "4/4",
+  pianoUseColors: true,
 };
 
 const DEFAULT_UI: EditorUI = {
   showRulesSidebar: true,
   showSongLibrary: false,
+  showPiano: false,
 };
 
 export default function EditorPage() {
@@ -105,6 +110,9 @@ export default function EditorPage() {
   const [playheadX, setPlayheadX] = useState<number | null>(null);
   const [playheadSystem, setPlayheadSystem] = useState(0);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [activePitch, setActivePitch] = useState<Pitch | null>(null);
+  const [activeNoteDuration, setActiveNoteDuration] = useState<number>(1);
+  const [activeNoteStartTime, setActiveNoteStartTime] = useState<number>(0); // Unique timestamp for each note event
 
   const isPlayingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
@@ -119,8 +127,9 @@ export default function EditorPage() {
     showGrid,
     tempo,
     timeSignature,
+    pianoUseColors,
   } = settings;
-  const { showRulesSidebar, showSongLibrary } = ui;
+  const { showRulesSidebar, showSongLibrary, showPiano } = ui;
 
   // Helper setters for composition
   const setNotes = useCallback(
@@ -222,6 +231,20 @@ export default function EditorPage() {
       setUI((prev) => ({ ...prev, showSongLibrary: show }));
     },
     [setUI],
+  );
+
+  const setShowPiano = useCallback(
+    (show: boolean) => {
+      setUI((prev) => ({ ...prev, showPiano: show }));
+    },
+    [setUI],
+  );
+
+  const setPianoUseColors = useCallback(
+    (use: boolean) => {
+      setSettings((prev) => ({ ...prev, pianoUseColors: use }));
+    },
+    [setSettings],
   );
 
   // Song library handlers
@@ -625,6 +648,7 @@ export default function EditorPage() {
       if (!isPlayingRef.current) {
         setPlayheadX(null);
         setActiveNoteId(null);
+        setActivePitch(null);
         setIsPlaying(false);
         return;
       }
@@ -671,6 +695,9 @@ export default function EditorPage() {
           const noteEndTime = elapsed + note.duration * msPerBeat;
           activeNotes.set(note.id, noteEndTime);
           setActiveNoteId(note.id);
+          setActivePitch(note.pitch);
+          setActiveNoteDuration(note.duration);
+          setActiveNoteStartTime(performance.now());
         }
       }
 
@@ -680,6 +707,7 @@ export default function EditorPage() {
           activeNotes.delete(noteId);
           if (activeNotes.size === 0) {
             setActiveNoteId(null);
+            setActivePitch(null);
           }
         }
       }
@@ -690,6 +718,7 @@ export default function EditorPage() {
       } else {
         setPlayheadX(null);
         setActiveNoteId(null);
+        setActivePitch(null);
         setIsPlaying(false);
         isPlayingRef.current = false;
       }
@@ -703,6 +732,7 @@ export default function EditorPage() {
     isPlayingRef.current = false;
     setPlayheadX(null);
     setActiveNoteId(null);
+    setActivePitch(null);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
@@ -1085,6 +1115,19 @@ export default function EditorPage() {
           onDeleteSong={handleDeleteSong}
           onRestoreDefaults={handleRestoreDefaults}
           onExport={handleExportSongs}
+        />
+
+        {/* Piano Drawer */}
+        <PianoDrawer
+          isOpen={showPiano}
+          onToggle={() => setShowPiano(!showPiano)}
+          activeNoteId={activeNoteId}
+          activePitch={activePitch}
+          activeNoteDuration={activeNoteDuration}
+          activeNoteStartTime={activeNoteStartTime}
+          tempo={tempo}
+          useColors={pianoUseColors}
+          onToggleColors={() => setPianoUseColors(!pianoUseColors)}
         />
       </div>
     </TooltipProvider>
