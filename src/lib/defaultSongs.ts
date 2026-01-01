@@ -126,7 +126,23 @@ export function getDefaultSongs(): Record<string, SavedSong> {
     updatedAt: now,
     composition: {
       notes: convertToEditorNotes(dayenuNotes),
-      repeatMarkers: [],
+      repeatMarkers: [
+        // Repeat Section B (systems 2-3, beats 16-32)
+        {
+          id: "dayenu-repeat-start",
+          pairId: "dayenu-repeat",
+          type: "start",
+          measure: 0,
+          system: 2,
+        },
+        {
+          id: "dayenu-repeat-end",
+          pairId: "dayenu-repeat",
+          type: "end",
+          measure: 2,
+          system: 3,
+        },
+      ],
       systemCount: calculateSystemCount(dayenuNotes),
     },
     settings: {
