@@ -1458,6 +1458,12 @@ export function NoteEditor({
             <span className="text-gray-500">♩</span> Quarter
           </button>
           <button
+            onClick={() => handleChangeDuration(1.5)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <span className="text-gray-500">♩.</span> Dotted
+          </button>
+          <button
             onClick={() => handleChangeDuration(2)}
             className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
