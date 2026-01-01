@@ -365,9 +365,9 @@ export function PianoDrawer({
           </div>
 
           {/* Piano keys */}
-          <div className="flex-1 flex items-center justify-center px-4 py-2 relative">
-            {/* White keys */}
-            <div className="flex gap-1">
+          <div className="flex-1 flex items-center justify-center px-4 py-2">
+            {/* White keys container - relative for black keys positioning */}
+            <div className="flex gap-1 relative">
               {WHITE_KEYS.map((key, index) => {
                 const pressed = isKeyPressed(key.pitch);
                 const bgColor = getKeyColor(key.pitch);
@@ -425,69 +425,60 @@ export function PianoDrawer({
                   </button>
                 );
               })}
-            </div>
 
-            {/* Black keys (overlay) */}
-            {showBlackKeys && (
-              <div
-                className="absolute top-2 left-1/2 flex pointer-events-none"
-                style={{ transform: "translateX(-50%)" }}
-              >
-                {WHITE_KEYS.slice(0, -1).map((_, index) => {
-                  // Find if there's a black key after this white key
-                  const blackKey = BLACK_KEYS.find(
-                    (bk) => bk.afterWhiteIndex === index,
-                  );
+              {/* Black keys (overlay) - positioned absolutely over white keys */}
+              {showBlackKeys &&
+                BLACK_KEYS.map((blackKey) => {
+                  // Calculate exact position: each white key is 60px + 4px gap
+                  // Black key should be centered on the gap after white key at afterWhiteIndex
+                  // Position = (afterWhiteIndex + 1) * 60px + afterWhiteIndex * 4px - half of black key width
+                  const whiteKeyWidth = 60;
+                  const gapWidth = 4;
+                  const blackKeyWidth = 36;
+                  const leftPos =
+                    (blackKey.afterWhiteIndex + 1) * whiteKeyWidth +
+                    blackKey.afterWhiteIndex * gapWidth +
+                    gapWidth / 2 -
+                    blackKeyWidth / 2;
 
                   return (
-                    <div
-                      key={index}
-                      className="relative"
-                      style={{ width: "61px" }} // White key width + gap
+                    <button
+                      key={blackKey.pitch}
+                      onMouseDown={() => {
+                        setMousePressed(blackKey.pitch);
+                        playShortNote(blackKey.pitch);
+                      }}
+                      onMouseUp={() => setMousePressed(null)}
+                      onMouseLeave={() => setMousePressed(null)}
+                      className="absolute top-0 flex flex-col items-center justify-end pb-1 rounded-b-md select-none border border-gray-800 transition-all duration-[50ms] ease-out"
+                      style={{
+                        left: `${leftPos}px`,
+                        transform: isKeyPressed(blackKey.pitch)
+                          ? "translateY(2px) scale(0.97)"
+                          : "translateY(0) scale(1)",
+                        width: `${blackKeyWidth}px`,
+                        height: "50px",
+                        backgroundColor: isKeyPressed(blackKey.pitch)
+                          ? "#4a4a4a"
+                          : "#1a1a1a",
+                        boxShadow: isKeyPressed(blackKey.pitch)
+                          ? "0 1px 2px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)"
+                          : "0 3px 4px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)",
+                        zIndex: 10,
+                      }}
                     >
-                      {blackKey && (
-                        <button
-                          onMouseDown={() => {
-                            setMousePressed(blackKey.pitch);
-                            playShortNote(blackKey.pitch);
-                          }}
-                          onMouseUp={() => setMousePressed(null)}
-                          onMouseLeave={() => setMousePressed(null)}
-                          className="absolute pointer-events-auto flex flex-col items-center justify-end pb-1 rounded-b-md select-none border border-gray-800 transition-all duration-[50ms] ease-out"
-                          style={{
-                            // Position at the right edge of container (gap between white keys)
-                            right: 0,
-                            transform: `translateX(50%) ${
-                              isKeyPressed(blackKey.pitch)
-                                ? "translateY(2px) scale(0.97)"
-                                : "translateY(0) scale(1)"
-                            }`,
-                            width: "36px",
-                            height: "50px",
-                            backgroundColor: isKeyPressed(blackKey.pitch)
-                              ? "#4a4a4a"
-                              : "#1a1a1a",
-                            boxShadow: isKeyPressed(blackKey.pitch)
-                              ? "0 1px 2px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)"
-                              : "0 3px 4px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)",
-                            zIndex: 10,
-                          }}
-                        >
-                          {/* Note name */}
-                          <span className="text-xs font-bold text-gray-300">
-                            {blackKey.name}
-                          </span>
-                          {/* Keyboard hint */}
-                          <span className="text-[10px] text-gray-500">
-                            {blackKey.keyboard[0].toUpperCase()}
-                          </span>
-                        </button>
-                      )}
-                    </div>
+                      {/* Note name */}
+                      <span className="text-xs font-bold text-gray-300">
+                        {blackKey.name}
+                      </span>
+                      {/* Keyboard hint */}
+                      <span className="text-[10px] text-gray-500">
+                        {blackKey.keyboard[0].toUpperCase()}
+                      </span>
+                    </button>
                   );
                 })}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
