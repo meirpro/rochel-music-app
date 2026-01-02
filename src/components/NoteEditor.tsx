@@ -730,22 +730,23 @@ export function NoteEditor({
 
   // Render duration extension bar (semi-transparent line showing note length)
   const renderDurationExtension = (note: EditorNote) => {
-    if (note.duration <= 1 || note.pitch === "REST") return null;
+    if (note.pitch === "REST") return null;
 
     const x = getXFromBeat(note.beat);
     const y = getYFromPitch(note.pitch, note.system);
     const color = getNoteColor(note.pitch);
 
-    // Extension width based on duration (in beats), minus the visual offset
-    const visualOffset = 0.25;
-    const extensionWidth = (note.duration - visualOffset) * BEAT_WIDTH - 13; // 13 = noteRadius
+    // Extension width based on duration (in beats)
+    // The bar starts from the note center and extends for the full duration
+    const noteheadWidth = 13; // Half of notehead ellipse
+    const extensionWidth = note.duration * BEAT_WIDTH - noteheadWidth;
 
     if (extensionWidth <= 0) return null;
 
     return (
       <rect
         key={`duration-${note.id}`}
-        x={x + 11} // Start just after the notehead
+        x={x + noteheadWidth} // Start just after the notehead
         y={y - 4}
         width={extensionWidth}
         height={8}
