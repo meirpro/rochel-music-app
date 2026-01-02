@@ -20,7 +20,8 @@
       "WebFetch(domain:mymusictheory.com)",
       "WebFetch(domain:vintagevinylnews.com)",
       "WebFetch(domain:davidkulma.com)",
-      "WebFetch(domain:ultimatemusictheory.com)"
+      "WebFetch(domain:ultimatemusictheory.com)",
+      "Bash(git worktree:*)"
     ]
   },
   "enabledMcpjsonServers": [
