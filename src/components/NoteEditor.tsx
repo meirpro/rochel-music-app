@@ -110,6 +110,7 @@ interface NoteEditorProps {
   svgRef?: React.RefObject<SVGSVGElement | null>;
   timeSignature?: TimeSignature;
   onStaffClick?: (x: number, system: number) => void;
+  tempo?: number;
 }
 
 // Constants - adjusted for better fit
@@ -363,6 +364,7 @@ export function NoteEditor({
   svgRef: externalSvgRef,
   timeSignature = "4/4",
   onStaffClick,
+  tempo = 100,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -426,13 +428,18 @@ export function NoteEditor({
     [],
   );
 
-  const playNoteSound = useCallback((pitch: Pitch) => {
-    const midi = MIDI_NOTES[pitch];
-    if (midi > 0) {
-      const player = getAudioPlayer();
-      player.playNote(midi, 0.25);
-    }
-  }, []);
+  const playNoteSound = useCallback(
+    (pitch: Pitch, durationBeats: number) => {
+      const midi = MIDI_NOTES[pitch];
+      if (midi > 0) {
+        const player = getAudioPlayer();
+        // Convert beats to seconds using tempo
+        const durationSeconds = (durationBeats * 60) / tempo;
+        player.playNote(midi, durationSeconds);
+      }
+    },
+    [tempo],
+  );
 
   const handleNoteContextMenu = useCallback(
     (e: React.MouseEvent, noteId: string) => {
@@ -571,16 +578,17 @@ export function NoteEditor({
         return;
       }
 
+      const duration = getDurationFromTool(selectedTool);
       const newNote: EditorNote = {
         id: String(Date.now()),
         pitch,
-        duration: getDurationFromTool(selectedTool),
+        duration,
         beat,
         system,
       };
 
       onNotesChange([...notes, newNote]);
-      playNoteSound(pitch);
+      playNoteSound(pitch, duration);
     },
     [
       selectedTool,
@@ -709,7 +717,7 @@ export function NoteEditor({
   const handleMouseUp = useCallback(() => {
     if (draggedNote) {
       const note = notes.find((n) => n.id === draggedNote);
-      if (note) playNoteSound(note.pitch);
+      if (note) playNoteSound(note.pitch, note.duration);
       setDraggedNote(null);
       // Set flag to prevent click event from firing after drag
       justDraggedRef.current = true;

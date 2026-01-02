@@ -62,13 +62,20 @@ export class AudioPlayer {
     // Master gain with piano-like ADSR envelope
     const masterGain = ctx.createGain();
 
-    // Piano envelope: quick attack, gradual decay
+    // Piano envelope: quick attack, gradual decay over duration, then release
+    const attackTime = 0.01;
+    const releaseTime = 0.12;
+    const sustainEnd = Math.max(
+      durationSeconds - releaseTime,
+      attackTime + 0.05,
+    );
+
     masterGain.gain.setValueAtTime(0.0001, startTime);
-    masterGain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.008); // Fast attack
-    masterGain.gain.exponentialRampToValueAtTime(0.15, startTime + 0.1); // Initial decay
-    masterGain.gain.exponentialRampToValueAtTime(
+    masterGain.gain.linearRampToValueAtTime(0.25, startTime + attackTime); // Fast attack
+    masterGain.gain.linearRampToValueAtTime(0.12, startTime + sustainEnd); // Gradual decay during note
+    masterGain.gain.linearRampToValueAtTime(
       0.0001,
-      startTime + durationSeconds,
+      startTime + sustainEnd + releaseTime,
     ); // Release
 
     // Mix levels
@@ -93,7 +100,7 @@ export class AudioPlayer {
     osc2.start(startTime);
     osc3.start(startTime);
 
-    const stopTime = startTime + durationSeconds + 0.02;
+    const stopTime = startTime + sustainEnd + releaseTime + 0.02;
     osc1.stop(stopTime);
     osc2.stop(stopTime);
     osc3.stop(stopTime);
