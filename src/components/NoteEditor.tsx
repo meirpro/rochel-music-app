@@ -728,6 +728,35 @@ export function NoteEditor({
     return "eighth";
   };
 
+  // Render duration extension bar (semi-transparent line showing note length)
+  const renderDurationExtension = (note: EditorNote) => {
+    if (note.duration <= 1 || note.pitch === "REST") return null;
+
+    const x = getXFromBeat(note.beat);
+    const y = getYFromPitch(note.pitch, note.system);
+    const color = getNoteColor(note.pitch);
+
+    // Extension width based on duration (in beats), minus the visual offset
+    const visualOffset = 0.25;
+    const extensionWidth = (note.duration - visualOffset) * BEAT_WIDTH - 13; // 13 = noteRadius
+
+    if (extensionWidth <= 0) return null;
+
+    return (
+      <rect
+        key={`duration-${note.id}`}
+        x={x + 11} // Start just after the notehead
+        y={y - 4}
+        width={extensionWidth}
+        height={8}
+        rx={4}
+        fill={color}
+        opacity={0.4}
+        style={{ pointerEvents: "none" }}
+      />
+    );
+  };
+
   const renderNote = (note: EditorNote) => {
     // Calculate x and y from beat and pitch at render time
     const x = getXFromBeat(note.beat);
@@ -912,8 +941,12 @@ export function NoteEditor({
           <path
             d={
               stemDir === "up"
-                ? `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 + 10} ${stemX + 10} ${stemY2 + 22}`
-                : `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 - 10} ${stemX + 10} ${stemY2 - 22}`
+                ? `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 + 10} ${
+                    stemX + 10
+                  } ${stemY2 + 22}`
+                : `M ${stemX} ${stemY2} Q ${stemX + 10} ${stemY2 - 10} ${
+                    stemX + 10
+                  } ${stemY2 - 22}`
             }
             stroke={color}
             strokeWidth={3.5}
@@ -1313,6 +1346,8 @@ export function NoteEditor({
         </defs>
 
         {Array.from({ length: systemCount }, (_, i) => renderSystem(i))}
+        {/* Duration extensions (render behind notes) */}
+        {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
 
         {/* Render beams for grouped eighth notes */}
@@ -1405,8 +1440,14 @@ export function NoteEditor({
                 points={`
                   ${firstX},${firstY}
                   ${lastX},${lastY}
-                  ${lastX},${lastY + (stemDirection === "up" ? beamThickness : -beamThickness)}
-                  ${firstX},${firstY + (stemDirection === "up" ? beamThickness : -beamThickness)}
+                  ${lastX},${
+                    lastY +
+                    (stemDirection === "up" ? beamThickness : -beamThickness)
+                  }
+                  ${firstX},${
+                    firstY +
+                    (stemDirection === "up" ? beamThickness : -beamThickness)
+                  }
                 `}
                 fill={beamColor}
               />
@@ -1425,7 +1466,13 @@ export function NoteEditor({
               strokeWidth={3}
             />
             <polygon
-              points={`${playheadX - 6},${getStaffCenterY(playheadSystem) - LINE_SPACING - 20} ${playheadX + 6},${getStaffCenterY(playheadSystem) - LINE_SPACING - 20} ${playheadX},${getStaffCenterY(playheadSystem) - LINE_SPACING - 12}`}
+              points={`${playheadX - 6},${
+                getStaffCenterY(playheadSystem) - LINE_SPACING - 20
+              } ${playheadX + 6},${
+                getStaffCenterY(playheadSystem) - LINE_SPACING - 20
+              } ${playheadX},${
+                getStaffCenterY(playheadSystem) - LINE_SPACING - 12
+              }`}
               fill="#10b981"
             />
           </g>
