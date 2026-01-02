@@ -64,6 +64,7 @@ interface EditorSettings {
   showLabels: boolean;
   showKidFaces: boolean;
   showGrid: boolean;
+  allowChords: boolean;
   tempo: number;
   timeSignature: TimeSignature;
   pianoUseColors: boolean;
@@ -87,6 +88,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   showLabels: true,
   showKidFaces: false,
   showGrid: false,
+  allowChords: false,
   tempo: 100,
   timeSignature: "4/4",
   pianoUseColors: true,
@@ -216,6 +218,7 @@ export default function EditorPage() {
     showLabels,
     showKidFaces,
     showGrid,
+    allowChords,
     tempo,
     timeSignature,
     pianoUseColors,
@@ -292,6 +295,13 @@ export default function EditorPage() {
   const setShowGrid = useCallback(
     (show: boolean) => {
       setSettings((prev) => ({ ...prev, showGrid: show }));
+    },
+    [setSettings],
+  );
+
+  const setAllowChords = useCallback(
+    (allow: boolean) => {
+      setSettings((prev) => ({ ...prev, allowChords: allow }));
     },
     [setSettings],
   );
@@ -1200,6 +1210,18 @@ export default function EditorPage() {
 
             <div className="w-px h-5 bg-gray-300" />
 
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowChords}
+                onChange={(e) => setAllowChords(e.target.checked)}
+                className="rounded text-emerald-600"
+              />
+              <span className="text-gray-600">Chords</span>
+            </label>
+
+            <div className="w-px h-5 bg-gray-300" />
+
             <span className="text-gray-500">
               {notes.length} note{notes.length !== 1 ? "s" : ""}
               {repeatMarkers.length > 0 &&
@@ -1220,6 +1242,7 @@ export default function EditorPage() {
               showLabels={showLabels}
               showKidFaces={showKidFaces}
               showGrid={showGrid}
+              allowChords={allowChords}
               playheadX={playheadX}
               playheadSystem={playheadSystem}
               activeNoteId={activeNoteId}

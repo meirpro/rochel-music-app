@@ -101,6 +101,7 @@ interface NoteEditorProps {
   showLabels?: boolean;
   showKidFaces?: boolean;
   showGrid?: boolean;
+  allowChords?: boolean;
   playheadX?: number | null;
   playheadSystem?: number;
   activeNoteId?: string | null;
@@ -355,6 +356,7 @@ export function NoteEditor({
   showLabels = true,
   showKidFaces = false,
   showGrid = false,
+  allowChords = false,
   playheadX = null,
   playheadSystem = 0,
   activeNoteId = null,
@@ -570,8 +572,13 @@ export function NoteEditor({
       const beat = getBeatFromX(snappedX);
 
       // Check for collision using beat position
+      // If allowChords: only block exact same position (beat + pitch)
+      // Otherwise: block any note on same beat
       const existingNote = notes.find(
-        (n) => Math.abs(n.beat - beat) < 0.25 && n.system === system,
+        (n) =>
+          Math.abs(n.beat - beat) < 0.25 &&
+          n.system === system &&
+          (allowChords ? n.pitch === pitch : true),
       );
       if (existingNote) {
         onDuplicateNote?.();
@@ -603,6 +610,7 @@ export function NoteEditor({
       repeatStart,
       contextMenu,
       onStaffClick,
+      allowChords,
     ],
   );
 
@@ -740,13 +748,16 @@ export function NoteEditor({
   const renderDurationExtension = (note: EditorNote) => {
     if (note.pitch === "REST") return null;
 
+    // Shorten extension by one eighth note (0.5 beats) - eighth notes get no line
+    const adjustedDuration = note.duration - 0.5;
+    if (adjustedDuration <= 0) return null;
+
     const x = getXFromBeat(note.beat);
     const y = getYFromPitch(note.pitch, note.system);
     const color = getNoteColor(note.pitch);
 
-    // Extension shows exact note duration
-    // Starts from note center, extends for full duration in beats
-    const extensionWidth = note.duration * BEAT_WIDTH;
+    // Extension shows adjusted duration (shortened by 1/8 beat)
+    const extensionWidth = adjustedDuration * BEAT_WIDTH;
 
     return (
       <rect
