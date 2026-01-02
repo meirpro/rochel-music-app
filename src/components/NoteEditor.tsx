@@ -736,17 +736,14 @@ export function NoteEditor({
     const y = getYFromPitch(note.pitch, note.system);
     const color = getNoteColor(note.pitch);
 
-    // Extension width based on duration (in beats)
-    // The bar starts from the note center and extends for the full duration
-    const noteheadWidth = 13; // Half of notehead ellipse
-    const extensionWidth = note.duration * BEAT_WIDTH - noteheadWidth;
-
-    if (extensionWidth <= 0) return null;
+    // Extension shows exact note duration
+    // Starts from note center, extends for full duration in beats
+    const extensionWidth = note.duration * BEAT_WIDTH;
 
     return (
       <rect
         key={`duration-${note.id}`}
-        x={x + noteheadWidth} // Start just after the notehead
+        x={x} // Start from note center
         y={y - 4}
         width={extensionWidth}
         height={8}
