@@ -1229,6 +1229,7 @@ export default function EditorPage() {
               svgRef={svgRef}
               timeSignature={timeSignature}
               onStaffClick={handleSeek}
+              tempo={tempo}
             />
           </div>
 
