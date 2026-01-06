@@ -12,6 +12,7 @@ interface SongLibrarySidebarProps {
   onDeleteSong: (songId: string) => void;
   onRestoreDefaults: () => void;
   onExport: () => void;
+  showToggle?: boolean;
 }
 
 export function SongLibrarySidebar({
@@ -23,6 +24,7 @@ export function SongLibrarySidebar({
   onDeleteSong,
   onRestoreDefaults,
   onExport,
+  showToggle = true,
 }: SongLibrarySidebarProps) {
   const [songName, setSongName] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -63,41 +65,43 @@ export function SongLibrarySidebar({
 
   return (
     <>
-      {/* Toggle button - positioned on right side */}
-      <button
-        onClick={onToggle}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-l-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
-          isOpen ? "right-80" : "right-0"
-        }`}
-        title={isOpen ? "Hide song library" : "Show song library"}
-      >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Toggle button - positioned on right side, hidden when showToggle is false */}
+      {showToggle && (
+        <button
+          onClick={onToggle}
+          className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-l-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
+            isOpen ? "right-80" : "right-0"
+          }`}
+          title={isOpen ? "Hide song library" : "Show song library"}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-          />
-        </svg>
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </button>
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+            />
+          </svg>
+          <svg
+            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Sidebar panel - positioned on right */}
       <div

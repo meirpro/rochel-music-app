@@ -16,11 +16,13 @@ const NOTE_COLORS: Record<string, string> = {
 interface MusicRulesSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  showToggle?: boolean;
 }
 
 export function MusicRulesSidebar({
   isOpen,
   onToggle,
+  showToggle = true,
 }: MusicRulesSidebarProps) {
   // Persist expanded section in localStorage
   const [expandedSection, setExpandedSection] = useLocalStorage<string | null>(
@@ -117,29 +119,31 @@ export function MusicRulesSidebar({
 
   return (
     <>
-      {/* Toggle button */}
-      <button
-        onClick={onToggle}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-r-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
-          isOpen ? "left-80" : "left-0"
-        }`}
-        title={isOpen ? "Hide music rules" : "Show music rules"}
-      >
-        <span className="text-lg">?</span>
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "" : "rotate-180"}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Toggle button - hidden when showToggle is false */}
+      {showToggle && (
+        <button
+          onClick={onToggle}
+          className={`fixed top-1/2 -translate-y-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-r-xl px-3 py-4 transition-all flex flex-col items-center gap-1 ${
+            isOpen ? "left-80" : "left-0"
+          }`}
+          title={isOpen ? "Hide music rules" : "Show music rules"}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-      </button>
+          <span className="text-lg">?</span>
+          <svg
+            className={`w-4 h-4 transition-transform ${isOpen ? "" : "rotate-180"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Sidebar panel */}
       <div

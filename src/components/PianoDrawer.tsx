@@ -49,6 +49,7 @@ interface PianoDrawerProps {
   onToggleColors: () => void;
   showBlackKeys: boolean;
   onToggleBlackKeys: () => void;
+  showToggle?: boolean;
 }
 
 export function PianoDrawer({
@@ -62,6 +63,7 @@ export function PianoDrawer({
   onToggleColors,
   showBlackKeys,
   onToggleBlackKeys,
+  showToggle = true,
 }: PianoDrawerProps) {
   // Track keyboard-pressed keys for sustain behavior
   const [pressedKeys, setPressedKeys] = useState<Set<Pitch>>(new Set());
@@ -266,42 +268,44 @@ export function PianoDrawer({
 
   return (
     <>
-      {/* Toggle button */}
-      <button
-        onClick={onToggle}
-        className={`fixed left-1/2 -translate-x-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-t-xl px-4 py-2 transition-all flex items-center gap-2 ${
-          isOpen ? "bottom-32" : "bottom-0"
-        }`}
-        title={isOpen ? "Hide piano" : "Show piano"}
-      >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Toggle button - hidden when showToggle is false */}
+      {showToggle && (
+        <button
+          onClick={onToggle}
+          className={`fixed left-1/2 -translate-x-1/2 z-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg rounded-t-xl px-4 py-2 transition-all flex items-center gap-2 ${
+            isOpen ? "bottom-32" : "bottom-0"
+          }`}
+          title={isOpen ? "Hide piano" : "Show piano"}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-          />
-        </svg>
-        <span className="text-sm font-medium">Piano</span>
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 15l7-7 7 7"
-          />
-        </svg>
-      </button>
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+            />
+          </svg>
+          <span className="text-sm font-medium">Piano</span>
+          <svg
+            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 15l7-7 7 7"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Piano drawer panel */}
       <div
