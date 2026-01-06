@@ -45,19 +45,13 @@ const TIME_SIG_CONFIG: Record<
 };
 
 // Helper to get layout values based on time signature
-function getLayoutConfig(
-  timeSignature: TimeSignature,
-  measuresPerSystemOverride?: number,
-) {
+function getLayoutConfig(timeSignature: TimeSignature) {
   const config = TIME_SIG_CONFIG[timeSignature];
-  const measuresPerSystem =
-    measuresPerSystemOverride ?? config.measuresPerSystem;
-  const beatsPerSystem = config.beatsPerMeasure * measuresPerSystem;
+  const beatsPerSystem = config.beatsPerMeasure * config.measuresPerSystem;
   const staffRight = LEFT_MARGIN + beatsPerSystem * BEAT_WIDTH;
   const svgWidth = staffRight + 60;
   return {
     ...config,
-    measuresPerSystem,
     beatsPerSystem,
     staffRight,
     svgWidth,
@@ -118,7 +112,8 @@ interface NoteEditorProps {
   timeSignature?: TimeSignature;
   onStaffClick?: (x: number, system: number) => void;
   tempo?: number;
-  measuresPerSystem?: number;
+  isPlaying?: boolean;
+  onPlaybackBlock?: () => void;
 }
 
 // Constants - adjusted for better fit
@@ -374,16 +369,14 @@ export function NoteEditor({
   timeSignature = "4/4",
   onStaffClick,
   tempo = 100,
-  measuresPerSystem: measuresPerSystemProp,
+  isPlaying = false,
+  onPlaybackBlock,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
 
   // Get dynamic layout based on time signature
-  const layout = useMemo(
-    () => getLayoutConfig(timeSignature, measuresPerSystemProp),
-    [timeSignature, measuresPerSystemProp],
-  );
+  const layout = useMemo(() => getLayoutConfig(timeSignature), [timeSignature]);
   const {
     beatsPerSystem,
     beatsPerMeasure,
@@ -392,44 +385,6 @@ export function NoteEditor({
     measuresPerSystem,
     shadeGroups,
   } = layout;
-
-  // Get the "base" layout (default 2 measures per system) for coordinate transformation
-  // Notes are stored assuming default measuresPerSystem, so we transform for display
-  const baseLayout = useMemo(
-    () => getLayoutConfig(timeSignature),
-    [timeSignature],
-  );
-  const baseBeatsPerSystem = baseLayout.beatsPerSystem;
-  const baseMeasuresPerSystem = baseLayout.measuresPerSystem;
-
-  // Transform stored (system, beat) to visual coordinates based on current measuresPerSystem
-  const toVisualCoords = useCallback(
-    (storedSystem: number, storedBeat: number) => {
-      const absoluteBeat = storedSystem * baseBeatsPerSystem + storedBeat;
-      const visualSystem = Math.floor(absoluteBeat / beatsPerSystem);
-      const visualBeat = absoluteBeat % beatsPerSystem;
-      return { visualSystem, visualBeat };
-    },
-    [baseBeatsPerSystem, beatsPerSystem],
-  );
-
-  // Transform visual coordinates back to stored format
-  const toStoredCoords = useCallback(
-    (visualSystem: number, visualBeat: number) => {
-      const absoluteBeat = visualSystem * beatsPerSystem + visualBeat;
-      const storedSystem = Math.floor(absoluteBeat / baseBeatsPerSystem);
-      const storedBeat = absoluteBeat % baseBeatsPerSystem;
-      return { storedSystem, storedBeat };
-    },
-    [baseBeatsPerSystem, beatsPerSystem],
-  );
-
-  // Calculate visual system count (may be different from stored systemCount)
-  const visualSystemCount = useMemo(() => {
-    if (measuresPerSystem === baseMeasuresPerSystem) return systemCount;
-    // When showing fewer measures per system, we need more visual systems
-    return Math.ceil((systemCount * baseMeasuresPerSystem) / measuresPerSystem);
-  }, [systemCount, measuresPerSystem, baseMeasuresPerSystem]);
 
   // Group eighth notes for beaming
   const beamGroups = useMemo(
@@ -465,7 +420,7 @@ export function NoteEditor({
   } | null>(null);
   const justDraggedRef = useRef(false);
 
-  const svgHeight = SYSTEM_TOP_MARGIN + visualSystemCount * SYSTEM_HEIGHT + 40;
+  const svgHeight = SYSTEM_TOP_MARGIN + systemCount * SYSTEM_HEIGHT + 40;
 
   const getCoords = useCallback(
     (e: React.MouseEvent<SVGSVGElement>): { x: number; y: number } => {
@@ -504,6 +459,11 @@ export function NoteEditor({
   const handleChangeDuration = useCallback(
     (duration: number) => {
       if (!contextMenu) return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
       onNotesChange(
         notes.map((n) =>
           n.id === contextMenu.noteId ? { ...n, duration } : n,
@@ -511,14 +471,19 @@ export function NoteEditor({
       );
       setContextMenu(null);
     },
-    [contextMenu, notes, onNotesChange],
+    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
   );
 
   const handleDeleteFromMenu = useCallback(() => {
     if (!contextMenu) return;
+    if (isPlaying) {
+      onPlaybackBlock?.();
+      setContextMenu(null);
+      return;
+    }
     onNotesChange(notes.filter((n) => n.id !== contextMenu.noteId));
     setContextMenu(null);
-  }, [contextMenu, notes, onNotesChange]);
+  }, [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -536,8 +501,14 @@ export function NoteEditor({
         return;
       }
 
+      // Block modifications during playback (except seek which is handled by onStaffClick)
+      if (isPlaying && selectedTool !== null) {
+        onPlaybackBlock?.();
+        return;
+      }
+
       const { x, y } = getCoords(e);
-      const system = getSystemFromY(y, visualSystemCount);
+      const system = getSystemFromY(y, systemCount);
       const staffCenterY = getStaffCenterY(system);
 
       if (x < LEFT_MARGIN - 20 || x > staffRight + 20) return;
@@ -563,24 +534,31 @@ export function NoteEditor({
           // Second click - set end and create markers
           const startSystem = repeatStart.system;
           const startMeasure = repeatStart.measure;
+          const endSystem = system;
           const endMeasure = measure;
 
-          // Only create if end is after start on same system
-          if (system === startSystem && endMeasure > startMeasure) {
+          // Calculate absolute measures for comparison
+          const startAbsoluteMeasure =
+            startSystem * measuresPerSystem + startMeasure;
+          const endAbsoluteMeasure = endSystem * measuresPerSystem + endMeasure;
+
+          // Only create if end is after start
+          if (endAbsoluteMeasure > startAbsoluteMeasure) {
             // Check if this would overlap with existing repeat sections
             const hasOverlap = repeatMarkers.some((m) => {
-              if (m.system !== startSystem) return false;
+              const markerAbsoluteMeasure =
+                m.system * measuresPerSystem + m.measure;
               // Check if the new section overlaps with existing markers
               if (
                 m.type === "start" &&
-                m.measure >= startMeasure &&
-                m.measure < endMeasure
+                markerAbsoluteMeasure >= startAbsoluteMeasure &&
+                markerAbsoluteMeasure < endAbsoluteMeasure
               )
                 return true;
               if (
                 m.type === "end" &&
-                m.measure > startMeasure &&
-                m.measure <= endMeasure
+                markerAbsoluteMeasure > startAbsoluteMeasure &&
+                markerAbsoluteMeasure <= endAbsoluteMeasure
               )
                 return true;
               return false;
@@ -603,7 +581,7 @@ export function NoteEditor({
                   pairId,
                   type: "end" as const,
                   measure: endMeasure,
-                  system: startSystem,
+                  system: endSystem,
                 },
               ];
               onRepeatMarkersChange(newMarkers);
@@ -618,18 +596,15 @@ export function NoteEditor({
 
       const pitch = getPitchFromY(y, system);
       const snappedX = snapX(x, staffRight);
-      const visualBeat = getBeatFromX(snappedX);
+      const beat = getBeatFromX(snappedX);
 
-      // Transform visual coordinates to stored coordinates
-      const { storedSystem, storedBeat } = toStoredCoords(system, visualBeat);
-
-      // Check for collision using stored beat position
+      // Check for collision
       // If allowChords: only block exact same position (beat + pitch)
       // Otherwise: block any note on same beat
       const existingNote = notes.find(
         (n) =>
-          Math.abs(n.beat - storedBeat) < 0.25 &&
-          n.system === storedSystem &&
+          Math.abs(n.beat - beat) < 0.25 &&
+          n.system === system &&
           (allowChords ? n.pitch === pitch : true),
       );
       if (existingNote) {
@@ -642,8 +617,8 @@ export function NoteEditor({
         id: String(Date.now()),
         pitch,
         duration,
-        beat: storedBeat,
-        system: storedSystem,
+        beat,
+        system,
       };
 
       onNotesChange([...notes, newNote]);
@@ -656,27 +631,36 @@ export function NoteEditor({
       notes,
       onNotesChange,
       playNoteSound,
-      visualSystemCount,
+      systemCount,
       repeatMarkers,
       onRepeatMarkersChange,
       repeatStart,
       contextMenu,
       onStaffClick,
       allowChords,
-      toStoredCoords,
+      measuresPerSystem,
+      staffRight,
+      layout.beatsPerMeasure,
+      onDuplicateNote,
+      isPlaying,
+      onPlaybackBlock,
     ],
   );
 
   const handleNoteMouseDown = useCallback(
     (e: React.MouseEvent, noteId: string) => {
       e.stopPropagation();
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        return;
+      }
       if (selectedTool === "delete") {
         onNotesChange(notes.filter((n) => n.id !== noteId));
         return;
       }
       setDraggedNote(noteId);
     },
-    [selectedTool, notes, onNotesChange],
+    [selectedTool, notes, onNotesChange, isPlaying, onPlaybackBlock],
   );
 
   const handleMouseMove = useCallback(
@@ -703,24 +687,23 @@ export function NoteEditor({
             )
           : undefined;
 
-        // Validate position based on type
+        // Validate position based on type using absolute measures
         let isValid = true;
         if (pairedMarker) {
-          const draggedAbsoluteBeat =
-            system * beatsPerSystem + clampedMeasure * layout.beatsPerMeasure;
-          const pairedAbsoluteBeat =
-            pairedMarker.system * beatsPerSystem +
-            pairedMarker.measure * layout.beatsPerMeasure;
+          const draggedAbsoluteMeasure =
+            system * measuresPerSystem + clampedMeasure;
+          const pairedAbsoluteMeasure =
+            pairedMarker.system * measuresPerSystem + pairedMarker.measure;
 
           if (
             draggedMarker.type === "start" &&
-            draggedAbsoluteBeat >= pairedAbsoluteBeat
+            draggedAbsoluteMeasure >= pairedAbsoluteMeasure
           ) {
             isValid = false;
           }
           if (
             draggedMarker.type === "end" &&
-            draggedAbsoluteBeat <= pairedAbsoluteBeat
+            draggedAbsoluteMeasure <= pairedAbsoluteMeasure
           ) {
             isValid = false;
           }
@@ -743,31 +726,23 @@ export function NoteEditor({
       }
 
       if (!draggedNote) return;
-      const visualSystem = getSystemFromY(y, visualSystemCount);
-      const pitch = getPitchFromY(y, visualSystem);
+      const system = getSystemFromY(y, systemCount);
+      const pitch = getPitchFromY(y, system);
       const snappedX = snapX(x, staffRight);
-      const visualBeat = getBeatFromX(snappedX);
-
-      // Transform visual coordinates to stored coordinates
-      const { storedSystem, storedBeat } = toStoredCoords(
-        visualSystem,
-        visualBeat,
-      );
+      const beat = getBeatFromX(snappedX);
 
       // Check if another note exists at this position (excluding the dragged note)
       const collision = notes.find(
         (n) =>
           n.id !== draggedNote &&
-          Math.abs(n.beat - storedBeat) < 0.25 &&
-          n.system === storedSystem,
+          Math.abs(n.beat - beat) < 0.25 &&
+          n.system === system,
       );
       if (collision) return; // Don't allow moving to occupied position
 
       onNotesChange(
         notes.map((n) =>
-          n.id === draggedNote
-            ? { ...n, beat: storedBeat, pitch, system: storedSystem }
-            : n,
+          n.id === draggedNote ? { ...n, beat, pitch, system } : n,
         ),
       );
     },
@@ -777,10 +752,12 @@ export function NoteEditor({
       getCoords,
       notes,
       onNotesChange,
-      visualSystemCount,
+      systemCount,
       repeatMarkers,
       onRepeatMarkersChange,
-      toStoredCoords,
+      measuresPerSystem,
+      staffRight,
+      layout.beatsPerMeasure,
     ],
   );
 
@@ -814,11 +791,8 @@ export function NoteEditor({
     const adjustedDuration = note.duration - 0.5;
     if (adjustedDuration <= 0) return null;
 
-    // Transform stored coordinates to visual coordinates
-    const { visualSystem, visualBeat } = toVisualCoords(note.system, note.beat);
-
-    const x = getXFromBeat(visualBeat);
-    const y = getYFromPitch(note.pitch, visualSystem);
+    const x = getXFromBeat(note.beat);
+    const y = getYFromPitch(note.pitch, note.system);
     const color = getNoteColor(note.pitch);
 
     // Extension shows adjusted duration (shortened by 1/8 beat)
@@ -840,18 +814,15 @@ export function NoteEditor({
   };
 
   const renderNote = (note: EditorNote) => {
-    // Transform stored coordinates to visual coordinates
-    const { visualSystem, visualBeat } = toVisualCoords(note.system, note.beat);
-
-    // Calculate x and y from visual beat and pitch at render time
-    const x = getXFromBeat(visualBeat);
-    const y = getYFromPitch(note.pitch, visualSystem);
+    // Calculate x and y from beat and pitch
+    const x = getXFromBeat(note.beat);
+    const y = getYFromPitch(note.pitch, note.system);
 
     const color = getNoteColor(note.pitch);
     const isSelected = draggedNote === note.id;
     const isActive = activeNoteId === note.id;
     const type = getNoteType(note.duration);
-    const staffCenterY = getStaffCenterY(visualSystem);
+    const staffCenterY = getStaffCenterY(note.system);
     const isBeamed = beamedNoteIds.has(note.id);
 
     // For beamed notes, use the beam group's stem direction
@@ -1070,10 +1041,12 @@ export function NoteEditor({
     const staffCenterY = getStaffCenterY(systemIndex);
     const isFirstSystem = systemIndex === 0;
 
-    // Check for repeat markers on this system (supports multiple sections)
-    const systemMarkers = repeatMarkers.filter((m) => m.system === systemIndex);
-    const startMarkers = systemMarkers.filter((m) => m.type === "start");
-    const endMarkers = systemMarkers.filter((m) => m.type === "end");
+    // Get markers on this system
+    const markersOnSystem = repeatMarkers.filter(
+      (m) => m.system === systemIndex,
+    );
+    const startMarkers = markersOnSystem.filter((m) => m.type === "start");
+    const endMarkers = markersOnSystem.filter((m) => m.type === "end");
 
     return (
       <g key={`system-${systemIndex}`}>
@@ -1430,7 +1403,7 @@ export function NoteEditor({
           })}
         </defs>
 
-        {Array.from({ length: visualSystemCount }, (_, i) => renderSystem(i))}
+        {Array.from({ length: systemCount }, (_, i) => renderSystem(i))}
         {/* Duration extensions (render behind notes) */}
         {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
@@ -1444,10 +1417,8 @@ export function NoteEditor({
           const beamThickness = 6;
 
           // Calculate beam Y position (at the end of stems)
-          // Transform each note's coordinates to visual coordinates
           const stemYs = groupNotes.map((note) => {
-            const { visualSystem } = toVisualCoords(note.system, note.beat);
-            const noteY = getYFromPitch(note.pitch, visualSystem);
+            const noteY = getYFromPitch(note.pitch, note.system);
             return stemDirection === "up" ? noteY - stemH : noteY + stemH;
           });
 
@@ -1489,8 +1460,7 @@ export function NoteEditor({
 
           // Calculate stem X positions
           const stemXs = groupNotes.map((note) => {
-            const { visualBeat } = toVisualCoords(note.system, note.beat);
-            const noteX = getXFromBeat(visualBeat);
+            const noteX = getXFromBeat(note.beat);
             return stemDirection === "up" ? noteX + 13 : noteX - 13;
           });
 
@@ -1509,8 +1479,7 @@ export function NoteEditor({
               {/* Draw stems from each note to the beam */}
               {groupNotes.map((note, i) => {
                 const stemX = stemXs[i];
-                const { visualSystem } = toVisualCoords(note.system, note.beat);
-                const noteY = getYFromPitch(note.pitch, visualSystem);
+                const noteY = getYFromPitch(note.pitch, note.system);
                 const beamY = getBeamYAtX(stemX);
                 return (
                   <line

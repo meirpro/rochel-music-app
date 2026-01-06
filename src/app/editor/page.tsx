@@ -165,9 +165,12 @@ export default function EditorPage() {
   const msPerBeatRef = useRef<number>(600);
   const playedNotesRef = useRef<Set<number>>(new Set());
 
-  // Mobile detection - show 1 measure per system on narrow screens
+  // Mobile detection - for UI adjustments
   const isMobile = useMediaQuery("(max-width: 640px)");
-  const measuresPerSystem = isMobile ? 1 : 2;
+  // Detect portrait orientation on mobile - show rotate overlay
+  const isPortrait = useMediaQuery(
+    "(max-width: 640px) and (orientation: portrait)",
+  );
 
   // Migration effect - convert old coordinate-based notes to beat-based
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -462,6 +465,28 @@ export default function EditorPage() {
     });
   }, []);
 
+  // Handle edit attempt during playback
+  const handlePlaybackBlock = useCallback(() => {
+    toast.info("Cannot edit during playback", {
+      description: "Stop playback to make changes",
+      position: "top-left",
+      action: {
+        label: "Stop",
+        onClick: () => {
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setPlayheadX(null);
+          setActiveNoteId(null);
+          setActivePitch(null);
+          if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+            animationRef.current = null;
+          }
+        },
+      },
+    });
+  }, []);
+
   // Save as PNG
   const handleSavePNG = useCallback(() => {
     if (!svgRef.current) return;
@@ -517,7 +542,7 @@ export default function EditorPage() {
   const handlePlay = useCallback(() => {
     if (isPlayingRef.current || notes.length === 0) return;
 
-    // Get dynamic layout based on current time signature
+    // Get layout config
     const layout = getLayoutConfig(timeSignature);
     const BEATS_PER_SYSTEM = layout.beatsPerSystem;
     const beatsPerMeasure = layout.beatsPerMeasure;
@@ -674,7 +699,10 @@ export default function EditorPage() {
     const absoluteBeatToVisual = (absBeat: number) => {
       const system = Math.floor(absBeat / BEATS_PER_SYSTEM);
       const beatInSystem = absBeat % BEATS_PER_SYSTEM;
-      return { system, x: LEFT_MARGIN + beatInSystem * BEAT_WIDTH };
+      return {
+        system,
+        x: LEFT_MARGIN + beatInSystem * BEAT_WIDTH,
+      };
     };
 
     // Helper to add timeline segments between two absolute beats
@@ -975,6 +1003,46 @@ export default function EditorPage() {
     <TooltipProvider>
       <div className="min-h-screen bg-gray-50">
         <Toaster richColors />
+
+        {/* Portrait orientation overlay - prompt user to rotate device */}
+        {isPortrait && (
+          <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+            <div className="text-center p-8 max-w-sm">
+              <svg
+                className="w-24 h-24 mx-auto mb-6 text-emerald-600 animate-pulse"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M4 12l2-2m0 0l2 2m-2-2v6"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M20 12l-2 2m0 0l-2-2m2 2V8"
+                />
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                Rotate Your Device
+              </h2>
+              <p className="text-gray-600">
+                Please rotate your device to landscape mode for the best music
+                editing experience.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Toolbar */}
         <div className="bg-white border-b border-gray-200 px-4 py-2">
@@ -1351,7 +1419,8 @@ export default function EditorPage() {
               timeSignature={timeSignature}
               onStaffClick={handleSeek}
               tempo={tempo}
-              measuresPerSystem={measuresPerSystem}
+              isPlaying={isPlaying}
+              onPlaybackBlock={handlePlaybackBlock}
             />
           </div>
 
