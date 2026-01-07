@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Teaching App - Development Roadmap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .phase-card {
+            transition: all 0.3s ease;
+        }
+        .phase-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .task-item {
+            transition: background-color 0.2s ease;
+        }
+        .task-item:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">🎹 Piano Teaching App</h1>
+            <h2 class="text-2xl text-gray-600 mb-4">Development Roadmap</h2>
+            <div class="inline-flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow-md">
+                <div class="text-sm">
+                    <span class="font-semibold text-gray-700">Tech Stack:</span>
+                    <span class="text-gray-600"> Next.js • TypeScript • Tailwind • shadcn/ui • usehooks-ts</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="mb-8 bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">🎯 Key Features Overview</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>3-line staff system with color-coded notes</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Interactive piano with sharps & sustain pedal</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Time-based SVG composition (exportable)</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Drag-and-drop note placement with snapping</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Visual note duration indicators</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Playback with real-time cursor & highlights</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Repeat markers & tempo control</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>LocalStorage + future online sync</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 1 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-blue-600">Phase 1: Foundation & Setup</h3>
+                    <p class="text-sm text-gray-500">Week 1-2 • Core infrastructure</p>
+                </div>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">2 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-blue-400">
+                    <div class="font-semibold text-gray-800">Project Setup</div>
+                    <div class="text-sm text-gray-600 mt-1">Initialize Next.js with TypeScript, configure Tailwind, install shadcn/ui components, set up usehooks-ts</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-blue-400">
+                    <div class="font-semibold text-gray-800">Data Models & Types</div>
+                    <div class="text-sm text-gray-600 mt-1">Define TypeScript interfaces for Note (time, pitch, duration, color), Song (metadata, notes array, tempo, repeats), and configuration constants</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-blue-400">
+                    <div class="font-semibold text-gray-800">Color System Design</div>
+                    <div class="text-sm text-gray-600 mt-1">Create color mapping for notes (matching piano keys to staff positions), design accessible color palette</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-blue-400">
+                    <div class="font-semibold text-gray-800">Basic Layout Structure</div>
+                    <div class="text-sm text-gray-600 mt-1">Set up main page layout with header, staff area placeholder, and piano section</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-purple-600">Phase 2: Staff & Visual System</h3>
+                    <p class="text-sm text-gray-500">Week 3-4 • SVG rendering engine</p>
+                </div>
+                <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-semibold">2 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-purple-400">
+                    <div class="font-semibold text-gray-800">3-Line Staff Component</div>
+                    <div class="text-sm text-gray-600 mt-1">Build SVG staff system with 3 lines, proper spacing, time-based grid system (not XY coords)</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-purple-400">
+                    <div class="font-semibold text-gray-800">Note Rendering</div>
+                    <div class="text-sm text-gray-600 mt-1">Create Note component with color-coding, position snapping to grid, duration line visualization</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-purple-400">
+                    <div class="font-semibold text-gray-800">Time-to-Position Conversion</div>
+                    <div class="text-sm text-gray-600 mt-1">Implement time-based positioning system (convert time values to SVG positions dynamically)</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-purple-400">
+                    <div class="font-semibold text-gray-800">Export Functionality</div>
+                    <div class="text-sm text-gray-600 mt-1">Add PNG and SVG export buttons, implement clean export (remove interactive elements)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-green-600">Phase 3: Interactive Piano</h3>
+                    <p class="text-sm text-gray-500">Week 5-6 • Audio & input handling</p>
+                </div>
+                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">2 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-green-400">
+                    <div class="font-semibold text-gray-800">Piano Keyboard UI</div>
+                    <div class="text-sm text-gray-600 mt-1">Build piano component with white keys, black keys (sharps), matching note colors</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-green-400">
+                    <div class="font-semibold text-gray-800">Audio System</div>
+                    <div class="text-sm text-gray-600 mt-1">Integrate Web Audio API or library (Tone.js recommended), generate piano sounds for all keys</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-green-400">
+                    <div class="font-semibold text-gray-800">Keyboard Input</div>
+                    <div class="text-sm text-gray-600 mt-1">Map keyboard keys to piano notes, implement sustain pedal (spacebar or suggested key)</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-green-400">
+                    <div class="font-semibold text-gray-800">Visual Feedback</div>
+                    <div class="text-sm text-gray-600 mt-1">Add key press animations, sound wave effects, color highlighting</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-orange-600">Phase 4: Note Editing & Composition</h3>
+                    <p class="text-sm text-gray-500">Week 7-8 • Interactive editor</p>
+                </div>
+                <span class="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold">2 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-orange-400">
+                    <div class="font-semibold text-gray-800">Note Placement</div>
+                    <div class="text-sm text-gray-600 mt-1">Click-to-place notes on staff, automatic grid snapping (time & pitch), right-click context menu</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-orange-400">
+                    <div class="font-semibold text-gray-800">Drag & Drop</div>
+                    <div class="text-sm text-gray-600 mt-1">Implement note dragging with smooth snapping, visual guides during drag, update time/pitch on drop</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-orange-400">
+                    <div class="font-semibold text-gray-800">Note Properties Editor</div>
+                    <div class="text-sm text-gray-600 mt-1">Right-click menu to change duration (whole, half, quarter notes), delete notes, change octave/pitch</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-orange-400">
+                    <div class="font-semibold text-gray-800">Repeat Markers</div>
+                    <div class="text-sm text-gray-600 mt-1">Add repeat symbol component, placement/dragging system, save with song data</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-orange-400">
+                    <div class="font-semibold text-gray-800">Tempo Control</div>
+                    <div class="text-sm text-gray-600 mt-1">BPM slider/input, visual metronome indicator (optional), save tempo with song</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 5 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-red-600">Phase 5: Playback Engine</h3>
+                    <p class="text-sm text-gray-500">Week 9-10 • Audio playback & visualization</p>
+                </div>
+                <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">2 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-red-400">
+                    <div class="font-semibold text-gray-800">Playback System</div>
+                    <div class="text-sm text-gray-600 mt-1">Build playback engine using tempo + time values, schedule notes accurately, handle repeat markers</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-red-400">
+                    <div class="font-semibold text-gray-800">Playback Cursor</div>
+                    <div class="text-sm text-gray-600 mt-1">Animated line/cursor that moves along staff in sync with playback, smooth animation</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-red-400">
+                    <div class="font-semibold text-gray-800">Note Highlighting</div>
+                    <div class="text-sm text-gray-600 mt-1">Halo effect or glow on currently playing notes, clear visual feedback</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-red-400">
+                    <div class="font-semibold text-gray-800">Playback Controls</div>
+                    <div class="text-sm text-gray-600 mt-1">Play, pause, stop buttons, seek functionality, loop options</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 6 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-indigo-600">Phase 6: Data Persistence</h3>
+                    <p class="text-sm text-gray-500">Week 11 • Save/load system</p>
+                </div>
+                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">1 week</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-indigo-400">
+                    <div class="font-semibold text-gray-800">LocalStorage Integration</div>
+                    <div class="text-sm text-gray-600 mt-1">Save songs to localStorage with proper serialization, use usehooks-ts useLocalStorage hook</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-indigo-400">
+                    <div class="font-semibold text-gray-800">Song Library UI</div>
+                    <div class="text-sm text-gray-600 mt-1">List saved songs, load/delete functionality, song metadata (title, created date, last modified)</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-indigo-400">
+                    <div class="font-semibold text-gray-800">Auto-save</div>
+                    <div class="text-sm text-gray-600 mt-1">Implement auto-save on changes (debounced), prevent data loss</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-indigo-400">
+                    <div class="font-semibold text-gray-800">Backend Preparation</div>
+                    <div class="text-sm text-gray-600 mt-1">Design API structure for future online sync, prepare data models for database</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 7 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-pink-600">Phase 7: Polish & Testing</h3>
+                    <p class="text-sm text-gray-500">Week 12 • UX refinement</p>
+                </div>
+                <span class="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm font-semibold">1 week</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-pink-400">
+                    <div class="font-semibold text-gray-800">User Testing</div>
+                    <div class="text-sm text-gray-600 mt-1">Test with kids, gather feedback, identify pain points</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-pink-400">
+                    <div class="font-semibold text-gray-800">Accessibility</div>
+                    <div class="text-sm text-gray-600 mt-1">Color contrast checks, keyboard navigation, screen reader support, ARIA labels</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-pink-400">
+                    <div class="font-semibold text-gray-800">Performance Optimization</div>
+                    <div class="text-sm text-gray-600 mt-1">Optimize SVG rendering, audio loading, React re-renders</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-pink-400">
+                    <div class="font-semibold text-gray-800">Responsive Design</div>
+                    <div class="text-sm text-gray-600 mt-1">Tablet layout optimization, touch interactions</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-pink-400">
+                    <div class="font-semibold text-gray-800">Bug Fixes & Edge Cases</div>
+                    <div class="text-sm text-gray-600 mt-1">Handle empty states, extreme tempos, overlapping notes</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 8 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-teal-600">Phase 8: Microphone Input & Pitch Detection</h3>
+                    <p class="text-sm text-gray-500">Weeks 13-15 • Real piano integration</p>
+                </div>
+                <span class="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-semibold">3 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-teal-400">
+                    <div class="font-semibold text-gray-800">Browser Microphone Access</div>
+                    <div class="text-sm text-gray-600 mt-1">Request permissions, capture audio stream, privacy considerations</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-teal-400">
+                    <div class="font-semibold text-gray-800">Pitch Detection Algorithm</div>
+                    <div class="text-sm text-gray-600 mt-1">Implement Web Audio API AnalyserNode, use autocorrelation or Pitchfinder.js, convert frequency to note name</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-teal-400">
+                    <div class="font-semibold text-gray-800">Calibration UI</div>
+                    <div class="text-sm text-gray-600 mt-1">Test interface where user plays known notes, compare detected vs expected, calculate tuning offset, accuracy meter</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-teal-400">
+                    <div class="font-semibold text-gray-800">Real-Time Detection Display</div>
+                    <div class="text-sm text-gray-600 mt-1">Show detected notes live, color-coded feedback, confidence meter, note history</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 9 -->
+        <div class="phase-card bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-yellow-600">Phase 9: Gamification & Practice Modes</h3>
+                    <p class="text-sm text-gray-500">Weeks 16-18 • Scoring & rewards</p>
+                </div>
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">3 weeks</span>
+            </div>
+            <div class="space-y-2">
+                <div class="task-item p-3 rounded border-l-4 border-yellow-400">
+                    <div class="font-semibold text-gray-800">Practice Modes</div>
+                    <div class="text-sm text-gray-600 mt-1">Follow Along, Rhythm Mode, Pitch Mode, Memory Mode (notes disappear), Full Performance mode</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-yellow-400">
+                    <div class="font-semibold text-gray-800">Scoring System</div>
+                    <div class="text-sm text-gray-600 mt-1">Timing score (±100ms tolerance), correctness score, combo counter, overall score with star rating (0-3 stars)</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-yellow-400">
+                    <div class="font-semibold text-gray-800">Visual Feedback During Play</div>
+                    <div class="text-sm text-gray-600 mt-1">Real-time note matching (green/red), timing indicator (early/late), combo counter, progress bar</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-yellow-400">
+                    <div class="font-semibold text-gray-800">Stickers & Achievements</div>
+                    <div class="text-sm text-gray-600 mt-1">Earn stickers for milestones, achievement badges, sticker collection page, shareable cards</div>
+                </div>
+                <div class="task-item p-3 rounded border-l-4 border-yellow-400">
+                    <div class="font-semibold text-gray-800">Progress Tracking</div>
+                    <div class="text-sm text-gray-600 mt-1">Practice history, improvement charts, streak counter, time spent practicing</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Future Phases -->
+        <div class="phase-card bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-700">Future Enhancements</h3>
+                    <p class="text-sm text-gray-600">Post-gamification features</p>
+                </div>
+                <span class="bg-gray-300 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">Backlog</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">🌐 Online Sync</div>
+                    <div class="text-sm text-gray-600">Cloud storage for songs, multi-device access</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">👥 User Accounts</div>
+                    <div class="text-sm text-gray-600">Authentication, user profiles, progress tracking</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">📚 Song Library</div>
+                    <div class="text-sm text-gray-600">Pre-made songs for kids, difficulty levels, curated curriculum</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">🎹 MIDI Support</div>
+                    <div class="text-sm text-gray-600">Connect real MIDI keyboard for practice</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">📱 Mobile App</div>
+                    <div class="text-sm text-gray-600">React Native version for iOS/Android</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="font-semibold text-gray-800 mb-1">👨‍🏫 Teacher Dashboard</div>
+                    <div class="text-sm text-gray-600">Monitor students, assign songs, view reports</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Notes -->
+        <div class="bg-amber-50 border-l-4 border-amber-400 p-6 rounded-lg shadow-md mb-6">
+            <h3 class="text-lg font-bold text-amber-900 mb-3">⚡ Technical Recommendations</h3>
+            <div class="space-y-2 text-sm text-amber-900">
+                <div><strong>Audio Library:</strong> Use Tone.js for precise timing and scheduling (Web Audio API wrapper)</div>
+                <div><strong>Pitch Detection:</strong> Pitchfinder.js with autocorrelation algorithm for microphone input</div>
+                <div><strong>SVG Management:</strong> Consider using D3.js or plain SVG with React refs for complex rendering</div>
+                <div><strong>State Management:</strong> Zustand or Jotai for global state (song data, playback state)</div>
+                <div><strong>Sustain Pedal Key:</strong> Recommend <code>Space</code> for sustain, or <code>Shift</code> as alternative</div>
+                <div><strong>Grid Snapping:</strong> Use modulo operations with time quantization (e.g., snap to 1/16th notes)</div>
+                <div><strong>Export Quality:</strong> Ensure SVG has proper viewBox for scaling, PNG at 2x resolution for print</div>
+                <div><strong>Performance Scoring:</strong> Use timestamp comparisons with tolerance windows (±50-100ms for "good" timing)</div>
+            </div>
+        </div>
+
+        <!-- Timeline Summary -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">📅 Timeline Summary</h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-700 font-semibold">MVP Duration:</span>
+                        <span class="font-bold text-blue-600">12 weeks (3 months)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div class="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-3 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-700 font-semibold">Full Feature Set (with gamification):</span>
+                        <span class="font-bold text-teal-600">18 weeks (~4.5 months)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div class="bg-gradient-to-r from-blue-500 via-teal-500 to-yellow-500 h-3 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm mt-6">
+                <div>
+                    <div class="font-semibold text-blue-600">Weeks 1-6</div>
+                    <div class="text-gray-600">Foundation & Core</div>
+                </div>
+                <div>
+                    <div class="font-semibold text-purple-600">Weeks 7-12</div>
+                    <div class="text-gray-600">Interaction & MVP</div>
+                </div>
+                <div>
+                    <div class="font-semibold text-teal-600">Weeks 13-15</div>
+                    <div class="text-gray-600">Microphone Input</div>
+                </div>
+                <div>
+                    <div class="font-semibold text-yellow-600">Weeks 16-18</div>
+                    <div class="text-gray-600">Gamification</div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-600 text-sm">
+            <p>🎵 This roadmap is flexible - adjust timeline based on your team size and velocity</p>
+        </footer>
+    </div>
+</body>
+</html>
