@@ -21,7 +21,10 @@
       "WebFetch(domain:vintagevinylnews.com)",
       "WebFetch(domain:davidkulma.com)",
       "WebFetch(domain:ultimatemusictheory.com)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)"
     ]
   },
   "enabledMcpjsonServers": [
