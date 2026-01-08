@@ -17,15 +17,12 @@ interface EditorHeaderProps {
   tempo: number;
   onTempoChange: (tempo: number) => void;
 
-  // Time signature
+  // Time signature (for display)
   timeSignature: TimeSignature;
 
   // Layout control
   measuresPerRow: number;
   onMeasuresPerRowChange: (value: number) => void;
-  containerWidth: number;
-
-  // Total measures control
   totalMeasures: number;
   onTotalMeasuresChange: (value: number) => void;
 
@@ -58,7 +55,6 @@ export function EditorHeader({
   timeSignature,
   measuresPerRow,
   onMeasuresPerRowChange,
-  containerWidth,
   totalMeasures,
   onTotalMeasuresChange,
   onSave,
@@ -292,41 +288,24 @@ export function EditorHeader({
           <span className="text-purple-500 text-xs">BPM</span>
         </div>
 
-        {/* Measures per row control */}
+        {/* Measures per row control - max is totalMeasures (can't show more per row than exist) */}
         <div className="hidden md:block">
           <MeasuresControlCompact
             value={measuresPerRow}
             onChange={onMeasuresPerRowChange}
-            containerWidth={containerWidth}
-            timeSignature={timeSignature}
+            maxMeasures={totalMeasures}
+            label="Per row:"
           />
         </div>
 
         {/* Total measures control */}
-        <div className="hidden md:flex items-center gap-1 ml-2 pl-2 border-l border-purple-300">
-          <span className="text-purple-600 text-xs font-medium">Total:</span>
-          <button
-            onClick={() =>
-              onTotalMeasuresChange(Math.max(1, totalMeasures - 1))
-            }
-            disabled={totalMeasures <= 1}
-            className="w-6 h-6 rounded bg-purple-200 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-purple-800 font-bold transition-colors text-sm"
-            aria-label="Remove measure"
-          >
-            −
-          </button>
-          <div className="w-8 h-6 bg-white rounded border border-purple-200 flex items-center justify-center">
-            <span className="text-xs font-semibold text-purple-800">
-              {totalMeasures}
-            </span>
-          </div>
-          <button
-            onClick={() => onTotalMeasuresChange(totalMeasures + 1)}
-            className="w-6 h-6 rounded bg-purple-200 hover:bg-purple-300 flex items-center justify-center text-purple-800 font-bold transition-colors text-sm"
-            aria-label="Add measure"
-          >
-            +
-          </button>
+        <div className="hidden md:block ml-2 pl-2 border-l border-purple-300">
+          <MeasuresControlCompact
+            value={totalMeasures}
+            onChange={onTotalMeasuresChange}
+            maxMeasures={99}
+            label="Total:"
+          />
         </div>
       </div>
 

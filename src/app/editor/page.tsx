@@ -429,9 +429,14 @@ export default function EditorPage() {
         timeSignature={settings.timeSignature}
         measuresPerRow={measuresPerRow}
         onMeasuresPerRowChange={setMeasuresPerRow}
-        containerWidth={layout.containerWidth}
         totalMeasures={totalMeasures}
-        onTotalMeasuresChange={setTotalMeasures}
+        onTotalMeasuresChange={(newTotal) => {
+          setTotalMeasures(newTotal);
+          // Clamp measuresPerRow if it exceeds new total
+          if (measuresPerRow > newTotal) {
+            setMeasuresPerRow(newTotal);
+          }
+        }}
         onSave={() => {
           const name = prompt("Enter song name:");
           if (name) handleSaveSong(name);

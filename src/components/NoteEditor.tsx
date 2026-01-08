@@ -472,6 +472,13 @@ export function NoteEditor({
     system: number;
     originalMeasure: number;
   } | null>(null);
+  // Track mouse position during marker drag for preview
+  const [markerDragPosition, setMarkerDragPosition] = useState<{
+    x: number;
+    y: number;
+    targetSystem: number;
+    targetMeasure: number;
+  } | null>(null);
   const [repeatStart, setRepeatStart] = useState<{
     system: number;
     measure: number;
@@ -871,6 +878,14 @@ export function NoteEditor({
           Math.min(measuresPerSystem, measure),
         );
 
+        // Update drag position for visual preview
+        setMarkerDragPosition({
+          x,
+          y,
+          targetSystem: system,
+          targetMeasure: clampedMeasure,
+        });
+
         // Find the paired marker by pairId
         const currentMarker = repeatMarkers.find(
           (m) => m.id === draggedMarker.id,
@@ -969,6 +984,7 @@ export function NoteEditor({
     }
     if (draggedMarker) {
       setDraggedMarker(null);
+      setMarkerDragPosition(null);
       justDraggedRef.current = true;
     }
   }, [draggedNote, draggedMarker, notes, playNoteSound]);
@@ -1243,8 +1259,21 @@ export function NoteEditor({
     const markersOnSystem = repeatMarkers.filter(
       (m) => m.system === systemIndex,
     );
+    // Start markers: exclude those at measure 0 (they belong to the end of the previous system conceptually,
+    // but START markers at measure 0 should show at the start of THIS system)
     const startMarkers = markersOnSystem.filter((m) => m.type === "start");
-    const endMarkers = markersOnSystem.filter((m) => m.type === "end");
+    // End markers: exclude those at measure 0 (they should render at the END of the previous system)
+    const endMarkers = markersOnSystem.filter(
+      (m) => m.type === "end" && m.measure !== 0,
+    );
+
+    // Also check for END markers at measure 0 of the NEXT system - these render at the end of THIS system
+    const endMarkersFromNextSystem = repeatMarkers.filter(
+      (m) =>
+        m.system === systemIndex + 1 && m.type === "end" && m.measure === 0,
+    );
+    // Also check for START markers at measure 0 of the NEXT system - these should NOT render at end of this system
+    // (they correctly render at the start of the next system)
 
     return (
       <g key={`system-${systemIndex}`}>
@@ -1331,11 +1360,16 @@ export function NoteEditor({
           const measureIndex = beat / layout.beatsPerMeasure;
           const isEdge = beat === 0 || beat === beatsPerSystem;
 
-          // Only show repeat markers, never at the last bar line (they'll show at the start of next system)
+          // Handle repeat markers at bar lines
           const isLastBarLine = beat === beatsPerSystem;
           let startMarker, endMarker;
 
-          if (!isLastBarLine) {
+          if (isLastBarLine) {
+            // At last bar line: show END markers from the NEXT system's measure 0
+            // (they logically belong at the end of this system)
+            endMarker = endMarkersFromNextSystem[0];
+            // Don't show START markers here - they'll show at measure 0 of the next system
+          } else {
             startMarker = startMarkers.find((m) => m.measure === measureIndex);
             endMarker = endMarkers.find((m) => m.measure === measureIndex);
           }
@@ -1355,26 +1389,38 @@ export function NoteEditor({
               />
               {isRepeatStart && startMarker && (
                 <g
-                  style={{ cursor: draggedMarker ? "grabbing" : "grab" }}
+                  style={{
+                    cursor:
+                      selectedTool === "delete"
+                        ? "pointer"
+                        : draggedMarker
+                          ? "grabbing"
+                          : "grab",
+                  }}
                   onMouseEnter={() => setHoveredMarker(startMarker.id)}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
-                    setDraggedMarker({
-                      id: startMarker.id,
-                      type: "start",
-                      system: systemIndex,
-                      originalMeasure: startMarker.measure,
-                    });
+                    // Only allow drag when NOT in delete mode
+                    if (selectedTool !== "delete") {
+                      setDraggedMarker({
+                        id: startMarker.id,
+                        type: "start",
+                        system: systemIndex,
+                        originalMeasure: startMarker.measure,
+                      });
+                    }
                   }}
-                  onDoubleClick={(e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    // Remove this repeat section by pairId
-                    onRepeatMarkersChange(
-                      repeatMarkers.filter(
-                        (m) => m.pairId !== startMarker.pairId,
-                      ),
-                    );
+                    // Single click delete when delete tool is active
+                    if (selectedTool === "delete") {
+                      onRepeatMarkersChange(
+                        repeatMarkers.filter(
+                          (m) => m.pairId !== startMarker.pairId,
+                        ),
+                      );
+                    }
                   }}
                 >
                   {/* Larger invisible hit box for easier interaction */}
@@ -1386,7 +1432,9 @@ export function NoteEditor({
                     fill="transparent"
                     stroke={
                       hoveredMarker === startMarker.id
-                        ? "#ef4444"
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#8b5cf6"
                         : "transparent"
                     }
                     strokeWidth={2}
@@ -1402,7 +1450,7 @@ export function NoteEditor({
                       y={staffCenterY - LINE_SPACING - 15}
                       width={35}
                       height={LINE_SPACING * 2 + 30}
-                      fill="#fef2f2"
+                      fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
                       opacity={0.5}
                       rx={4}
                       style={{ pointerEvents: "none" }}
@@ -1414,7 +1462,11 @@ export function NoteEditor({
                     x2={barX + 6}
                     y2={staffCenterY + LINE_SPACING + 8}
                     stroke={
-                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === startMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     strokeWidth={hoveredMarker === startMarker.id ? 4 : 3}
                     style={{ pointerEvents: "none" }}
@@ -1424,7 +1476,11 @@ export function NoteEditor({
                     cy={staffCenterY - LINE_SPACING / 2}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
-                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === startMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     style={{ pointerEvents: "none" }}
                   />
@@ -1433,7 +1489,11 @@ export function NoteEditor({
                     cy={staffCenterY + LINE_SPACING / 2}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
-                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === startMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     style={{ pointerEvents: "none" }}
                   />
@@ -1443,14 +1503,14 @@ export function NoteEditor({
                       <rect
                         x={barX - 20}
                         y={staffCenterY - LINE_SPACING - 45}
-                        width={120}
+                        width={selectedTool === "delete" ? 90 : 80}
                         height={22}
                         fill="#1f2937"
                         rx={4}
                         style={{ pointerEvents: "none" }}
                       />
                       <text
-                        x={barX + 40}
+                        x={barX + (selectedTool === "delete" ? 25 : 20)}
                         y={staffCenterY - LINE_SPACING - 30}
                         fontSize={11}
                         fill="white"
@@ -1458,7 +1518,9 @@ export function NoteEditor({
                         fontWeight="600"
                         style={{ pointerEvents: "none" }}
                       >
-                        Double-click to delete
+                        {selectedTool === "delete"
+                          ? "Click to delete"
+                          : "Drag to move"}
                       </text>
                     </g>
                   )}
@@ -1466,26 +1528,38 @@ export function NoteEditor({
               )}
               {isRepeatEnd && endMarker && (
                 <g
-                  style={{ cursor: draggedMarker ? "grabbing" : "grab" }}
+                  style={{
+                    cursor:
+                      selectedTool === "delete"
+                        ? "pointer"
+                        : draggedMarker
+                          ? "grabbing"
+                          : "grab",
+                  }}
                   onMouseEnter={() => setHoveredMarker(endMarker.id)}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
-                    setDraggedMarker({
-                      id: endMarker.id,
-                      type: "end",
-                      system: systemIndex,
-                      originalMeasure: endMarker.measure,
-                    });
+                    // Only allow drag when NOT in delete mode
+                    if (selectedTool !== "delete") {
+                      setDraggedMarker({
+                        id: endMarker.id,
+                        type: "end",
+                        system: systemIndex,
+                        originalMeasure: endMarker.measure,
+                      });
+                    }
                   }}
-                  onDoubleClick={(e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    // Remove this repeat section by pairId
-                    onRepeatMarkersChange(
-                      repeatMarkers.filter(
-                        (m) => m.pairId !== endMarker.pairId,
-                      ),
-                    );
+                    // Single click delete when delete tool is active
+                    if (selectedTool === "delete") {
+                      onRepeatMarkersChange(
+                        repeatMarkers.filter(
+                          (m) => m.pairId !== endMarker.pairId,
+                        ),
+                      );
+                    }
                   }}
                 >
                   {/* Larger invisible hit box for easier interaction */}
@@ -1496,7 +1570,11 @@ export function NoteEditor({
                     height={LINE_SPACING * 2 + 30}
                     fill="transparent"
                     stroke={
-                      hoveredMarker === endMarker.id ? "#ef4444" : "transparent"
+                      hoveredMarker === endMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#8b5cf6"
+                        : "transparent"
                     }
                     strokeWidth={2}
                     strokeDasharray={
@@ -1511,7 +1589,7 @@ export function NoteEditor({
                       y={staffCenterY - LINE_SPACING - 15}
                       width={35}
                       height={LINE_SPACING * 2 + 30}
-                      fill="#fef2f2"
+                      fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
                       opacity={0.5}
                       rx={4}
                       style={{ pointerEvents: "none" }}
@@ -1523,7 +1601,11 @@ export function NoteEditor({
                     x2={barX - 6}
                     y2={staffCenterY + LINE_SPACING + 8}
                     stroke={
-                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === endMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     strokeWidth={hoveredMarker === endMarker.id ? 4 : 3}
                     style={{ pointerEvents: "none" }}
@@ -1533,7 +1615,11 @@ export function NoteEditor({
                     cy={staffCenterY - LINE_SPACING / 2}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
-                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === endMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     style={{ pointerEvents: "none" }}
                   />
@@ -1542,7 +1628,11 @@ export function NoteEditor({
                     cy={staffCenterY + LINE_SPACING / 2}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
-                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                      hoveredMarker === endMarker.id
+                        ? selectedTool === "delete"
+                          ? "#ef4444"
+                          : "#a855f7"
+                        : "#8b5cf6"
                     }
                     style={{ pointerEvents: "none" }}
                   />
@@ -1552,14 +1642,14 @@ export function NoteEditor({
                       <rect
                         x={barX - 90}
                         y={staffCenterY - LINE_SPACING - 45}
-                        width={120}
+                        width={selectedTool === "delete" ? 90 : 80}
                         height={22}
                         fill="#1f2937"
                         rx={4}
                         style={{ pointerEvents: "none" }}
                       />
                       <text
-                        x={barX - 30}
+                        x={barX - (selectedTool === "delete" ? 45 : 50)}
                         y={staffCenterY - LINE_SPACING - 30}
                         fontSize={11}
                         fill="white"
@@ -1567,7 +1657,9 @@ export function NoteEditor({
                         fontWeight="600"
                         style={{ pointerEvents: "none" }}
                       >
-                        Double-click to delete
+                        {selectedTool === "delete"
+                          ? "Click to delete"
+                          : "Drag to move"}
                       </text>
                     </g>
                   )}
@@ -2052,6 +2144,84 @@ export function NoteEditor({
           >
             Click on the staff to add notes
           </text>
+        )}
+
+        {/* Marker drag preview - shows target measure highlight and floating marker */}
+        {draggedMarker && markerDragPosition && (
+          <g style={{ pointerEvents: "none" }}>
+            {/* Target measure highlight */}
+            <rect
+              x={
+                LEFT_MARGIN +
+                markerDragPosition.targetMeasure *
+                  layout.beatsPerMeasure *
+                  BEAT_WIDTH
+              }
+              y={
+                getStaffCenterY(markerDragPosition.targetSystem) -
+                LINE_SPACING -
+                15
+              }
+              width={layout.beatsPerMeasure * BEAT_WIDTH}
+              height={LINE_SPACING * 2 + 30}
+              fill="#a855f7"
+              opacity={0.2}
+              rx={4}
+            />
+            {/* Floating marker preview following mouse */}
+            <g
+              transform={`translate(${markerDragPosition.x - 15}, ${markerDragPosition.y - 40})`}
+              opacity={0.8}
+            >
+              {draggedMarker.type === "start" ? (
+                <>
+                  <line
+                    x1={6}
+                    y1={0}
+                    x2={6}
+                    y2={LINE_SPACING * 2 + 16}
+                    stroke="#a855f7"
+                    strokeWidth={3}
+                  />
+                  <circle
+                    cx={18}
+                    cy={LINE_SPACING / 2 + 8}
+                    r={5}
+                    fill="#a855f7"
+                  />
+                  <circle
+                    cx={18}
+                    cy={LINE_SPACING * 1.5 + 8}
+                    r={5}
+                    fill="#a855f7"
+                  />
+                </>
+              ) : (
+                <>
+                  <line
+                    x1={24}
+                    y1={0}
+                    x2={24}
+                    y2={LINE_SPACING * 2 + 16}
+                    stroke="#a855f7"
+                    strokeWidth={3}
+                  />
+                  <circle
+                    cx={12}
+                    cy={LINE_SPACING / 2 + 8}
+                    r={5}
+                    fill="#a855f7"
+                  />
+                  <circle
+                    cx={12}
+                    cy={LINE_SPACING * 1.5 + 8}
+                    r={5}
+                    fill="#a855f7"
+                  />
+                </>
+              )}
+            </g>
+          </g>
         )}
       </svg>
 

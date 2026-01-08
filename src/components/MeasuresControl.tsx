@@ -94,41 +94,39 @@ export function MeasuresControl({
 /**
  * Compact version for toolbar
  */
+interface MeasuresControlCompactProps {
+  value: number;
+  onChange: (value: number) => void;
+  maxMeasures: number; // Max is now passed in (typically = totalMeasures)
+  label?: string;
+}
+
 export function MeasuresControlCompact({
   value,
   onChange,
-  containerWidth,
-  timeSignature,
-}: MeasuresControlProps) {
-  const beatsPerMeasure = timeSignature.numerator;
-
-  const maxMeasures = getMaxMeasuresPerRow(
-    containerWidth,
-    beatsPerMeasure,
-    40,
-    100,
-    20,
-  );
-
+  maxMeasures,
+  label = "Per row:",
+}: MeasuresControlCompactProps) {
   return (
     <div className="flex items-center gap-1">
+      <span className="text-purple-600 text-xs font-medium">{label}</span>
       <button
         onClick={() => onChange(Math.max(1, value - 1))}
         disabled={value <= 1}
-        className="w-7 h-7 rounded bg-purple-200 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-purple-800 font-bold transition-colors"
+        className="w-6 h-6 rounded bg-purple-200 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-purple-800 font-bold transition-colors text-sm"
         aria-label="Fewer measures"
       >
         −
       </button>
 
-      <div className="w-10 h-7 bg-white rounded border border-purple-200 flex items-center justify-center">
-        <span className="text-sm font-semibold text-purple-800">{value}</span>
+      <div className="w-8 h-6 bg-white rounded border border-purple-200 flex items-center justify-center">
+        <span className="text-xs font-semibold text-purple-800">{value}</span>
       </div>
 
       <button
         onClick={() => onChange(Math.min(maxMeasures, value + 1))}
         disabled={value >= maxMeasures}
-        className="w-7 h-7 rounded bg-purple-200 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-purple-800 font-bold transition-colors"
+        className="w-6 h-6 rounded bg-purple-200 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-purple-800 font-bold transition-colors text-sm"
         aria-label="More measures"
       >
         +
