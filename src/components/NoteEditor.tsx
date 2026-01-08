@@ -1,16 +1,29 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { Pitch } from "@/lib/types";
 import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 
 // Time signature type
-export type TimeSignature = "4/4" | "3/4" | "6/8" | "2/4";
+export interface TimeSignature {
+  numerator: number; // Top number (beats per measure)
+  denominator: number; // Bottom number (note value)
+}
+
+// Valid time signature options for dropdowns
+export const TIME_SIG_NUMERATORS = [2, 3, 4, 5, 6, 7, 9, 12] as const;
+export const TIME_SIG_DENOMINATORS = [2, 4, 8, 16] as const;
+
+// Helper to convert TimeSignature to string key
+function getTimeSigKey(ts: TimeSignature): string {
+  return `${ts.numerator}/${ts.denominator}`;
+}
 
 // Time signature configuration
 const TIME_SIG_CONFIG: Record<
-  TimeSignature,
+  string,
   {
     beatsPerMeasure: number;
     beamGroups: number[];
@@ -42,16 +55,58 @@ const TIME_SIG_CONFIG: Record<
     measuresPerSystem: 2,
     shadeGroups: [1, 1, 1, 1], // 4 beats total
   },
+  "5/4": {
+    beatsPerMeasure: 5,
+    beamGroups: [2, 3], // or [3, 2] depending on feel
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  },
+  "7/4": {
+    beatsPerMeasure: 7,
+    beamGroups: [2, 2, 3],
+    measuresPerSystem: 1, // Fewer measures per system for longer meters
+    shadeGroups: [1, 1, 1, 1, 1, 1, 1],
+  },
+  "9/8": {
+    beatsPerMeasure: 9,
+    beamGroups: [3, 3, 3],
+    measuresPerSystem: 1,
+    shadeGroups: [3, 3, 3],
+  },
+  "12/8": {
+    beatsPerMeasure: 12,
+    beamGroups: [3, 3, 3, 3],
+    measuresPerSystem: 1,
+    shadeGroups: [3, 3, 3, 3],
+  },
+  "2/2": {
+    beatsPerMeasure: 2,
+    beamGroups: [1, 1],
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1],
+  },
+  "3/2": {
+    beatsPerMeasure: 3,
+    beamGroups: [1, 1, 1],
+    measuresPerSystem: 2,
+    shadeGroups: [1, 1, 1, 1, 1, 1],
+  },
 };
 
 // Helper to get layout values based on time signature
-function getLayoutConfig(timeSignature: TimeSignature) {
-  const config = TIME_SIG_CONFIG[timeSignature];
-  const beatsPerSystem = config.beatsPerMeasure * config.measuresPerSystem;
+function getLayoutConfig(
+  timeSignature: TimeSignature,
+  measuresPerRow?: number,
+) {
+  const key = getTimeSigKey(timeSignature);
+  const config = TIME_SIG_CONFIG[key] || TIME_SIG_CONFIG["4/4"]; // Fallback to 4/4
+  const effectiveMeasuresPerRow = measuresPerRow ?? config.measuresPerSystem;
+  const beatsPerSystem = config.beatsPerMeasure * effectiveMeasuresPerRow;
   const staffRight = LEFT_MARGIN + beatsPerSystem * BEAT_WIDTH;
   const svgWidth = staffRight + 60;
   return {
     ...config,
+    measuresPerSystem: effectiveMeasuresPerRow,
     beatsPerSystem,
     staffRight,
     svgWidth,
@@ -114,6 +169,7 @@ interface NoteEditorProps {
   tempo?: number;
   isPlaying?: boolean;
   onPlaybackBlock?: () => void;
+  measuresPerRow?: number;
 }
 
 // Constants - adjusted for better fit
@@ -214,7 +270,9 @@ function snapX(x: number, staffRight: number): number {
 // Get measure from X position
 function getMeasureFromX(x: number, beatsPerMeasure: number): number {
   const beatsFromLeft = (x - LEFT_MARGIN) / BEAT_WIDTH;
-  return Math.floor(beatsFromLeft / beatsPerMeasure);
+  // Use Math.round instead of Math.floor so clicks near bar lines
+  // are assigned to the nearest measure (more intuitive)
+  return Math.round(beatsFromLeft / beatsPerMeasure);
 }
 
 function getDurationFromTool(tool: NoteTool): number {
@@ -239,7 +297,8 @@ function groupEighthNotes(
   allNotes: EditorNote[],
   timeSignature: TimeSignature,
 ): BeamGroup[] {
-  const config = TIME_SIG_CONFIG[timeSignature];
+  const config =
+    TIME_SIG_CONFIG[getTimeSigKey(timeSignature)] || TIME_SIG_CONFIG["4/4"];
   const eighthNotes = allNotes.filter((n) => n.duration === 0.5);
 
   // Sort all notes by system, then by beat position (for checking notes in between)
@@ -366,17 +425,21 @@ export function NoteEditor({
   onSystemCountChange,
   onDuplicateNote,
   svgRef: externalSvgRef,
-  timeSignature = "4/4",
+  timeSignature = { numerator: 4, denominator: 4 },
   onStaffClick,
   tempo = 100,
   isPlaying = false,
   onPlaybackBlock,
+  measuresPerRow,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
 
-  // Get dynamic layout based on time signature
-  const layout = useMemo(() => getLayoutConfig(timeSignature), [timeSignature]);
+  // Get dynamic layout based on time signature and measures per row
+  const layout = useMemo(
+    () => getLayoutConfig(timeSignature, measuresPerRow),
+    [timeSignature, measuresPerRow],
+  );
   const {
     beatsPerSystem,
     beatsPerMeasure,
@@ -413,12 +476,27 @@ export function NoteEditor({
     system: number;
     measure: number;
   } | null>(null);
+  const [hoveredRepeatMeasure, setHoveredRepeatMeasure] = useState<{
+    system: number;
+    measure: number;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     noteId: string;
     x: number;
     y: number;
   } | null>(null);
   const justDraggedRef = useRef(false);
+  const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
+
+  // Clear repeat placement state when tool changes away from repeat
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (selectedTool !== "repeat") {
+      setRepeatStart(null);
+      setHoveredRepeatMeasure(null);
+    }
+    // Intentional cleanup effect when tool changes
+  }, [selectedTool]);
 
   const svgHeight = SYSTEM_TOP_MARGIN + systemCount * SYSTEM_HEIGHT + 40;
 
@@ -451,7 +529,36 @@ export function NoteEditor({
     (e: React.MouseEvent, noteId: string) => {
       e.preventDefault();
       e.stopPropagation();
-      setContextMenu({ noteId, x: e.clientX, y: e.clientY });
+
+      // Calculate menu position to prevent off-screen overflow
+      const menuWidth = 120; // min-w-[120px]
+      const menuHeight = 260; // approximate height based on items
+      const padding = 8; // padding from edges
+
+      let x = e.clientX;
+      let y = e.clientY;
+
+      // Check right edge
+      if (x + menuWidth + padding > window.innerWidth) {
+        x = window.innerWidth - menuWidth - padding;
+      }
+
+      // Check bottom edge
+      if (y + menuHeight + padding > window.innerHeight) {
+        y = window.innerHeight - menuHeight - padding;
+      }
+
+      // Check left edge
+      if (x < padding) {
+        x = padding;
+      }
+
+      // Check top edge
+      if (y < padding) {
+        y = padding;
+      }
+
+      setContextMenu({ noteId, x, y });
     },
     [],
   );
@@ -525,24 +632,76 @@ export function NoteEditor({
 
       // Handle repeat tool - allows multiple repeat sections
       if (selectedTool === "repeat") {
-        const measure = getMeasureFromX(x, layout.beatsPerMeasure);
+        // Calculate beat position within the current system
+        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
+
+        // IMPORTANT: Use Math.floor (same as hover) to identify containing measure
+        // This ensures clicks are placed in the measure the user is clicking on
+        const measureContainingClick = Math.floor(
+          beatInSystem / layout.beatsPerMeasure,
+        );
+        const clampedMeasure = Math.max(
+          0,
+          Math.min(measuresPerSystem - 1, measureContainingClick),
+        );
 
         if (!repeatStart) {
           // First click - set start position
-          setRepeatStart({ system, measure });
+          setRepeatStart({ system, measure: clampedMeasure });
         } else {
-          // Second click - set end and create markers
-          const startSystem = repeatStart.system;
-          const startMeasure = repeatStart.measure;
-          const endSystem = system;
-          const endMeasure = measure;
+          // Second click - determine which is start and which is end
+          const firstClickSystem = repeatStart.system;
+          const firstClickMeasure = repeatStart.measure;
+          const secondClickSystem = system;
+          const secondClickMeasure = clampedMeasure;
 
-          // Calculate absolute measures for comparison
+          // Calculate absolute measures to determine order
+          const firstAbsolute =
+            firstClickSystem * measuresPerSystem + firstClickMeasure;
+          const secondAbsolute =
+            secondClickSystem * measuresPerSystem + secondClickMeasure;
+
+          // AUTO-SWAP LOGIC: Allow clicking in any order
+          // - Clicking measure 3 then 1 produces same result as 1 then 3
+          // - Always place earlier measure as start, later as end
+          let startSystem: number, startMeasure: number;
+          let endClickSystem: number, endClickMeasure: number;
+
+          if (firstAbsolute <= secondAbsolute) {
+            // Normal order: first click is start, second is end
+            startSystem = firstClickSystem;
+            startMeasure = firstClickMeasure;
+            endClickSystem = secondClickSystem;
+            endClickMeasure = secondClickMeasure;
+          } else {
+            // Reverse order: second click is start, first is end
+            startSystem = secondClickSystem;
+            startMeasure = secondClickMeasure;
+            endClickSystem = firstClickSystem;
+            endClickMeasure = firstClickMeasure;
+          }
+
+          // CRITICAL: Increment END marker to place at end of clicked measure
+          // - User clicks measure 3 expecting to INCLUDE measure 3 in the repeat
+          // - Bar lines mark the START of each measure
+          // - End of measure 3 = start of measure 4
+          // - So we increment by 1 to place marker at end of clicked measure
+          // - Example: Click 1 → 3 creates repeat from start of 1 to end of 3
+          let endSystem = endClickSystem;
+          let endMeasure = endClickMeasure + 1;
+
+          // Handle system overflow when incrementing
+          if (endMeasure >= measuresPerSystem) {
+            endMeasure = 0;
+            endSystem = endClickSystem + 1;
+          }
+
+          // Calculate final absolute measures
           const startAbsoluteMeasure =
             startSystem * measuresPerSystem + startMeasure;
           const endAbsoluteMeasure = endSystem * measuresPerSystem + endMeasure;
 
-          // Only create if end is after start
+          // Only create if end is after start (should always be true)
           if (endAbsoluteMeasure > startAbsoluteMeasure) {
             // Check if this would overlap with existing repeat sections
             const hasOverlap = repeatMarkers.some((m) => {
@@ -585,9 +744,16 @@ export function NoteEditor({
                 },
               ];
               onRepeatMarkersChange(newMarkers);
+            } else {
+              // Show clear user feedback when overlap is detected
+              // Prevents silent failure and explains why markers weren't placed
+              toast.error(
+                "Cannot place repeat markers over existing repeat sections",
+              );
             }
           }
           setRepeatStart(null);
+          setHoveredRepeatMeasure(null);
         }
         return;
       }
@@ -666,6 +832,35 @@ export function NoteEditor({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       const { x, y } = getCoords(e);
+
+      // Handle repeat placement hover preview (show even before first click)
+      if (selectedTool === "repeat" && !draggedMarker) {
+        const system = getSystemFromY(y, systemCount);
+        // Calculate beat position within the current system
+        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
+
+        // IMPORTANT: Use Math.floor to find which measure CONTAINS this beat
+        // - Math.round would snap to nearest bar line, causing clicks in first half
+        //   of measure to round backward, second half to round forward
+        // - Math.floor always identifies the measure containing the click point
+        // - Example: clicking anywhere in measure 0 (beats 0-3.99) correctly identifies as measure 0
+        const measureContainingBeat = Math.floor(
+          beatInSystem / layout.beatsPerMeasure,
+        );
+        const clampedMeasure = Math.max(
+          0,
+          Math.min(measuresPerSystem - 1, measureContainingBeat),
+        );
+
+        // Only show hover if within staff bounds
+        if (x >= LEFT_MARGIN - 20 && x <= staffRight + 20) {
+          setHoveredRepeatMeasure({ system, measure: clampedMeasure });
+        } else {
+          setHoveredRepeatMeasure(null);
+        }
+      } else if (hoveredRepeatMeasure) {
+        setHoveredRepeatMeasure(null);
+      }
 
       // Handle marker dragging - allows cross-system repeats
       if (draggedMarker) {
@@ -758,6 +953,9 @@ export function NoteEditor({
       measuresPerSystem,
       staffRight,
       layout.beatsPerMeasure,
+      selectedTool,
+      repeatStart,
+      hoveredRepeatMeasure,
     ],
   );
 
@@ -1133,10 +1331,15 @@ export function NoteEditor({
           const measureIndex = beat / layout.beatsPerMeasure;
           const isEdge = beat === 0 || beat === beatsPerSystem;
 
-          const startMarker = startMarkers.find(
-            (m) => m.measure === measureIndex,
-          );
-          const endMarker = endMarkers.find((m) => m.measure === measureIndex);
+          // Only show repeat markers, never at the last bar line (they'll show at the start of next system)
+          const isLastBarLine = beat === beatsPerSystem;
+          let startMarker, endMarker;
+
+          if (!isLastBarLine) {
+            startMarker = startMarkers.find((m) => m.measure === measureIndex);
+            endMarker = endMarkers.find((m) => m.measure === measureIndex);
+          }
+
           const isRepeatStart = !!startMarker;
           const isRepeatEnd = !!endMarker;
 
@@ -1153,6 +1356,8 @@ export function NoteEditor({
               {isRepeatStart && startMarker && (
                 <g
                   style={{ cursor: draggedMarker ? "grabbing" : "grab" }}
+                  onMouseEnter={() => setHoveredMarker(startMarker.id)}
+                  onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     setDraggedMarker({
@@ -1172,33 +1377,98 @@ export function NoteEditor({
                     );
                   }}
                 >
+                  {/* Larger invisible hit box for easier interaction */}
+                  <rect
+                    x={barX - 5}
+                    y={staffCenterY - LINE_SPACING - 15}
+                    width={35}
+                    height={LINE_SPACING * 2 + 30}
+                    fill="transparent"
+                    stroke={
+                      hoveredMarker === startMarker.id
+                        ? "#ef4444"
+                        : "transparent"
+                    }
+                    strokeWidth={2}
+                    strokeDasharray={
+                      hoveredMarker === startMarker.id ? "4,2" : "0"
+                    }
+                    rx={4}
+                  />
+                  {/* Visual feedback background when hovered */}
+                  {hoveredMarker === startMarker.id && (
+                    <rect
+                      x={barX - 5}
+                      y={staffCenterY - LINE_SPACING - 15}
+                      width={35}
+                      height={LINE_SPACING * 2 + 30}
+                      fill="#fef2f2"
+                      opacity={0.5}
+                      rx={4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  )}
                   <line
                     x1={barX + 6}
                     y1={staffCenterY - LINE_SPACING - 8}
                     x2={barX + 6}
                     y2={staffCenterY + LINE_SPACING + 8}
-                    stroke="#8b5cf6"
-                    strokeWidth={3}
+                    stroke={
+                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    strokeWidth={hoveredMarker === startMarker.id ? 4 : 3}
+                    style={{ pointerEvents: "none" }}
                   />
                   <circle
                     cx={barX + 18}
                     cy={staffCenterY - LINE_SPACING / 2}
-                    r={5}
-                    fill="#8b5cf6"
-                    className="hover:fill-red-500 transition-colors"
+                    r={hoveredMarker === startMarker.id ? 7 : 5}
+                    fill={
+                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    style={{ pointerEvents: "none" }}
                   />
                   <circle
                     cx={barX + 18}
                     cy={staffCenterY + LINE_SPACING / 2}
-                    r={5}
-                    fill="#8b5cf6"
-                    className="hover:fill-red-500 transition-colors"
+                    r={hoveredMarker === startMarker.id ? 7 : 5}
+                    fill={
+                      hoveredMarker === startMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    style={{ pointerEvents: "none" }}
                   />
+                  {/* Hover tooltip */}
+                  {hoveredMarker === startMarker.id && (
+                    <g>
+                      <rect
+                        x={barX - 20}
+                        y={staffCenterY - LINE_SPACING - 45}
+                        width={120}
+                        height={22}
+                        fill="#1f2937"
+                        rx={4}
+                        style={{ pointerEvents: "none" }}
+                      />
+                      <text
+                        x={barX + 40}
+                        y={staffCenterY - LINE_SPACING - 30}
+                        fontSize={11}
+                        fill="white"
+                        textAnchor="middle"
+                        fontWeight="600"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        Double-click to delete
+                      </text>
+                    </g>
+                  )}
                 </g>
               )}
               {isRepeatEnd && endMarker && (
                 <g
                   style={{ cursor: draggedMarker ? "grabbing" : "grab" }}
+                  onMouseEnter={() => setHoveredMarker(endMarker.id)}
+                  onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     setDraggedMarker({
@@ -1218,51 +1488,165 @@ export function NoteEditor({
                     );
                   }}
                 >
+                  {/* Larger invisible hit box for easier interaction */}
+                  <rect
+                    x={barX - 30}
+                    y={staffCenterY - LINE_SPACING - 15}
+                    width={35}
+                    height={LINE_SPACING * 2 + 30}
+                    fill="transparent"
+                    stroke={
+                      hoveredMarker === endMarker.id ? "#ef4444" : "transparent"
+                    }
+                    strokeWidth={2}
+                    strokeDasharray={
+                      hoveredMarker === endMarker.id ? "4,2" : "0"
+                    }
+                    rx={4}
+                  />
+                  {/* Visual feedback background when hovered */}
+                  {hoveredMarker === endMarker.id && (
+                    <rect
+                      x={barX - 30}
+                      y={staffCenterY - LINE_SPACING - 15}
+                      width={35}
+                      height={LINE_SPACING * 2 + 30}
+                      fill="#fef2f2"
+                      opacity={0.5}
+                      rx={4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  )}
                   <line
                     x1={barX - 6}
                     y1={staffCenterY - LINE_SPACING - 8}
                     x2={barX - 6}
                     y2={staffCenterY + LINE_SPACING + 8}
-                    stroke="#8b5cf6"
-                    strokeWidth={3}
+                    stroke={
+                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    strokeWidth={hoveredMarker === endMarker.id ? 4 : 3}
+                    style={{ pointerEvents: "none" }}
                   />
                   <circle
                     cx={barX - 18}
                     cy={staffCenterY - LINE_SPACING / 2}
-                    r={5}
-                    fill="#8b5cf6"
-                    className="hover:fill-red-500 transition-colors"
+                    r={hoveredMarker === endMarker.id ? 7 : 5}
+                    fill={
+                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    style={{ pointerEvents: "none" }}
                   />
                   <circle
                     cx={barX - 18}
                     cy={staffCenterY + LINE_SPACING / 2}
-                    r={5}
-                    fill="#8b5cf6"
-                    className="hover:fill-red-500 transition-colors"
+                    r={hoveredMarker === endMarker.id ? 7 : 5}
+                    fill={
+                      hoveredMarker === endMarker.id ? "#ef4444" : "#8b5cf6"
+                    }
+                    style={{ pointerEvents: "none" }}
                   />
+                  {/* Hover tooltip */}
+                  {hoveredMarker === endMarker.id && (
+                    <g>
+                      <rect
+                        x={barX - 90}
+                        y={staffCenterY - LINE_SPACING - 45}
+                        width={120}
+                        height={22}
+                        fill="#1f2937"
+                        rx={4}
+                        style={{ pointerEvents: "none" }}
+                      />
+                      <text
+                        x={barX - 30}
+                        y={staffCenterY - LINE_SPACING - 30}
+                        fontSize={11}
+                        fill="white"
+                        textAnchor="middle"
+                        fontWeight="600"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        Double-click to delete
+                      </text>
+                    </g>
+                  )}
                 </g>
               )}
             </g>
           );
         })}
 
-        {/* Pending repeat start indicator */}
+        {/* Interactive repeat placement highlighting */}
         {repeatStart &&
-          repeatStart.system === systemIndex &&
-          selectedTool === "repeat" && (
-            <rect
-              x={
-                LEFT_MARGIN +
-                repeatStart.measure * layout.beatsPerMeasure * BEAT_WIDTH
-              }
-              y={staffCenterY - LINE_SPACING - 15}
-              width={layout.beatsPerMeasure * BEAT_WIDTH}
-              height={LINE_SPACING * 2 + 30}
-              fill="#8b5cf6"
-              opacity={0.15}
-              rx={4}
-            />
-          )}
+          selectedTool === "repeat" &&
+          (() => {
+            // Calculate which measures to highlight on this system
+            const startSystem = repeatStart.system;
+            const startMeasure = repeatStart.measure;
+            const endSystem = hoveredRepeatMeasure?.system ?? startSystem;
+            const endMeasure = hoveredRepeatMeasure?.measure ?? startMeasure;
+
+            // Calculate absolute measure numbers for comparison
+            const startAbsolute =
+              startSystem * measuresPerSystem + startMeasure;
+            const endAbsolute = endSystem * measuresPerSystem + endMeasure;
+
+            // Ensure start comes before end
+            const [minAbsolute, maxAbsolute] =
+              startAbsolute <= endAbsolute
+                ? [startAbsolute, endAbsolute]
+                : [endAbsolute, startAbsolute];
+
+            // Calculate which measures on this system should be highlighted
+            const systemStartMeasure = systemIndex * measuresPerSystem;
+            const systemEndMeasure = systemStartMeasure + measuresPerSystem - 1;
+
+            const highlightStart = Math.max(
+              0,
+              minAbsolute - systemStartMeasure,
+            );
+            const highlightEnd = Math.min(
+              measuresPerSystem - 1,
+              maxAbsolute - systemStartMeasure,
+            );
+
+            // Only render if this system has measures to highlight
+            if (highlightStart > measuresPerSystem - 1 || highlightEnd < 0) {
+              return null;
+            }
+
+            const measures = [];
+            for (let m = highlightStart; m <= highlightEnd; m++) {
+              measures.push(m);
+            }
+
+            // Determine where to show the instructional text
+            const showTextInMeasure = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.system === systemIndex
+                ? hoveredRepeatMeasure.measure
+                : null
+              : startSystem === systemIndex
+                ? startMeasure
+                : null;
+
+            return (
+              <g>
+                {measures.map((m) => (
+                  <rect
+                    key={`highlight-${m}`}
+                    x={LEFT_MARGIN + m * layout.beatsPerMeasure * BEAT_WIDTH}
+                    y={staffCenterY - LINE_SPACING - 15}
+                    width={layout.beatsPerMeasure * BEAT_WIDTH}
+                    height={LINE_SPACING * 2 + 30}
+                    fill="#8b5cf6"
+                    opacity={0.15}
+                    rx={4}
+                  />
+                ))}
+              </g>
+            );
+          })()}
 
         {/* Treble clef */}
         <text
@@ -1286,7 +1670,7 @@ export function NoteEditor({
               textAnchor="middle"
               fill="#334155"
             >
-              {timeSignature.split("/")[0]}
+              {timeSignature.numerator}
             </text>
             <text
               x={85}
@@ -1296,7 +1680,7 @@ export function NoteEditor({
               textAnchor="middle"
               fill="#334155"
             >
-              {timeSignature.split("/")[1]}
+              {timeSignature.denominator}
             </text>
           </>
         )}
@@ -1331,26 +1715,6 @@ export function NoteEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 justify-end">
-        <span className="text-sm text-gray-500">Systems:</span>
-        <button
-          onClick={() => onSystemCountChange(Math.max(1, systemCount - 1))}
-          disabled={systemCount <= 1}
-          className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-bold"
-        >
-          −
-        </button>
-        <span className="text-sm font-medium w-6 text-center">
-          {systemCount}
-        </span>
-        <button
-          onClick={() => onSystemCountChange(systemCount + 1)}
-          className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
-        >
-          +
-        </button>
-      </div>
-
       <svg
         ref={svgRef}
         width={svgWidth}
@@ -1404,6 +1768,37 @@ export function NoteEditor({
         </defs>
 
         {Array.from({ length: systemCount }, (_, i) => renderSystem(i))}
+
+        {/* Add system button */}
+        <g>
+          <rect
+            x={staffRight + 20}
+            y={getStaffCenterY(systemCount - 1) - 20}
+            width={40}
+            height={40}
+            fill="#f3f4f6"
+            stroke="#8b5cf6"
+            strokeWidth={2}
+            rx={8}
+            className="cursor-pointer hover:fill-purple-50 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSystemCountChange(systemCount + 1);
+            }}
+          />
+          <text
+            x={staffRight + 40}
+            y={getStaffCenterY(systemCount - 1) + 6}
+            fontSize={24}
+            fill="#8b5cf6"
+            textAnchor="middle"
+            fontWeight="bold"
+            style={{ pointerEvents: "none" }}
+          >
+            +
+          </text>
+        </g>
+
         {/* Duration extensions (render behind notes) */}
         {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
@@ -1513,6 +1908,147 @@ export function NoteEditor({
           );
         })}
 
+        {/* Hover highlight before first click (rendered on top of notes) */}
+        {/* PLACEMENT: This MUST render AFTER notes/beams to appear on top
+            - SVG has no z-index; rendering order determines layering
+            - Staff → Notes → Beams → Hover Highlight (this)
+            - If moved before notes, purple highlight will be hidden behind them */}
+        {!repeatStart &&
+          selectedTool === "repeat" &&
+          hoveredRepeatMeasure &&
+          (() => {
+            const hoverStaffCenterY = getStaffCenterY(
+              hoveredRepeatMeasure.system,
+            );
+            return (
+              <g>
+                <rect
+                  x={
+                    LEFT_MARGIN +
+                    hoveredRepeatMeasure.measure *
+                      layout.beatsPerMeasure *
+                      BEAT_WIDTH
+                  }
+                  y={hoverStaffCenterY - LINE_SPACING - 15}
+                  width={layout.beatsPerMeasure * BEAT_WIDTH}
+                  height={LINE_SPACING * 2 + 30}
+                  fill="#8b5cf6"
+                  opacity={0.15}
+                  rx={4}
+                />
+                {/* Instructional text */}
+                <rect
+                  x={
+                    LEFT_MARGIN +
+                    hoveredRepeatMeasure.measure *
+                      layout.beatsPerMeasure *
+                      BEAT_WIDTH +
+                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2 -
+                    60
+                  }
+                  y={hoverStaffCenterY - LINE_SPACING - 32}
+                  width={120}
+                  height={24}
+                  fill="#f3e8ff"
+                  stroke="#8b5cf6"
+                  strokeWidth={1.5}
+                  rx={6}
+                />
+                <text
+                  x={
+                    LEFT_MARGIN +
+                    hoveredRepeatMeasure.measure *
+                      layout.beatsPerMeasure *
+                      BEAT_WIDTH +
+                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2
+                  }
+                  y={hoverStaffCenterY - LINE_SPACING - 16}
+                  fontSize={12}
+                  fontWeight="600"
+                  fill="#6d28d9"
+                  textAnchor="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  Click to set START
+                </text>
+              </g>
+            );
+          })()}
+
+        {/* Interactive repeat placement instructional text (rendered on top of notes) */}
+        {/* PLACEMENT: This also renders AFTER notes/beams for same SVG z-index reason
+            - Shows range highlighting and dynamic START/END text during second click
+            - Must appear above notes for visibility */}
+        {repeatStart &&
+          selectedTool === "repeat" &&
+          (() => {
+            const startSystem = repeatStart.system;
+            const startMeasure = repeatStart.measure;
+
+            // Determine where to show the instructional text and what to say
+            const showTextSystem = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.system
+              : startSystem;
+            const showTextMeasure = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.measure
+              : startMeasure;
+            const staffCenterY = getStaffCenterY(showTextSystem);
+
+            // Calculate if hovered measure comes before or after clicked measure
+            const clickedAbsoluteMeasure =
+              startSystem * measuresPerSystem + startMeasure;
+            const hoveredAbsoluteMeasure = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.system * measuresPerSystem +
+                hoveredRepeatMeasure.measure
+              : clickedAbsoluteMeasure;
+
+            const isHoveredBefore =
+              hoveredAbsoluteMeasure < clickedAbsoluteMeasure;
+            const textToShow = hoveredRepeatMeasure
+              ? isHoveredBefore
+                ? "Click to set START"
+                : "Click to set END"
+              : "Click to set END";
+
+            return (
+              <g>
+                {/* Background rectangle for text visibility */}
+                <rect
+                  x={
+                    LEFT_MARGIN +
+                    showTextMeasure * layout.beatsPerMeasure * BEAT_WIDTH +
+                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2 -
+                    (textToShow === "Click to set END" ? 55 : 60)
+                  }
+                  y={staffCenterY - LINE_SPACING - 32}
+                  width={textToShow === "Click to set END" ? 110 : 120}
+                  height={24}
+                  fill="#f3e8ff"
+                  stroke="#8b5cf6"
+                  strokeWidth={1.5}
+                  rx={6}
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Text on top */}
+                <text
+                  x={
+                    LEFT_MARGIN +
+                    showTextMeasure * layout.beatsPerMeasure * BEAT_WIDTH +
+                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2
+                  }
+                  y={staffCenterY - LINE_SPACING - 16}
+                  fontSize={12}
+                  fontWeight="600"
+                  fill="#7c3aed"
+                  textAnchor="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {textToShow}
+                </text>
+              </g>
+            );
+          })()}
+
         {playheadX !== null && (
           <g>
             <line
@@ -1592,13 +2128,6 @@ export function NoteEditor({
           >
             <span>🗑</span> Delete
           </button>
-        </div>
-      )}
-
-      {/* Repeat mode indicator */}
-      {selectedTool === "repeat" && repeatStart && (
-        <div className="text-center text-sm text-purple-600">
-          Click another measure to set repeat end point
         </div>
       )}
     </div>
