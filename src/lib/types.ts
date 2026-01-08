@@ -98,24 +98,56 @@ export interface PlaybackState {
 }
 
 // Time signature type (also exported from NoteEditor)
-export type TimeSignature = "4/4" | "3/4" | "6/8" | "2/4";
+export interface TimeSignature {
+  numerator: number; // Top number (beats per measure)
+  denominator: number; // Bottom number (note value)
+}
 
-// Editor-specific note type (also exported from NoteEditor)
+// Legacy editor note format (for backward compatibility during migration)
+export interface LegacyEditorNote {
+  id: string;
+  pitch: Pitch;
+  duration: number;
+  beat: number; // Position within system
+  system: number; // Which system/row (LEGACY - being phased out)
+}
+
+// New editor note type using absolute beat positioning
 export interface EditorNote {
   id: string;
   pitch: Pitch;
   duration: number; // 0.5, 1, 2, or 4 beats
-  beat: number; // Position within system (0, 0.5, 1, 1.5, etc.)
-  system: number; // Which system/row (0-indexed)
+  absoluteBeat: number; // Position from composition start (0, 0.5, 1, 2, 2.5...)
 }
 
-// Repeat sign marker (also exported from NoteEditor)
+// Legacy repeat marker format (for backward compatibility)
+export interface LegacyRepeatMarker {
+  id: string;
+  pairId: string;
+  type: "start" | "end";
+  measure: number; // Measure within system
+  system: number; // Which system
+}
+
+// New repeat marker using absolute measure numbering
 export interface RepeatMarker {
   id: string;
   pairId: string; // Links start and end markers together
   type: "start" | "end";
-  measure: number; // Measure number (0, 1, 2 for measures per system)
-  system: number;
+  measureNumber: number; // Absolute measure from composition start (0, 1, 2...)
+}
+
+// Legacy composition format
+export interface LegacyComposition {
+  notes: LegacyEditorNote[];
+  repeatMarkers: LegacyRepeatMarker[];
+  systemCount: number;
+}
+
+// New composition format (no systemCount needed)
+export interface Composition {
+  notes: EditorNote[];
+  repeatMarkers: RepeatMarker[];
 }
 
 // Saved song structure for localStorage persistence
@@ -124,11 +156,7 @@ export interface SavedSong {
   name: string; // User-provided name
   createdAt: number; // Unix timestamp
   updatedAt: number; // Unix timestamp
-  composition: {
-    notes: EditorNote[];
-    repeatMarkers: RepeatMarker[];
-    systemCount: number;
-  };
+  composition: Composition | LegacyComposition; // Support both formats during migration
   settings: {
     tempo: number;
     timeSignature: TimeSignature;

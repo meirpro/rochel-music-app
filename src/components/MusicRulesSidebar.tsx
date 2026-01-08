@@ -37,14 +37,14 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
     title: string;
     children: React.ReactNode;
   }) => (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border-b border-purple-100 last:border-b-0">
       <button
         onClick={() => toggleSection(id)}
-        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-purple-50 transition-colors"
       >
-        <span className="font-medium text-gray-800">{title}</span>
+        <span className="font-semibold text-purple-800">{title}</span>
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-purple-400 transition-transform ${
             expandedSection === id ? "rotate-180" : ""
           }`}
           fill="none"
@@ -60,7 +60,7 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </svg>
       </button>
       {expandedSection === id && (
-        <div className="px-4 pb-4 text-sm text-gray-600">{children}</div>
+        <div className="px-4 pb-4 text-sm text-purple-700">{children}</div>
       )}
     </div>
   );
@@ -113,15 +113,15 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
 
   return (
     <div
-      className={`fixed top-0 left-0 h-full w-80 bg-white border-r border-gray-200 shadow-xl z-40 transform transition-transform duration-300 overflow-y-auto ${
+      className={`fixed top-0 left-0 h-full w-80 bg-white border-r-2 border-purple-200 shadow-xl z-40 transform transition-transform duration-300 overflow-y-auto ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10">
-        <h2 className="text-lg font-bold text-gray-800">
+      <div className="sticky top-0 bg-gradient-to-r from-purple-100 to-blue-100 border-b-2 border-purple-200 px-4 py-3 z-10">
+        <h2 className="text-lg font-semibold text-purple-800">
           Music Notation Rules
         </h2>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-purple-600">
           Learn about music symbols and notation
         </p>
       </div>
@@ -133,29 +133,35 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
             <div className="flex items-center gap-3">
               <MiniNote type="whole" />
               <div>
-                <span className="font-medium text-gray-700">Whole Note</span>
-                <span className="text-gray-500"> - 4 beats</span>
+                <span className="font-semibold text-purple-800">
+                  Whole Note
+                </span>
+                <span className="text-purple-600"> - 4 beats</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <MiniNote type="half" />
               <div>
-                <span className="font-medium text-gray-700">Half Note</span>
-                <span className="text-gray-500"> - 2 beats</span>
+                <span className="font-semibold text-purple-800">Half Note</span>
+                <span className="text-purple-600"> - 2 beats</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <MiniNote type="quarter" />
               <div>
-                <span className="font-medium text-gray-700">Quarter Note</span>
-                <span className="text-gray-500"> - 1 beat</span>
+                <span className="font-semibold text-purple-800">
+                  Quarter Note
+                </span>
+                <span className="text-purple-600"> - 1 beat</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <MiniNote type="eighth" />
               <div>
-                <span className="font-medium text-gray-700">Eighth Note</span>
-                <span className="text-gray-500"> - 1/2 beat</span>
+                <span className="font-semibold text-purple-800">
+                  Eighth Note
+                </span>
+                <span className="text-purple-600"> - 1/2 beat</span>
               </div>
             </div>
           </div>
@@ -168,19 +174,21 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
               <strong>Beams</strong> connect eighth notes to show rhythm
               groupings. Notes beam automatically based on their position.
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <p className="font-medium text-gray-700">When notes connect:</p>
-              <ul className="list-disc list-inside space-y-1 text-gray-600">
+            <div className="bg-purple-50 rounded-lg p-3 space-y-2 shadow-sm">
+              <p className="font-semibold text-purple-800">
+                When notes connect:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-purple-700">
                 <li>Only eighth notes can be beamed</li>
                 <li>Notes must be adjacent (close together)</li>
                 <li>Notes must be in the same &quot;beat group&quot;</li>
               </ul>
             </div>
-            <div className="bg-blue-50 rounded-lg p-3 space-y-2 mt-2">
-              <p className="font-medium text-blue-700">
+            <div className="bg-blue-100 rounded-lg p-3 space-y-2 mt-2 shadow-sm">
+              <p className="font-semibold text-blue-800">
                 Beat Groups by Time Signature:
               </p>
-              <ul className="list-disc list-inside space-y-1 text-blue-600 text-xs">
+              <ul className="list-disc list-inside space-y-1 text-blue-700 text-xs">
                 <li>
                   <strong>4/4:</strong> Beats 1-2 | Beats 3-4 (per measure)
                 </li>
@@ -195,29 +203,29 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
                 </li>
               </ul>
             </div>
-            <div className="bg-amber-50 rounded-lg p-3 mt-2">
-              <p className="font-medium text-amber-700 text-xs">
+            <div className="bg-orange-100 rounded-lg p-3 mt-2 shadow-sm">
+              <p className="font-semibold text-orange-800 text-xs">
                 Notes will NOT beam across:
               </p>
-              <ul className="list-disc list-inside text-amber-600 text-xs">
+              <ul className="list-disc list-inside text-orange-700 text-xs">
                 <li>Bar lines (measure boundaries)</li>
                 <li>Beat group boundaries</li>
               </ul>
             </div>
-            <div className="bg-purple-50 rounded-lg p-3 mt-2 space-y-2">
-              <p className="font-medium text-purple-700 text-xs">
+            <div className="bg-purple-100 rounded-lg p-3 mt-2 space-y-2 shadow-sm">
+              <p className="font-semibold text-purple-800 text-xs">
                 Stem Direction for Beamed Notes:
               </p>
-              <p className="text-purple-600 text-xs">
+              <p className="text-purple-700 text-xs">
                 Find the note <strong>furthest from the middle line</strong>.
                 All stems in the group point that direction.
               </p>
             </div>
-            <div className="bg-green-50 rounded-lg p-3 mt-2 space-y-2">
-              <p className="font-medium text-green-700 text-xs">
+            <div className="bg-emerald-100 rounded-lg p-3 mt-2 space-y-2 shadow-sm">
+              <p className="font-semibold text-emerald-800 text-xs">
                 Beam Angle (Slope):
               </p>
-              <ul className="list-disc list-inside text-green-600 text-xs">
+              <ul className="list-disc list-inside text-emerald-700 text-xs">
                 <li>Ascending notes = beam angles up</li>
                 <li>Descending notes = beam angles down</li>
                 <li>Same pitch = horizontal beam</li>
@@ -229,11 +237,11 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
                 <MiniNote type="eighth" color={NOTE_COLORS.C} />
                 <MiniNote type="eighth" color={NOTE_COLORS.E} />
               </div>
-              <span className="text-gray-500">
+              <span className="text-purple-600">
                 = Two eighth notes beamed together
               </span>
             </div>
-            <p className="text-gray-500 italic text-xs">
+            <p className="text-purple-500 italic text-xs">
               When notes have different colors, the beam shows a gradient!
             </p>
           </div>
@@ -245,21 +253,21 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
             <p>
               Stem direction depends on the note&apos;s position on the staff:
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div className="bg-purple-50 rounded-lg p-3 space-y-2 shadow-sm">
               <div className="flex items-center gap-2">
                 <span className="text-xl">↑</span>
-                <span>
+                <span className="text-purple-700">
                   <strong>Stems up:</strong> Notes below the middle line (B4)
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xl">↓</span>
-                <span>
+                <span className="text-purple-700">
                   <strong>Stems down:</strong> Notes above the middle line
                 </span>
               </div>
             </div>
-            <p className="text-gray-500 text-xs">
+            <p className="text-purple-600 text-xs">
               For beamed groups, all stems follow the direction of the note
               furthest from the middle line.
             </p>
@@ -271,25 +279,31 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
           <div className="space-y-3">
             <p>Time signatures tell you how many beats per measure:</p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-lg p-2 text-center">
-                <div className="text-xl font-bold text-gray-700">4/4</div>
-                <div className="text-xs text-gray-500">4 beats per measure</div>
-                <div className="text-xs text-gray-400">Beam: groups of 2</div>
+              <div className="bg-purple-100 rounded-lg p-2 text-center shadow-sm">
+                <div className="text-xl font-semibold text-purple-800">4/4</div>
+                <div className="text-xs text-purple-700">
+                  4 beats per measure
+                </div>
+                <div className="text-xs text-purple-600">Beam: groups of 2</div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2 text-center">
-                <div className="text-xl font-bold text-gray-700">3/4</div>
-                <div className="text-xs text-gray-500">3 beats per measure</div>
-                <div className="text-xs text-gray-400">Beam: each beat</div>
+              <div className="bg-blue-100 rounded-lg p-2 text-center shadow-sm">
+                <div className="text-xl font-semibold text-blue-800">3/4</div>
+                <div className="text-xs text-blue-700">3 beats per measure</div>
+                <div className="text-xs text-blue-600">Beam: each beat</div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2 text-center">
-                <div className="text-xl font-bold text-gray-700">6/8</div>
-                <div className="text-xs text-gray-500">6 eighth notes</div>
-                <div className="text-xs text-gray-400">Beam: groups of 3</div>
+              <div className="bg-emerald-100 rounded-lg p-2 text-center shadow-sm">
+                <div className="text-xl font-semibold text-emerald-800">
+                  6/8
+                </div>
+                <div className="text-xs text-emerald-700">6 eighth notes</div>
+                <div className="text-xs text-emerald-600">
+                  Beam: groups of 3
+                </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2 text-center">
-                <div className="text-xl font-bold text-gray-700">2/4</div>
-                <div className="text-xs text-gray-500">2 beats per measure</div>
-                <div className="text-xs text-gray-400">Beam: each beat</div>
+              <div className="bg-pink-100 rounded-lg p-2 text-center shadow-sm">
+                <div className="text-xl font-semibold text-pink-800">2/4</div>
+                <div className="text-xs text-pink-700">2 beats per measure</div>
+                <div className="text-xs text-pink-600">Beam: each beat</div>
               </div>
             </div>
           </div>
@@ -303,12 +317,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
               {Object.entries(NOTE_COLORS).map(([note, color]) => (
                 <div key={note} className="flex items-center gap-2">
                   <div
-                    className="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center text-xs font-bold text-white"
+                    className="w-6 h-6 rounded-full border border-purple-200 flex items-center justify-center text-xs font-semibold text-white shadow-sm"
                     style={{ backgroundColor: color }}
                   >
                     {note}
                   </div>
-                  <span className="text-gray-600">
+                  <span className="text-purple-700">
                     {note}
                     {note === "C"
                       ? " (Do)"
@@ -337,9 +351,9 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
               This editor uses a simplified <strong>3-line staff</strong>. Notes
               snap to lines and spaces automatically.
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <p className="font-medium text-gray-700">Note positions:</p>
-              <ul className="text-xs text-gray-600 space-y-1">
+            <div className="bg-purple-50 rounded-lg p-3 space-y-2 shadow-sm">
+              <p className="font-semibold text-purple-800">Note positions:</p>
+              <ul className="text-xs text-purple-700 space-y-1">
                 <li>
                   <strong>On lines:</strong> E, G, B (note sits on the line)
                 </li>
@@ -351,9 +365,11 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
                 </li>
               </ul>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="font-medium text-gray-700 mb-2">Treble Clef (𝄞):</p>
-              <span className="text-gray-600 text-xs">
+            <div className="bg-blue-100 rounded-lg p-3 shadow-sm">
+              <p className="font-semibold text-blue-800 mb-2">
+                Treble Clef (𝄞):
+              </p>
+              <span className="text-blue-700 text-xs">
                 Used for higher-pitched instruments and the right hand of piano
               </span>
             </div>
@@ -364,32 +380,32 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         <Section id="repeats" title="Repeat Signs">
           <div className="space-y-3">
             <p>Repeat signs tell you to play a section again:</p>
-            <div className="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
+            <div className="flex items-center gap-4 bg-purple-100 rounded-lg p-3 shadow-sm">
               <div className="flex items-center gap-1">
                 <div className="flex items-center">
-                  <div className="w-1 h-6 bg-purple-500" />
-                  <div className="w-1 h-6 bg-purple-500 ml-0.5" />
+                  <div className="w-1 h-6 bg-purple-600" />
+                  <div className="w-1 h-6 bg-purple-600 ml-0.5" />
                   <div className="flex flex-col gap-1 ml-1">
-                    <div className="w-2 h-2 rounded-full bg-purple-500" />
-                    <div className="w-2 h-2 rounded-full bg-purple-500" />
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
                   </div>
                 </div>
-                <span className="text-xs text-gray-500 ml-2">Start</span>
+                <span className="text-xs text-purple-700 ml-2">Start</span>
               </div>
-              <span className="text-gray-400">...</span>
+              <span className="text-purple-400">...</span>
               <div className="flex items-center gap-1">
                 <div className="flex items-center">
                   <div className="flex flex-col gap-1 mr-1">
-                    <div className="w-2 h-2 rounded-full bg-purple-500" />
-                    <div className="w-2 h-2 rounded-full bg-purple-500" />
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
                   </div>
-                  <div className="w-1 h-6 bg-purple-500" />
-                  <div className="w-1 h-6 bg-purple-500 ml-0.5" />
+                  <div className="w-1 h-6 bg-purple-600" />
+                  <div className="w-1 h-6 bg-purple-600 ml-0.5" />
                 </div>
-                <span className="text-xs text-gray-500 ml-2">End</span>
+                <span className="text-xs text-purple-700 ml-2">End</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-purple-600">
               Click and drag repeat markers to reposition them. Double-click to
               remove.
             </p>

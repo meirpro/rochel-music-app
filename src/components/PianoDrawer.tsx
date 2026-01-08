@@ -66,13 +66,27 @@ export function PianoDrawer({
   const [playbackHighlight, setPlaybackHighlight] = useState<Pitch | null>(
     null,
   );
+  // Track sustain pedal state (Shift or Space held)
+  const [sustainActive, setSustainActive] = useState(false);
+  // Track which keys should be sustained when pedal is released
+  const [sustainedKeys, setSustainedKeys] = useState<Set<Pitch>>(new Set());
 
   // Refs for tracking active oscillators for sustain
   const activeOscillators = useRef<Map<Pitch, { stop: () => void }>>(new Map());
 
+  // Cleanup: Stop all sounds when component unmounts (piano closes)
+  useEffect(() => {
+    const oscillatorsRef = activeOscillators.current;
+    return () => {
+      oscillatorsRef.forEach((osc) => {
+        osc.stop();
+      });
+      oscillatorsRef.clear();
+    };
+  }, []);
+
   // Play a note with optional sustain (returns stop function)
   const startNote = useCallback((pitch: Pitch): (() => void) | null => {
-    const player = getAudioPlayer();
     const midi = MIDI_NOTES[pitch];
     if (midi <= 0) return null;
 
@@ -152,7 +166,7 @@ export function PianoDrawer({
     }
   }, []);
 
-  // Handle keyboard events with sustain
+  // Handle keyboard events with sustain pedal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -164,6 +178,13 @@ export function PianoDrawer({
 
       // Ignore repeat events (key held down)
       if (e.repeat) return;
+
+      // Check for sustain pedal (Shift or Space)
+      if (e.key === "Shift" || e.key === " ") {
+        e.preventDefault();
+        setSustainActive(true);
+        return;
+      }
 
       const key = e.key.toLowerCase();
       // Check white keys first, then black keys (if enabled)
@@ -187,15 +208,37 @@ export function PianoDrawer({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      // Check for sustain pedal release
+      if (e.key === "Shift" || e.key === " ") {
+        setSustainActive(false);
+        // Stop all sustained notes that are no longer being pressed
+        sustainedKeys.forEach((pitch) => {
+          if (!pressedKeys.has(pitch)) {
+            const osc = activeOscillators.current.get(pitch);
+            if (osc) {
+              osc.stop();
+              activeOscillators.current.delete(pitch);
+            }
+          }
+        });
+        setSustainedKeys(new Set());
+        return;
+      }
+
       const key = e.key.toLowerCase();
       const pianoKey = ALL_KEYS.find((k) => k.keyboard.includes(key));
 
       if (pianoKey && pressedKeys.has(pianoKey.pitch)) {
-        // Stop the sustained note
-        const osc = activeOscillators.current.get(pianoKey.pitch);
-        if (osc) {
-          osc.stop();
-          activeOscillators.current.delete(pianoKey.pitch);
+        // If sustain pedal is active, keep the note playing but track it
+        if (sustainActive) {
+          setSustainedKeys((prev) => new Set(prev).add(pianoKey.pitch));
+        } else {
+          // Stop the note immediately
+          const osc = activeOscillators.current.get(pianoKey.pitch);
+          if (osc) {
+            osc.stop();
+            activeOscillators.current.delete(pianoKey.pitch);
+          }
         }
 
         setPressedKeys((prev) => {
@@ -213,15 +256,21 @@ export function PianoDrawer({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [pressedKeys, startNote, showBlackKeys]);
+  }, [pressedKeys, startNote, showBlackKeys, sustainActive, sustainedKeys]);
+
+  // Ref to track the timeout for clearing highlight
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle playback highlight with proper timing and gaps
   // activeNoteStartTime changes for each new note, ensuring we get a fresh cycle even for repeated pitches
   useEffect(() => {
-    if (activePitch && activeNoteStartTime > 0) {
-      // Show highlight immediately when note plays
-      setPlaybackHighlight(activePitch);
+    // Clear any pending timeout
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
 
+    if (activePitch && activeNoteStartTime > 0) {
       // Calculate how long to show the highlight based on note duration
       const durationMs = (activeNoteDuration * 60000) / tempo;
       // Release the key earlier to create clear separation between notes
@@ -229,17 +278,23 @@ export function PianoDrawer({
       const releaseRatio = Math.min(0.8, 0.55 + activeNoteDuration * 0.1);
       const highlightDuration = Math.max(30, durationMs * releaseRatio);
 
-      const hideDelay = setTimeout(() => {
+      highlightTimeoutRef.current = setTimeout(() => {
         setPlaybackHighlight(null);
+        highlightTimeoutRef.current = null;
       }, highlightDuration);
-
-      return () => {
-        clearTimeout(hideDelay);
-      };
-    } else if (!activePitch) {
-      setPlaybackHighlight(null);
     }
+
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
   }, [activePitch, activeNoteDuration, activeNoteStartTime, tempo]);
+
+  // Derive playback highlight directly from props - shows immediately when note starts
+  const currentPlaybackHighlight =
+    activePitch && activeNoteStartTime > 0 ? activePitch : playbackHighlight;
 
   // Get color for a key
   const getKeyColor = (pitch: Pitch) => {
@@ -255,32 +310,49 @@ export function PianoDrawer({
     return (
       pressedKeys.has(pitch) ||
       mousePressed === pitch ||
-      playbackHighlight === pitch
+      currentPlaybackHighlight === pitch
     );
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-32 bg-gray-900 border-t border-gray-700 shadow-2xl z-40">
+    <div className="fixed bottom-0 left-0 right-0 h-32 bg-purple-100 border-t-2 border-purple-300 shadow-lg z-40">
       <div className="h-full flex flex-col">
         {/* Header with toggles */}
-        <div className="flex items-center justify-between px-4 py-1 bg-gray-800 border-b border-gray-700">
-          <div className="text-xs text-gray-400">
-            Keys: <span className="text-gray-300">A-K</span> or{" "}
-            <span className="text-gray-300">1-8</span>
-            {showBlackKeys && (
-              <>
-                {" "}
-                | Sharps: <span className="text-gray-300">W E T Y U</span>
-              </>
-            )}
+        <div className="flex items-center justify-between px-4 py-1 bg-purple-200 border-b border-purple-300">
+          <div className="text-xs text-purple-700 flex items-center gap-3">
+            <span>
+              Keys: <span className="text-purple-800 font-semibold">A-K</span>{" "}
+              or <span className="text-purple-800 font-semibold">1-8</span>
+              {showBlackKeys && (
+                <>
+                  {" "}
+                  | Sharps:{" "}
+                  <span className="text-purple-800 font-semibold">
+                    W E T Y U
+                  </span>
+                </>
+              )}
+            </span>
+            <span className="border-l border-purple-400 pl-3 flex items-center gap-1">
+              Sustain:{" "}
+              <span className="text-purple-800 font-semibold">Shift</span> or{" "}
+              <span className="text-purple-800 font-semibold">Space</span>
+              {sustainActive && (
+                <span className="ml-1 px-1.5 py-0.5 bg-emerald-400 text-white text-[10px] font-bold rounded animate-pulse">
+                  ON
+                </span>
+              )}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             {/* Black keys toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-gray-400">Sharps</span>
+              <span className="text-xs text-purple-700 font-medium">
+                Sharps
+              </span>
               <div
                 className={`relative w-8 h-4 rounded-full transition-colors ${
-                  showBlackKeys ? "bg-emerald-500" : "bg-gray-600"
+                  showBlackKeys ? "bg-emerald-300" : "bg-purple-300"
                 }`}
                 onClick={(e) => {
                   e.preventDefault();
@@ -296,10 +368,12 @@ export function PianoDrawer({
             </label>
             {/* Colors toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-gray-400">Colors</span>
+              <span className="text-xs text-purple-700 font-medium">
+                Colors
+              </span>
               <div
                 className={`relative w-8 h-4 rounded-full transition-colors ${
-                  useColors ? "bg-emerald-500" : "bg-gray-600"
+                  useColors ? "bg-emerald-300" : "bg-purple-300"
                 }`}
                 onClick={(e) => {
                   e.preventDefault();
@@ -334,14 +408,14 @@ export function PianoDrawer({
                   onMouseUp={() => setMousePressed(null)}
                   onMouseLeave={() => setMousePressed(null)}
                   className={`relative flex flex-col items-center justify-end pb-2 rounded-b-lg select-none
-                      ${useColors ? "border-2 border-black/20" : "border border-gray-300"}
+                      ${useColors ? "border-2 border-purple-200" : "border-2 border-purple-200"}
                       transition-all duration-[50ms] ease-out
                     `}
                   style={{
                     backgroundColor: pressed
                       ? useColors
-                        ? `color-mix(in srgb, ${bgColor} 70%, black)`
-                        : "#d0d0d0"
+                        ? `color-mix(in srgb, ${bgColor} 75%, #c084fc)`
+                        : "#e9d5ff"
                       : bgColor,
                     width: "60px",
                     height: "80px",
@@ -349,14 +423,16 @@ export function PianoDrawer({
                       ? "translateY(3px) scale(0.97)"
                       : "translateY(0) scale(1)",
                     boxShadow: pressed
-                      ? "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 3px rgba(0,0,0,0.2)"
-                      : "0 4px 6px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)",
+                      ? "0 1px 2px rgba(168,85,247,0.2), inset 0 1px 3px rgba(168,85,247,0.15)"
+                      : "0 3px 5px rgba(168,85,247,0.15), 0 1px 3px rgba(168,85,247,0.1)",
                   }}
                 >
                   {/* Note name */}
                   <span
-                    className={`text-lg font-bold transition-opacity duration-50 ${
-                      useColors ? "text-white drop-shadow-md" : "text-gray-700"
+                    className={`text-lg font-semibold transition-opacity duration-50 ${
+                      useColors
+                        ? "text-white drop-shadow-md"
+                        : "text-purple-700"
                     } ${pressed ? "opacity-80" : "opacity-100"}`}
                   >
                     {key.name}
@@ -367,7 +443,7 @@ export function PianoDrawer({
                   {/* Keyboard hint */}
                   <span
                     className={`text-xs ${
-                      useColors ? "text-white/70" : "text-gray-400"
+                      useColors ? "text-white/70" : "text-purple-500"
                     }`}
                   >
                     {key.keyboard[0].toUpperCase()}
@@ -400,7 +476,7 @@ export function PianoDrawer({
                     }}
                     onMouseUp={() => setMousePressed(null)}
                     onMouseLeave={() => setMousePressed(null)}
-                    className="absolute top-0 flex flex-col items-center justify-end pb-1 rounded-b-md select-none border border-gray-800 transition-all duration-[50ms] ease-out"
+                    className="absolute top-0 flex flex-col items-center justify-end pb-1 rounded-b-md select-none border-2 border-purple-400 transition-all duration-[50ms] ease-out"
                     style={{
                       left: `${leftPos}px`,
                       transform: isKeyPressed(blackKey.pitch)
@@ -409,20 +485,20 @@ export function PianoDrawer({
                       width: `${blackKeyWidth}px`,
                       height: "50px",
                       backgroundColor: isKeyPressed(blackKey.pitch)
-                        ? "#4a4a4a"
-                        : "#1a1a1a",
+                        ? "#a78bfa"
+                        : "#7c3aed",
                       boxShadow: isKeyPressed(blackKey.pitch)
-                        ? "0 1px 2px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)"
-                        : "0 3px 4px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)",
+                        ? "0 1px 2px rgba(124,58,237,0.3), inset 0 1px 2px rgba(255,255,255,0.2)"
+                        : "0 3px 4px rgba(124,58,237,0.3), 0 1px 2px rgba(124,58,237,0.2)",
                       zIndex: 10,
                     }}
                   >
                     {/* Note name */}
-                    <span className="text-xs font-bold text-gray-300">
+                    <span className="text-xs font-semibold text-white">
                       {blackKey.name}
                     </span>
                     {/* Keyboard hint */}
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-[10px] text-purple-100">
                       {blackKey.keyboard[0].toUpperCase()}
                     </span>
                   </button>

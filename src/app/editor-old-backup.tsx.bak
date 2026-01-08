@@ -5,7 +5,9 @@ import { useLocalStorage } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
 import {
   NoteEditor,
+  EditorNote,
   NoteTool,
+  RepeatMarker,
   TimeSignature,
   LEFT_MARGIN,
   BEAT_WIDTH,
@@ -20,38 +22,28 @@ import { SongLibraryModal } from "@/components/SongLibraryModal";
 import { HelpModal } from "@/components/HelpModal";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
-import {
-  Pitch,
-  SavedSong,
-  SavedSongsMap,
-  Composition,
-  LegacyComposition,
-  EditorNote,
-  RepeatMarker,
-} from "@/lib/types";
+import { Pitch, SavedSong, SavedSongsMap } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
-import {
-  migrateSavedSong,
-  migrateAllSongs,
-  isLegacyComposition,
-  getAbsoluteBeat,
-  calculateSystemCount,
-  getAbsoluteMeasureNumber,
-  getBeatsPerSystem,
-} from "@/lib/migration";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
-import { usePlayback } from "@/hooks/usePlayback";
-import {
-  toLegacyNotes,
-  fromLegacyNotes,
-  toLegacyRepeatMarkers,
-  fromLegacyRepeatMarkers,
-  calculateLegacySystemCount,
-} from "@/lib/coordinateAdapter";
+
+// Playback types
+interface PlaybackNote extends EditorNote {
+  playBeat: number;
+}
+
+interface TimelineSegment {
+  startBeat: number;
+  endBeat: number;
+  system: number;
+  startX: number;
+  endX: number;
+}
 
 // Types for localStorage persistence
-// Supports both legacy (system-based) and new (absoluteBeat) formats during migration
-type EditorComposition = Composition | LegacyComposition;
+interface EditorComposition {
+  notes: EditorNote[];
+  repeatMarkers: RepeatMarker[];
+  systemCount: number;
+}
 
 interface EditorSettings {
   selectedTool: NoteTool;
@@ -72,9 +64,10 @@ interface EditorUI {
   showHelp: boolean;
 }
 
-const DEFAULT_COMPOSITION: Composition = {
+const DEFAULT_COMPOSITION: EditorComposition = {
   notes: [],
   repeatMarkers: [],
+  systemCount: 1,
 };
 
 const DEFAULT_SETTINGS: EditorSettings = {
@@ -115,41 +108,24 @@ export default function EditorPage() {
     "rochel-current-song-id",
     null,
   );
-  const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
-    "rochel-measures-per-row",
-    2, // Default: 2 measures per row
-  );
-  const [totalMeasures, setTotalMeasures] = useLocalStorage<number>(
-    "rochel-total-measures",
-    4, // Default: 4 measures
-  );
 
-  // SVG ref for export functionality
-  const svgRef = useRef<SVGSVGElement>(null);
+  // Playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playheadX, setPlayheadX] = useState<number | null>(null);
+  const [playheadSystem, setPlayheadSystem] = useState<number>(0);
+  const [activePitch, setActivePitch] = useState<Pitch | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [activeNoteDuration, setActiveNoteDuration] = useState<
+    number | undefined
+  >();
+  const [activeNoteStartTime, setActiveNoteStartTime] = useState<
+    number | undefined
+  >();
 
-  // Ref for responsive layout
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-
-  // Calculate total beats for layout based on user-defined totalMeasures
-  const beatsPerMeasure = settings.timeSignature.numerator;
-  const beatsPerSystem = measuresPerRow * beatsPerMeasure;
-  const systemCount = Math.ceil(totalMeasures / measuresPerRow);
-  const totalBeats = totalMeasures * beatsPerMeasure;
-
-  // Get responsive layout configuration
-  const layout = useResponsiveLayout(editorContainerRef, {
-    timeSignature: settings.timeSignature,
-    totalBeats,
-    userMeasuresPerRow: measuresPerRow,
-  });
-
-  // Playback hook
-  const playback = usePlayback({
-    composition: composition as Composition,
-    tempo: settings.tempo,
-    timeSignature: settings.timeSignature,
-    measuresPerRow,
-  });
+  // Refs for playback
+  const playbackStartTimeRef = useRef<number>(0);
+  const playbackAnimationRef = useRef<number>(0);
+  const playedNotesRef = useRef<Set<string>>(new Set());
 
   // Undo/Redo state
   const [history, setHistory] = useState<EditorComposition[]>([composition]);
@@ -161,13 +137,10 @@ export default function EditorPage() {
       ? savedSongs[currentSongId].name
       : "Untitled Song";
 
-  // Update composition helper with history tracking
+  // Update composition helper
   const updateComposition = useCallback(
     (updates: Partial<EditorComposition>) => {
-      const newComposition = {
-        ...composition,
-        ...updates,
-      } as EditorComposition;
+      const newComposition = { ...composition, ...updates };
       setComposition(newComposition);
 
       // Add to history for undo/redo
@@ -196,42 +169,6 @@ export default function EditorPage() {
     }
   }, [historyIndex, history, setComposition]);
 
-  // Auto-migrate saved songs on mount (runs once)
-  useEffect(() => {
-    let needsMigration = false;
-
-    // Check if any songs need migration
-    for (const song of Object.values(savedSongs)) {
-      if (isLegacyComposition(song.composition)) {
-        needsMigration = true;
-        break;
-      }
-    }
-
-    // Perform migration if needed
-    if (needsMigration) {
-      console.log("Migrating saved songs to new format...");
-      const migratedSongs = migrateAllSongs(savedSongs);
-      setSavedSongs(migratedSongs);
-      toast.success("Songs updated to new format");
-    }
-
-    // Also migrate current composition if needed
-    if (isLegacyComposition(composition)) {
-      console.log("Migrating current composition to new format...");
-      const migratedComp = migrateSavedSong({
-        id: "temp",
-        name: "temp",
-        composition,
-        settings: settings,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }).composition;
-      setComposition(migratedComp);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
-
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -251,30 +188,57 @@ export default function EditorPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Playback handlers are now in the usePlayback hook
+  // Stop playback handler
+  const stopPlayback = useCallback(() => {
+    const player = getAudioPlayer();
+    player.stop();
+    setIsPlaying(false);
+    setPlayheadX(null);
+    setPlayheadSystem(0);
+    setActivePitch(null);
+    setActiveNoteId(null);
+    if (playbackAnimationRef.current) {
+      cancelAnimationFrame(playbackAnimationRef.current);
+    }
+  }, []);
+
+  // Play handler (simplified - will expand with full playback logic)
+  const handlePlay = useCallback(() => {
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+
+    if (composition.notes.length === 0) {
+      toast.error("No notes to play");
+      return;
+    }
+
+    // TODO: Implement full playback logic from old editor
+    setIsPlaying(true);
+    toast.success("Playback started");
+  }, [isPlaying, composition.notes, stopPlayback]);
+
+  // Tool selection
+  const handleToolSelect = useCallback(
+    (tool: NoteTool) => {
+      setSettings({ ...settings, selectedTool: tool });
+    },
+    [settings, setSettings],
+  );
 
   // Save current composition as song
   const handleSaveSong = useCallback(
     (name: string) => {
       const songId = currentSongId || `song_${Date.now()}`;
-
-      // Ensure composition is migrated before saving
-      const migratedComp = isLegacyComposition(composition)
-        ? migrateSavedSong({
-            id: songId,
-            name,
-            composition,
-            settings,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          }).composition
-        : composition;
-      const migratedComposition = migratedComp as Composition;
-
       const song: SavedSong = {
         id: songId,
         name,
-        composition: migratedComposition,
+        composition: {
+          notes: composition.notes,
+          repeatMarkers: composition.repeatMarkers,
+          systemCount: composition.systemCount,
+        },
         settings: {
           tempo: settings.tempo,
           timeSignature: settings.timeSignature,
@@ -297,40 +261,26 @@ export default function EditorPage() {
     ],
   );
 
-  // Load song handler (with automatic migration)
+  // Additional handlers for new components
   const handleLoadSong = useCallback(
     (song: SavedSong) => {
-      // Migrate if needed
-      const migratedSong = migrateSavedSong(song);
-
-      setComposition(migratedSong.composition);
+      setComposition({
+        notes: song.composition.notes,
+        repeatMarkers: song.composition.repeatMarkers,
+        systemCount: song.composition.systemCount,
+      });
       setSettings({
         ...settings,
-        tempo: migratedSong.settings.tempo,
-        timeSignature: migratedSong.settings.timeSignature,
+        tempo: song.settings.tempo,
+        timeSignature: song.settings.timeSignature,
       });
-      setCurrentSongId(migratedSong.id);
+      setCurrentSongId(song.id);
       setUI({ ...ui, showSongLibrary: false });
-      toast.success(`Loaded "${migratedSong.name}"`);
-
-      // Save migrated version if it was updated
-      if (migratedSong.updatedAt !== song.updatedAt) {
-        setSavedSongs({ ...savedSongs, [migratedSong.id]: migratedSong });
-      }
+      toast.success(`Loaded "${song.name}"`);
     },
-    [
-      settings,
-      ui,
-      savedSongs,
-      setComposition,
-      setSettings,
-      setCurrentSongId,
-      setUI,
-      setSavedSongs,
-    ],
+    [settings, ui, setComposition, setSettings, setCurrentSongId, setUI],
   );
 
-  // Delete song handler
   const handleDeleteSong = useCallback(
     (songId: string) => {
       const newSongs = { ...savedSongs };
@@ -344,13 +294,11 @@ export default function EditorPage() {
     [savedSongs, currentSongId, setSavedSongs, setCurrentSongId],
   );
 
-  // Restore defaults handler
   const handleRestoreDefaults = useCallback(() => {
     setSavedSongs(getDefaultSongs());
     toast.success("Default songs restored");
   }, [setSavedSongs]);
 
-  // Export handler
   const handleExport = useCallback(() => {
     const dataStr = JSON.stringify(savedSongs, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
@@ -363,59 +311,6 @@ export default function EditorPage() {
     toast.success("Songs exported");
   }, [savedSongs]);
 
-  // Save as PNG
-  const handleSavePNG = useCallback(() => {
-    if (!svgRef.current) return;
-
-    const svg = svgRef.current;
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([svgData], {
-      type: "image/svg+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = svg.clientWidth * 2;
-      canvas.height = svg.clientHeight * 2;
-      ctx.scale(2, 2);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-
-      const link = document.createElement("a");
-      link.download = "music-composition.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-      toast.success("Exported as PNG");
-    };
-    img.src = url;
-  }, []);
-
-  // Save as SVG
-  const handleSaveSVG = useCallback(() => {
-    if (!svgRef.current) return;
-
-    const svg = svgRef.current;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([svgData], {
-      type: "image/svg+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(svgBlob);
-
-    const link = document.createElement("a");
-    link.download = "music-composition.svg";
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Exported as SVG");
-  }, []);
-
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <Toaster position="top-center" />
@@ -427,19 +322,14 @@ export default function EditorPage() {
         tempo={settings.tempo}
         onTempoChange={(tempo) => setSettings({ ...settings, tempo })}
         timeSignature={settings.timeSignature}
-        measuresPerRow={measuresPerRow}
-        onMeasuresPerRowChange={setMeasuresPerRow}
-        containerWidth={layout.containerWidth}
-        totalMeasures={totalMeasures}
-        onTotalMeasuresChange={setTotalMeasures}
         onSave={() => {
           const name = prompt("Enter song name:");
           if (name) handleSaveSong(name);
         }}
         onSettings={() => setUI({ ...ui, showSettings: true })}
         onHelp={() => setUI({ ...ui, showHelp: true })}
-        onPlay={playback.handlePlay}
-        isPlaying={playback.isPlaying}
+        onPlay={handlePlay}
+        isPlaying={isPlaying}
         hasNotes={composition.notes.length > 0}
         showPiano={ui.showPiano}
         onTogglePiano={() => setUI({ ...ui, showPiano: !ui.showPiano })}
@@ -447,61 +337,41 @@ export default function EditorPage() {
         canRedo={historyIndex < history.length - 1}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        onDownloadPNG={handleSavePNG}
-        onDownloadSVG={handleSaveSVG}
+        onDownloadPNG={() =>
+          console.log("Download PNG - not implemented in backup")
+        }
+        onDownloadSVG={() =>
+          console.log("Download SVG - not implemented in backup")
+        }
       />
 
       {/* Main content area */}
       <div className="flex-1 flex relative overflow-hidden">
         {/* Canvas area */}
-        <div ref={editorContainerRef} className="flex-1 overflow-auto">
-          <div className="py-4">
-            <div className="mx-auto w-fit">
-              <NoteEditor
-                notes={toLegacyNotes(composition.notes as EditorNote[], layout)}
-                onNotesChange={(legacyNotes) => {
-                  const newNotes = fromLegacyNotes(legacyNotes, layout);
-                  updateComposition({ notes: newNotes });
-                }}
-                repeatMarkers={toLegacyRepeatMarkers(
-                  composition.repeatMarkers as RepeatMarker[],
-                  layout,
-                )}
-                onRepeatMarkersChange={(legacyMarkers) => {
-                  const newMarkers = fromLegacyRepeatMarkers(
-                    legacyMarkers,
-                    layout,
-                  );
-                  updateComposition({ repeatMarkers: newMarkers });
-                }}
-                selectedTool={settings.selectedTool}
-                showLabels={settings.showLabels}
-                showKidFaces={settings.showKidFaces}
-                showGrid={settings.showGrid}
-                allowChords={settings.allowChords}
-                timeSignature={settings.timeSignature}
-                measuresPerRow={measuresPerRow}
-                systemCount={calculateLegacySystemCount(
-                  composition.notes as EditorNote[],
-                  layout,
-                )}
-                onSystemCountChange={(count) => {
-                  // System count is now calculated dynamically from layout
-                  // This callback is kept for compatibility but does nothing
-                  console.log(
-                    "System count is now dynamic based on layout:",
-                    count,
-                  );
-                }}
-                tempo={settings.tempo}
-                isPlaying={playback.isPlaying}
-                playheadX={playback.playheadX}
-                playheadSystem={playback.playheadSystem}
-                activeNoteId={playback.activeNoteId}
-                svgRef={svgRef}
-              />
-            </div>
-          </div>
+        <div className="flex-1 flex flex-col overflow-auto">
+          <NoteEditor
+            notes={composition.notes}
+            onNotesChange={(notes) => updateComposition({ notes })}
+            repeatMarkers={composition.repeatMarkers}
+            onRepeatMarkersChange={(markers) =>
+              updateComposition({ repeatMarkers: markers })
+            }
+            selectedTool={settings.selectedTool}
+            showLabels={settings.showLabels}
+            showKidFaces={settings.showKidFaces}
+            showGrid={settings.showGrid}
+            allowChords={settings.allowChords}
+            timeSignature={settings.timeSignature}
+            systemCount={composition.systemCount}
+            onSystemCountChange={(count) =>
+              updateComposition({ systemCount: count })
+            }
+            tempo={settings.tempo}
+            isPlaying={isPlaying}
+            playheadX={playheadX}
+            playheadSystem={playheadSystem}
+            activeNoteId={activeNoteId}
+          />
         </div>
 
         {/* Tool Palette */}
@@ -516,9 +386,9 @@ export default function EditorPage() {
       {/* Piano drawer */}
       {ui.showPiano && (
         <PianoDrawer
-          activePitch={playback.activePitch}
-          activeNoteDuration={playback.activeNoteDuration}
-          activeNoteStartTime={playback.activeNoteStartTime}
+          activePitch={activePitch}
+          activeNoteDuration={activeNoteDuration}
+          activeNoteStartTime={activeNoteStartTime}
           tempo={settings.tempo}
           useColors={settings.pianoUseColors}
           onToggleColors={() =>

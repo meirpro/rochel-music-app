@@ -1769,36 +1769,6 @@ export function NoteEditor({
 
         {Array.from({ length: systemCount }, (_, i) => renderSystem(i))}
 
-        {/* Add system button */}
-        <g>
-          <rect
-            x={staffRight + 20}
-            y={getStaffCenterY(systemCount - 1) - 20}
-            width={40}
-            height={40}
-            fill="#f3f4f6"
-            stroke="#8b5cf6"
-            strokeWidth={2}
-            rx={8}
-            className="cursor-pointer hover:fill-purple-50 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSystemCountChange(systemCount + 1);
-            }}
-          />
-          <text
-            x={staffRight + 40}
-            y={getStaffCenterY(systemCount - 1) + 6}
-            fontSize={24}
-            fill="#8b5cf6"
-            textAnchor="middle"
-            fontWeight="bold"
-            style={{ pointerEvents: "none" }}
-          >
-            +
-          </text>
-        </g>
-
         {/* Duration extensions (render behind notes) */}
         {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
