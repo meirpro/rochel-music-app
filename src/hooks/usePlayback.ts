@@ -14,12 +14,6 @@ import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
 import { Pitch, EditorNote, RepeatMarker, TimeSignature } from "@/lib/types";
 import {
-  getAbsoluteBeat,
-  calculateSystemCount,
-  getAbsoluteMeasureNumber,
-  getBeatsPerSystem,
-} from "@/lib/migration";
-import {
   getLayoutConfig,
   LEFT_MARGIN,
   BEAT_WIDTH,
@@ -45,7 +39,9 @@ interface UsePlaybackOptions {
   };
   tempo: number;
   timeSignature: TimeSignature;
-  measuresPerRow?: number;
+  measuresPerRow: number;
+  totalMeasures: number;
+  onScrollTo?: (scrollLeft: number) => void; // Callback to scroll the container
 }
 
 interface UsePlaybackReturn {
@@ -61,7 +57,14 @@ interface UsePlaybackReturn {
 }
 
 export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
-  const { composition, tempo, timeSignature, measuresPerRow } = options;
+  const {
+    composition,
+    tempo,
+    timeSignature,
+    measuresPerRow,
+    totalMeasures,
+    onScrollTo,
+  } = options;
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -113,43 +116,35 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       return;
     }
 
-    // Get layout config
+    // Get layout config using user-defined measuresPerRow
     const layout = getLayoutConfig(timeSignature, measuresPerRow);
-    const BEATS_PER_SYSTEM = layout.beatsPerSystem;
     const beatsPerMeasure = layout.beatsPerMeasure;
+    const BEATS_PER_SYSTEM = measuresPerRow * beatsPerMeasure;
 
     setIsPlaying(true);
     isPlayingRef.current = true;
     const player = getAudioPlayer();
     player.setTempo(tempo);
 
-    // Calculate timing
+    // Calculate timing based on user-defined totalMeasures
     const msPerBeat = 60000 / tempo;
-    const beatsPerSystem = getBeatsPerSystem(timeSignature);
-    const systemCount = calculateSystemCount(composition, beatsPerSystem);
-    const totalBeats = systemCount * beatsPerSystem;
+    const systemCount = Math.ceil(totalMeasures / measuresPerRow);
+    const totalBeats = totalMeasures * beatsPerMeasure;
 
-    // Sort notes by position for playback
-    const sortedNotes = [...composition.notes].sort((a, b) => {
-      const beatA = getAbsoluteBeat(a, beatsPerSystem);
-      const beatB = getAbsoluteBeat(b, beatsPerSystem);
-      return beatA - beatB;
-    });
+    // Sort notes by absoluteBeat for playback
+    const sortedNotes = [...composition.notes].sort(
+      (a, b) => a.absoluteBeat - b.absoluteBeat,
+    );
 
-    // Build repeat sections from paired markers
+    // Build repeat sections from paired markers (using new measureNumber format)
     interface RepeatSection {
       pairId: string;
-      startSystem: number;
-      startMeasure: number;
-      endSystem: number;
-      endMeasure: number;
       startAbsoluteBeat: number;
       endAbsoluteBeat: number;
     }
     const repeatSections: RepeatSection[] = [];
     const processedPairIds = new Set<string>();
 
-    const measuresPerSystem = 2;
     for (const marker of composition.repeatMarkers) {
       if (marker.type !== "start" || processedPairIds.has(marker.pairId))
         continue;
@@ -157,29 +152,12 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         (m) => m.pairId === marker.pairId && m.type === "end",
       );
       if (endMarker) {
-        const startMeasureNum = getAbsoluteMeasureNumber(
-          marker,
-          measuresPerSystem,
-        );
-        const endMeasureNum = getAbsoluteMeasureNumber(
-          endMarker,
-          measuresPerSystem,
-        );
-        const startAbsoluteBeat = startMeasureNum * beatsPerMeasure;
-        const endAbsoluteBeat = endMeasureNum * beatsPerMeasure;
+        const startAbsoluteBeat = marker.measureNumber * beatsPerMeasure;
+        const endAbsoluteBeat = endMarker.measureNumber * beatsPerMeasure;
 
         if (endAbsoluteBeat > startAbsoluteBeat) {
-          const startSystem = Math.floor(startMeasureNum / measuresPerSystem);
-          const startMeasure = startMeasureNum % measuresPerSystem;
-          const endSystem = Math.floor(endMeasureNum / measuresPerSystem);
-          const endMeasure = endMeasureNum % measuresPerSystem;
-
           repeatSections.push({
             pairId: marker.pairId,
-            startSystem,
-            startMeasure,
-            endSystem,
-            endMeasure,
             startAbsoluteBeat,
             endAbsoluteBeat,
           });
@@ -191,8 +169,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
     // Build playback sequence with repeat handling
     const playbackSequence: PlaybackNote[] = [];
-    const getNoteAbsoluteBeat = (note: any) =>
-      getAbsoluteBeat(note, beatsPerSystem);
+    const getNoteAbsoluteBeat = (note: EditorNote) => note.absoluteBeat;
 
     let currentBeatOffset = 0;
     let lastProcessedBeat = 0;
@@ -387,6 +364,19 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       setPlayheadX(currentX);
       setPlayheadSystem(currentSystem);
 
+      // Scroll-follow: keep playhead centered in viewport
+      if (onScrollTo) {
+        // Assume viewport width of ~800px for centering calculation
+        // The container will clamp this to valid scroll range
+        const viewportCenter = 400;
+        const desiredScroll = currentX - viewportCenter;
+        // Only scroll on the current system (row 0 for now)
+        // For multi-row, we'd need to handle vertical scrolling too
+        if (currentSystem === 0 || systemCount === 1) {
+          onScrollTo(Math.max(0, desiredScroll));
+        }
+      }
+
       for (let i = 0; i < playbackSequence.length; i++) {
         if (playedNotesRef.current.has(i)) continue;
         const note = playbackSequence[i];
@@ -429,7 +419,15 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     };
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [composition, tempo, timeSignature, measuresPerRow, stopPlayback]);
+  }, [
+    composition,
+    tempo,
+    timeSignature,
+    measuresPerRow,
+    totalMeasures,
+    onScrollTo,
+    stopPlayback,
+  ]);
 
   return {
     isPlaying,

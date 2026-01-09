@@ -143,12 +143,21 @@ export default function EditorPage() {
     userMeasuresPerRow: measuresPerRow,
   });
 
+  // Scroll handler for playback follow
+  const handleScrollTo = useCallback((scrollLeft: number) => {
+    if (editorContainerRef.current) {
+      editorContainerRef.current.scrollLeft = scrollLeft;
+    }
+  }, []);
+
   // Playback hook
   const playback = usePlayback({
     composition: composition as Composition,
     tempo: settings.tempo,
     timeSignature: settings.timeSignature,
     measuresPerRow,
+    totalMeasures,
+    onScrollTo: handleScrollTo,
   });
 
   // Undo/Redo state
@@ -486,10 +495,7 @@ export default function EditorPage() {
                 allowChords={settings.allowChords}
                 timeSignature={settings.timeSignature}
                 measuresPerRow={measuresPerRow}
-                systemCount={calculateLegacySystemCount(
-                  composition.notes as EditorNote[],
-                  layout,
-                )}
+                systemCount={systemCount}
                 onSystemCountChange={(count) => {
                   // System count is now calculated dynamically from layout
                   // This callback is kept for compatibility but does nothing
