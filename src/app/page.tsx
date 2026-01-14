@@ -448,7 +448,10 @@ export default function Home() {
         onSettings={() => setUI({ ...ui, showSettings: true })}
         onHelp={() => setUI({ ...ui, showHelp: true })}
         onPlay={playback.handlePlay}
+        onPause={playback.handlePause}
+        onStop={playback.handleStop}
         isPlaying={playback.isPlaying}
+        isPaused={playback.isPaused}
         hasNotes={composition.notes.length > 0}
         showPiano={ui.showPiano}
         onTogglePiano={() => setUI({ ...ui, showPiano: !ui.showPiano })}

@@ -32,7 +32,10 @@ interface EditorHeaderProps {
   onSettings: () => void;
   onHelp: () => void;
   onPlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
   isPlaying: boolean;
+  isPaused: boolean;
   hasNotes: boolean;
   onDownloadPNG: () => void;
   onDownloadSVG: () => void;
@@ -61,7 +64,10 @@ export function EditorHeader({
   onSettings,
   onHelp,
   onPlay,
+  onPause,
+  onStop,
   isPlaying,
+  isPaused,
   hasNotes,
   onDownloadPNG,
   onDownloadSVG,
@@ -504,18 +510,36 @@ export function EditorHeader({
         <div className="h-8 w-px bg-purple-300" />
 
         {/* Play Controls Section */}
-        <div id={TOUR_ELEMENT_IDS.sectionPlayControls}>
-          {/* Play/Stop button - Large and prominent */}
+        <div
+          id={TOUR_ELEMENT_IDS.sectionPlayControls}
+          className="flex items-center gap-1"
+        >
+          {/* Stop/Reset button - shows when playing or paused */}
+          {(isPlaying || isPaused) && (
+            <button
+              onClick={onStop}
+              className="w-10 h-10 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-all shadow-sm"
+              title="Stop and reset (rewind)"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" />
+              </svg>
+            </button>
+          )}
+
+          {/* Play/Pause button - Large and prominent */}
           <button
             id={TOUR_ELEMENT_IDS.playButton}
-            onClick={onPlay}
-            disabled={!hasNotes && !isPlaying}
+            onClick={isPlaying ? onPause : onPlay}
+            disabled={!hasNotes && !isPlaying && !isPaused}
             className={`px-6 py-2 rounded-xl font-semibold text-base shadow-md transition-all flex items-center gap-2 ${
               isPlaying
-                ? "bg-red-200 hover:bg-red-300 text-red-700"
-                : hasNotes
+                ? "bg-amber-200 hover:bg-amber-300 text-amber-700"
+                : isPaused
                   ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : hasNotes
+                    ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             {isPlaying ? (
@@ -528,7 +552,7 @@ export function EditorHeader({
                   <rect x="6" y="4" width="4" height="16" />
                   <rect x="14" y="4" width="4" height="16" />
                 </svg>
-                <span className="hidden sm:inline">Stop</span>
+                <span className="hidden sm:inline">Pause</span>
               </>
             ) : (
               <>
@@ -539,7 +563,9 @@ export function EditorHeader({
                 >
                   <path d="M8 5v14l11-7z" />
                 </svg>
-                <span className="hidden sm:inline">Play</span>
+                <span className="hidden sm:inline">
+                  {isPaused ? "Resume" : "Play"}
+                </span>
               </>
             )}
           </button>
