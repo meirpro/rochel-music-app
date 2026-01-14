@@ -304,7 +304,7 @@ export function EditorHeader({
             value={totalMeasures}
             onChange={onTotalMeasuresChange}
             maxMeasures={99}
-            label="Total:"
+            label="Total measures:"
           />
         </div>
       </div>
