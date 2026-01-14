@@ -260,7 +260,7 @@ describe("useTutorial hook", () => {
 
       expect(progress.completed).toBe(1);
       expect(progress.total).toBe(TUTORIAL_MODULES.length);
-      expect(progress.percentage).toBe(25); // 1/4 = 25%
+      expect(progress.percentage).toBe(20); // 1/5 = 20%
     });
 
     it("should return 100% when all modules completed", () => {
@@ -315,8 +315,8 @@ describe("useTutorial hook", () => {
 });
 
 describe("TUTORIAL_MODULES", () => {
-  it("should have 4 tutorial modules", () => {
-    expect(TUTORIAL_MODULES).toHaveLength(4);
+  it("should have 5 tutorial modules", () => {
+    expect(TUTORIAL_MODULES).toHaveLength(5);
   });
 
   it("should have required properties for each module", () => {
@@ -340,5 +340,12 @@ describe("TUTORIAL_MODULES", () => {
     );
     expect(gettingStarted).toBeDefined();
     expect(gettingStarted?.title).toBe("Getting Started");
+  });
+
+  it("should include ui-overview module as first item", () => {
+    const uiOverview = TUTORIAL_MODULES.find((m) => m.id === "ui-overview");
+    expect(uiOverview).toBeDefined();
+    expect(uiOverview?.title).toBe("Quick Tour");
+    expect(TUTORIAL_MODULES[0].id).toBe("ui-overview");
   });
 });
