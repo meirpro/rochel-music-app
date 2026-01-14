@@ -106,7 +106,7 @@ export default function Home() {
   );
   const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
     "rochel-measures-per-row",
-    2, // Default: 2 measures per row
+    4, // Default: 4 measures per row
   );
   const [totalMeasures, setTotalMeasures] = useLocalStorage<number>(
     "rochel-total-measures",
@@ -310,14 +310,15 @@ export default function Home() {
 
       // Calculate and set totalMeasures based on song content
       const notes = migratedSong.composition.notes as EditorNote[];
+      const songBeatsPerMeasure = migratedSong.settings.timeSignature.numerator;
       if (notes.length > 0) {
         const maxBeat = Math.max(
           ...notes.map((n) => n.absoluteBeat + n.duration),
         );
-        const songBeatsPerMeasure =
-          migratedSong.settings.timeSignature.numerator;
         const requiredMeasures = Math.ceil(maxBeat / songBeatsPerMeasure);
         setTotalMeasures(Math.max(requiredMeasures, 4)); // Minimum 4 measures
+      } else {
+        setTotalMeasures(4); // Default for empty songs
       }
 
       // Save migrated version if it was updated

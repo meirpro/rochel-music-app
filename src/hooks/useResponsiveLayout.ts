@@ -32,14 +32,14 @@ export interface LayoutConfig {
 export interface UseResponsiveLayoutOptions {
   timeSignature: TimeSignature;
   totalBeats: number; // Total beats in composition
-  userMeasuresPerRow?: number; // User's preferred measures per row (default: 2)
+  userMeasuresPerRow?: number; // User's preferred measures per row (default: 4)
   minBeatWidth?: number; // Minimum readable beat width (default: 40)
   maxBeatWidth?: number; // Maximum beat width before too sparse (default: 80)
   leftMargin?: number; // Left margin (default: 100)
   rightMargin?: number; // Right margin (default: 20)
 }
 
-const DEFAULT_MEASURES_PER_ROW = 2;
+const DEFAULT_MEASURES_PER_ROW = 4;
 const MIN_BEAT_WIDTH = 40;
 const MAX_BEAT_WIDTH = 80;
 const LEFT_MARGIN = 100;
@@ -65,8 +65,8 @@ function calculateOptimalMeasures(
   );
 
   if (userPreference === "auto") {
-    // Auto mode: Default to 2 if it fits, otherwise 1
-    return maxMeasuresAtMinWidth >= 2 ? 2 : 1;
+    // Auto mode: Try to fit up to 4 measures, scale down for smaller screens
+    return Math.min(4, Math.max(1, maxMeasuresAtMinWidth));
   }
 
   // Respect user's choice, but ensure it fits
