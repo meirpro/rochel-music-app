@@ -154,7 +154,7 @@ export function SongLibraryModal({
                           onClick={onUpdateCurrentSong}
                           className="flex-1 px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-800 text-xs font-medium rounded-lg transition-colors"
                         >
-                          Save
+                          Update
                         </button>
                       ) : (
                         <button
