@@ -2,13 +2,13 @@
  * Playback Hook
  *
  * Encapsulates all playback logic including:
- * - Play/stop controls
+ * - Play/pause/stop controls
  * - Animation loop with playhead cursor
  * - Repeat marker expansion
  * - Note scheduling and audio playback
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
@@ -46,6 +46,7 @@ interface UsePlaybackOptions {
 
 interface UsePlaybackReturn {
   isPlaying: boolean;
+  isPaused: boolean;
   playheadX: number | null;
   playheadSystem: number;
   activePitch: Pitch | null;
@@ -53,7 +54,9 @@ interface UsePlaybackReturn {
   activeNoteDuration: number | undefined;
   activeNoteStartTime: number | undefined;
   handlePlay: () => void;
-  stopPlayback: () => void;
+  handlePause: () => void;
+  handleStop: () => void;
+  handleTogglePlayPause: () => void;
 }
 
 export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
@@ -68,6 +71,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [playheadX, setPlayheadX] = useState<number | null>(null);
   const [playheadSystem, setPlayheadSystem] = useState<number>(0);
   const [activePitch, setActivePitch] = useState<Pitch | null>(null);
@@ -81,54 +85,64 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
   // Refs for playback
   const isPlayingRef = useRef(false);
+  const isPausedRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const playbackStartTimeRef = useRef<number>(0);
+  const pausedAtBeatRef = useRef<number>(0);
   const playedNotesRef = useRef<Set<number>>(new Set());
   const playbackSequenceRef = useRef<PlaybackNote[]>([]);
   const timelineRef = useRef<TimelineSegment[]>([]);
   const msPerBeatRef = useRef<number>(0);
+  const totalPlaybackMsRef = useRef<number>(0);
 
-  // Stop playback handler
-  const stopPlayback = useCallback(() => {
+  // Stop playback handler (resets everything)
+  const handleStop = useCallback(() => {
     const player = getAudioPlayer();
     player.stop();
     setIsPlaying(false);
+    setIsPaused(false);
     isPlayingRef.current = false;
+    isPausedRef.current = false;
+    pausedAtBeatRef.current = 0;
     setPlayheadX(null);
     setPlayheadSystem(0);
     setActivePitch(null);
     setActiveNoteId(null);
+    playedNotesRef.current = new Set();
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
   }, []);
 
-  // Play handler with full playback logic
-  const handlePlay = useCallback(() => {
-    if (isPlayingRef.current) {
-      stopPlayback();
-      return;
-    }
+  // Pause playback handler (keeps position)
+  const handlePause = useCallback(() => {
+    if (!isPlayingRef.current) return;
 
-    if (composition.notes.length === 0) {
-      toast.error("No notes to play");
-      return;
-    }
+    const player = getAudioPlayer();
+    player.stop();
 
-    // Get layout config using user-defined measuresPerRow
+    // Calculate current beat position
+    const elapsed = performance.now() - playbackStartTimeRef.current;
+    pausedAtBeatRef.current = elapsed / msPerBeatRef.current;
+
+    setIsPlaying(false);
+    setIsPaused(true);
+    isPlayingRef.current = false;
+    isPausedRef.current = true;
+
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  }, []);
+
+  // Build playback data (extracted for reuse)
+  const buildPlaybackData = useCallback(() => {
     const layout = getLayoutConfig(timeSignature, measuresPerRow);
     const beatsPerMeasure = layout.beatsPerMeasure;
     const BEATS_PER_SYSTEM = measuresPerRow * beatsPerMeasure;
-
-    setIsPlaying(true);
-    isPlayingRef.current = true;
-    const player = getAudioPlayer();
-    player.setTempo(tempo);
-
-    // Calculate timing based on user-defined totalMeasures
     const msPerBeat = 60000 / tempo;
-    const systemCount = Math.ceil(totalMeasures / measuresPerRow);
     const totalBeats = totalMeasures * beatsPerMeasure;
 
     // Sort notes by absoluteBeat for playback
@@ -136,7 +150,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       (a, b) => a.absoluteBeat - b.absoluteBeat,
     );
 
-    // Build repeat sections from paired markers (using new measureNumber format)
+    // Build repeat sections from paired markers
     interface RepeatSection {
       pairId: string;
       startAbsoluteBeat: number;
@@ -321,13 +335,54 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     const totalPlaybackBeats = timelineBeat || currentBeatOffset;
     const totalPlaybackMs = totalPlaybackBeats * msPerBeat;
 
+    return {
+      playbackSequence,
+      timeline,
+      msPerBeat,
+      totalPlaybackMs,
+      BEATS_PER_SYSTEM,
+    };
+  }, [composition, tempo, timeSignature, measuresPerRow, totalMeasures]);
+
+  // Play handler
+  const handlePlay = useCallback(() => {
+    if (composition.notes.length === 0) {
+      toast.error("No notes to play");
+      return;
+    }
+
+    const { playbackSequence, timeline, msPerBeat, totalPlaybackMs } =
+      buildPlaybackData();
+
+    const systemCount = Math.ceil(totalMeasures / measuresPerRow);
+    const player = getAudioPlayer();
+    player.setTempo(tempo);
+
+    // Determine starting beat (resume from pause or start fresh)
+    const startingBeat = isPausedRef.current ? pausedAtBeatRef.current : 0;
+
+    // Build set of already-played notes if resuming
     const playedNotes = new Set<number>();
+    if (isPausedRef.current) {
+      for (let i = 0; i < playbackSequence.length; i++) {
+        if (playbackSequence[i].playBeat < startingBeat) {
+          playedNotes.add(i);
+        }
+      }
+    }
+
+    setIsPlaying(true);
+    setIsPaused(false);
+    isPlayingRef.current = true;
+    isPausedRef.current = false;
+
     const activeNotes = new Map<string, number>();
-    const startTime = performance.now();
+    const startTime = performance.now() - startingBeat * msPerBeat;
 
     playbackSequenceRef.current = playbackSequence;
     timelineRef.current = timeline;
     msPerBeatRef.current = msPerBeat;
+    totalPlaybackMsRef.current = totalPlaybackMs;
     playbackStartTimeRef.current = startTime;
     playedNotesRef.current = playedNotes;
 
@@ -366,12 +421,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
       // Scroll-follow: keep playhead centered in viewport
       if (onScrollTo) {
-        // Assume viewport width of ~800px for centering calculation
-        // The container will clamp this to valid scroll range
         const viewportCenter = 400;
         const desiredScroll = currentX - viewportCenter;
-        // Only scroll on the current system (row 0 for now)
-        // For multi-row, we'd need to handle vertical scrolling too
         if (currentSystem === 0 || systemCount === 1) {
           onScrollTo(Math.max(0, desiredScroll));
         }
@@ -410,11 +461,16 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       if (elapsed < totalPlaybackMs) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
+        // Playback finished - reset everything
         setPlayheadX(null);
         setActiveNoteId(null);
         setActivePitch(null);
         setIsPlaying(false);
+        setIsPaused(false);
         isPlayingRef.current = false;
+        isPausedRef.current = false;
+        pausedAtBeatRef.current = 0;
+        playedNotesRef.current = new Set();
       }
     };
 
@@ -426,11 +482,40 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     measuresPerRow,
     totalMeasures,
     onScrollTo,
-    stopPlayback,
+    buildPlaybackData,
   ]);
+
+  // Toggle play/pause
+  const handleTogglePlayPause = useCallback(() => {
+    if (isPlayingRef.current) {
+      handlePause();
+    } else {
+      handlePlay();
+    }
+  }, [handlePause, handlePlay]);
+
+  // Global spacebar listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if spacebar and not in an input/textarea
+      if (
+        e.code === "Space" &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(
+          (e.target as HTMLElement).tagName,
+        )
+      ) {
+        e.preventDefault();
+        handleTogglePlayPause();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleTogglePlayPause]);
 
   return {
     isPlaying,
+    isPaused,
     playheadX,
     playheadSystem,
     activePitch,
@@ -438,6 +523,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     activeNoteDuration,
     activeNoteStartTime,
     handlePlay,
-    stopPlayback,
+    handlePause,
+    handleStop,
+    handleTogglePlayPause,
   };
 }
