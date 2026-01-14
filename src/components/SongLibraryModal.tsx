@@ -132,13 +132,17 @@ export function SongLibraryModal({
                       </h3>
                       {isCurrent && (
                         <span className="px-1 py-0.5 bg-purple-200 text-purple-800 text-[9px] font-medium rounded">
-                          ●
+                          Current
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-1.5 text-[10px] text-gray-500 mb-1.5">
-                      <span>{song.composition.notes.length}n</span>
-                      <span>{song.settings.tempo}bpm</span>
+                    <div className="flex flex-wrap gap-1.5 text-[10px] text-gray-500 mb-1.5">
+                      <span>{song.composition.notes.length} notes</span>
+                      <span>
+                        {song.settings.timeSignature.numerator}/
+                        {song.settings.timeSignature.denominator}
+                      </span>
+                      <span>{song.settings.tempo} BPM</span>
                     </div>
 
                     {/* Actions */}
@@ -159,7 +163,7 @@ export function SongLibraryModal({
                             : "bg-gray-100 hover:bg-gray-200 text-gray-500"
                         }`}
                       >
-                        {isConfirming ? "Confirm?" : "×"}
+                        {isConfirming ? "Confirm?" : "Delete"}
                       </button>
                     </div>
                   </div>
