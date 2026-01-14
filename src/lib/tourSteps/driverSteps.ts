@@ -23,6 +23,7 @@ export const TOUR_ELEMENT_IDS = {
   deleteTool: "tour-delete-tool",
   repeatTool: "tour-repeat-tool",
   lyricsTool: "tour-lyrics-tool",
+  moveToggle: "tour-move-toggle",
 
   // Staff/Canvas
   staffCanvas: "tour-staff-canvas",
@@ -190,11 +191,21 @@ export const DRIVER_STEPS: Record<TutorialModule, DriveStep[]> = {
       },
     },
     {
+      element: `#${TOUR_ELEMENT_IDS.moveToggle}`,
+      popover: {
+        title: "Move Mode",
+        description:
+          "Toggle this ON to drag and reposition notes and repeat markers. It's OFF by default to prevent accidental moves.",
+        side: "left",
+        align: "center",
+      },
+    },
+    {
       element: `#${TOUR_ELEMENT_IDS.staffCanvas}`,
       popover: {
         title: "Drag to Reposition",
         description:
-          "Click and drag any note horizontally to move it to a different beat position.",
+          "With Move mode ON, click and drag any note to reposition it. This also works for repeat markers!",
         side: "bottom",
         align: "center",
       },

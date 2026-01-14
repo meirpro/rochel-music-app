@@ -7,6 +7,13 @@ import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 interface ToolPaletteProps {
   selectedTool: NoteTool;
   onToolSelect: (tool: NoteTool) => void;
+  allowMove: boolean;
+  onAllowMoveChange: (allow: boolean) => void;
+  // Undo/redo
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 // SVG Note Icons (matching MusicRulesSidebar sizing)
@@ -177,6 +184,84 @@ const LyricsIcon = () => (
   </svg>
 );
 
+const MoveIcon = () => (
+  <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
+    {/* Four-way arrow for move/drag */}
+    <g transform="translate(10, 14)">
+      {/* Center */}
+      <circle cx="0" cy="0" r="1.5" fill="currentColor" />
+      {/* Up arrow */}
+      <line
+        x1="0"
+        y1="-2"
+        x2="0"
+        y2="-6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <polyline
+        points="-2,-4 0,-6 2,-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Down arrow */}
+      <line
+        x1="0"
+        y1="2"
+        x2="0"
+        y2="6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <polyline
+        points="-2,4 0,6 2,4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Left arrow */}
+      <line
+        x1="-2"
+        y1="0"
+        x2="-6"
+        y2="0"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <polyline
+        points="-4,-2 -6,0 -4,2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Right arrow */}
+      <line
+        x1="2"
+        y1="0"
+        x2="6"
+        y2="0"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <polyline
+        points="4,-2 6,0 4,2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  </svg>
+);
+
 const TOOLS: Array<{
   id: NoteTool;
   icon: React.ReactNode;
@@ -245,7 +330,16 @@ const TOOL_TOUR_IDS: Partial<Record<NonNullable<NoteTool>, string>> = {
   lyrics: TOUR_ELEMENT_IDS.lyricsTool,
 };
 
-export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
+export function ToolPalette({
+  selectedTool,
+  onToolSelect,
+  allowMove,
+  onAllowMoveChange,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+}: ToolPaletteProps) {
   const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
 
   const handleToolClick = (toolId: NoteTool) => {
@@ -267,6 +361,60 @@ export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
       id={TOUR_ELEMENT_IDS.toolPalette}
       className="w-20 bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-4 shadow-sm overflow-y-auto"
     >
+      {/* Undo/Redo buttons */}
+      {(onUndo || onRedo) && (
+        <div className="flex gap-1 mb-3 flex-shrink-0">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              canUndo
+                ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                : "bg-gray-50 text-gray-300 cursor-not-allowed"
+            }`}
+            title="Undo (Cmd+Z)"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              canRedo
+                ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                : "bg-gray-50 text-gray-300 cursor-not-allowed"
+            }`}
+            title="Redo (Cmd+Shift+Z)"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Title */}
       <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
         TOOLS
@@ -298,6 +446,34 @@ export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
             </button>
           );
         })}
+
+        {/* Divider */}
+        <div className="w-10 h-px bg-purple-300 my-1" />
+
+        {/* Move mode toggle - separate from tools */}
+        <button
+          id={TOUR_ELEMENT_IDS.moveToggle}
+          onClick={() => onAllowMoveChange(!allowMove)}
+          className={`
+            w-14 h-14 rounded-xl border-2 flex flex-col items-center justify-center
+            transition-all duration-200 hover:scale-105 active:scale-95
+            ${
+              allowMove
+                ? "bg-amber-100 border-amber-400 text-amber-700 shadow-lg ring-2 ring-amber-300"
+                : "bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200"
+            }
+          `}
+          title={
+            allowMove
+              ? "Move mode ON - drag to reposition"
+              : "Move mode OFF - click to enable dragging"
+          }
+        >
+          <div className="mb-0.5">
+            <MoveIcon />
+          </div>
+          <span className="text-[9px] font-semibold">Move</span>
+        </button>
       </div>
 
       {/* Keyboard hint at bottom */}

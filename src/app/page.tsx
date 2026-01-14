@@ -28,6 +28,8 @@ import {
 } from "@/lib/migration";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { usePlayback } from "@/hooks/usePlayback";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { MobileBanner } from "@/components/MobileBanner";
 import {
   toLegacyNotes,
   fromLegacyNotes,
@@ -45,6 +47,7 @@ interface EditorSettings {
   showKidFaces: boolean;
   showGrid: boolean;
   allowChords: boolean;
+  allowMove: boolean;
   tempo: number;
   timeSignature: TimeSignature;
   pianoUseColors: boolean;
@@ -71,6 +74,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   showKidFaces: false,
   showGrid: false,
   allowChords: false,
+  allowMove: false,
   tempo: 100,
   timeSignature: { numerator: 4, denominator: 4 },
   pianoUseColors: true,
@@ -118,6 +122,9 @@ export default function Home() {
 
   // Ref for responsive layout
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // Mobile detection for read-only mode
+  const isMobile = useIsMobile();
 
   // Calculate total beats for layout based on user-defined totalMeasures
   const beatsPerMeasure = settings.timeSignature.numerator;
@@ -462,6 +469,7 @@ export default function Home() {
         onRedo={handleRedo}
         onDownloadPNG={handleSavePNG}
         onDownloadSVG={handleSaveSVG}
+        isMobile={isMobile}
       />
 
       {/* Main content area */}
@@ -496,6 +504,7 @@ export default function Home() {
                 showKidFaces={settings.showKidFaces}
                 showGrid={settings.showGrid}
                 allowChords={settings.allowChords}
+                allowMove={settings.allowMove}
                 timeSignature={settings.timeSignature}
                 measuresPerRow={measuresPerRow}
                 systemCount={systemCount}
@@ -513,23 +522,34 @@ export default function Home() {
                 playheadSystem={playback.playheadSystem}
                 activeNoteId={playback.activeNoteId}
                 svgRef={svgRef}
+                readOnly={isMobile}
               />
             </div>
           </div>
         </div>
 
-        {/* Tool Palette */}
-        <ToolPalette
-          selectedTool={settings.selectedTool}
-          onToolSelect={(tool) => {
-            if (tool === "lyrics") {
-              // Open the lyrics modal instead of selecting the tool
-              setUI({ ...ui, showLyricsModal: true });
-            } else {
-              setSettings({ ...settings, selectedTool: tool });
+        {/* Tool Palette - hidden on mobile (read-only mode) */}
+        {!isMobile && (
+          <ToolPalette
+            selectedTool={settings.selectedTool}
+            onToolSelect={(tool) => {
+              if (tool === "lyrics") {
+                // Open the lyrics modal instead of selecting the tool
+                setUI({ ...ui, showLyricsModal: true });
+              } else {
+                setSettings({ ...settings, selectedTool: tool });
+              }
+            }}
+            allowMove={settings.allowMove}
+            onAllowMoveChange={(allow) =>
+              setSettings({ ...settings, allowMove: allow })
             }
-          }}
-        />
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+          />
+        )}
       </div>
 
       {/* Piano drawer */}
@@ -620,6 +640,9 @@ export default function Home() {
 
       {/* First visit tour */}
       <FirstVisitTour />
+
+      {/* Mobile banner - suggests using desktop for editing */}
+      {isMobile && <MobileBanner />}
     </div>
   );
 }

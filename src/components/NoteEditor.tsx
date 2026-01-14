@@ -162,6 +162,7 @@ interface NoteEditorProps {
   showKidFaces?: boolean;
   showGrid?: boolean;
   allowChords?: boolean;
+  allowMove?: boolean;
   playheadX?: number | null;
   playheadSystem?: number;
   activeNoteId?: string | null;
@@ -175,6 +176,7 @@ interface NoteEditorProps {
   isPlaying?: boolean;
   onPlaybackBlock?: () => void;
   measuresPerRow?: number;
+  readOnly?: boolean;
 }
 
 // Constants - adjusted for better fit
@@ -425,6 +427,7 @@ export function NoteEditor({
   showKidFaces = false,
   showGrid = false,
   allowChords = false,
+  allowMove = false,
   playheadX = null,
   playheadSystem = 0,
   activeNoteId = null,
@@ -438,6 +441,7 @@ export function NoteEditor({
   isPlaying = false,
   onPlaybackBlock,
   measuresPerRow,
+  readOnly = false,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -547,6 +551,9 @@ export function NoteEditor({
       e.preventDefault();
       e.stopPropagation();
 
+      // Block context menu in read-only mode
+      if (readOnly) return;
+
       // Calculate menu position to prevent off-screen overflow
       const menuWidth = 120; // min-w-[120px]
       const menuHeight = 260; // approximate height based on items
@@ -577,7 +584,7 @@ export function NoteEditor({
 
       setContextMenu({ noteId, x, y });
     },
-    [],
+    [readOnly],
   );
 
   const handleChangeDuration = useCallback(
@@ -643,6 +650,9 @@ export function NoteEditor({
       if (onStaffClick) {
         onStaffClick(x, system);
       }
+
+      // Block all editing in read-only mode (seek still works above)
+      if (readOnly) return;
 
       // No action when no tool is selected
       if (selectedTool === null) return;
@@ -834,12 +844,14 @@ export function NoteEditor({
       onDuplicateNote,
       isPlaying,
       onPlaybackBlock,
+      readOnly,
     ],
   );
 
   const handleNoteMouseDown = useCallback(
     (e: React.MouseEvent, noteId: string) => {
       e.stopPropagation();
+      if (readOnly) return;
       if (isPlaying) {
         onPlaybackBlock?.();
         return;
@@ -852,7 +864,10 @@ export function NoteEditor({
         }
         return;
       }
-      setDraggedNote(noteId);
+      // Only allow drag if move mode is enabled
+      if (allowMove) {
+        setDraggedNote(noteId);
+      }
     },
     [
       selectedTool,
@@ -862,6 +877,8 @@ export function NoteEditor({
       onPlaybackBlock,
       tutorialActive,
       reportAction,
+      allowMove,
+      readOnly,
     ],
   );
 
@@ -1093,7 +1110,14 @@ export function NoteEditor({
           key={note.id}
           onMouseDown={(e) => handleNoteMouseDown(e, note.id)}
           onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
-          style={{ cursor: selectedTool === "delete" ? "not-allowed" : "grab" }}
+          style={{
+            cursor:
+              selectedTool === "delete"
+                ? "not-allowed"
+                : allowMove
+                  ? "grab"
+                  : "default",
+          }}
           className="transition-opacity hover:opacity-80"
         >
           {note.pitch === "C4" && (
@@ -1183,7 +1207,14 @@ export function NoteEditor({
         key={note.id}
         onMouseDown={(e) => handleNoteMouseDown(e, note.id)}
         onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
-        style={{ cursor: selectedTool === "delete" ? "not-allowed" : "grab" }}
+        style={{
+          cursor:
+            selectedTool === "delete"
+              ? "not-allowed"
+              : allowMove
+                ? "grab"
+                : "default",
+        }}
         className="transition-opacity hover:opacity-80"
       >
         {/* Ledger line for C4 */}
@@ -1424,14 +1455,16 @@ export function NoteEditor({
                         ? "pointer"
                         : draggedMarker
                           ? "grabbing"
-                          : "grab",
+                          : allowMove
+                            ? "grab"
+                            : "default",
                   }}
                   onMouseEnter={() => setHoveredMarker(startMarker.id)}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
-                    // Only allow drag when NOT in delete mode
-                    if (selectedTool !== "delete") {
+                    // Only allow drag when move mode is enabled and NOT in delete mode
+                    if (allowMove && selectedTool !== "delete") {
                       setDraggedMarker({
                         id: startMarker.id,
                         type: "start",
@@ -1563,14 +1596,16 @@ export function NoteEditor({
                         ? "pointer"
                         : draggedMarker
                           ? "grabbing"
-                          : "grab",
+                          : allowMove
+                            ? "grab"
+                            : "default",
                   }}
                   onMouseEnter={() => setHoveredMarker(endMarker.id)}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
-                    // Only allow drag when NOT in delete mode
-                    if (selectedTool !== "delete") {
+                    // Only allow drag when move mode is enabled and NOT in delete mode
+                    if (allowMove && selectedTool !== "delete") {
                       setDraggedMarker({
                         id: endMarker.id,
                         type: "end",
