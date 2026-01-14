@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Pitch, LyricSyllable } from "@/lib/types";
 import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
+import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
+import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 
 // Time signature type
 export interface TimeSignature {
@@ -440,6 +442,9 @@ export function NoteEditor({
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
 
+  // Interactive tutorial hook
+  const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
+
   // Get dynamic layout based on time signature and measures per row
   const layout = useMemo(
     () => getLayoutConfig(timeSignature, measuresPerRow),
@@ -801,6 +806,11 @@ export function NoteEditor({
 
       onNotesChange([...notes, newNote]);
       playNoteSound(pitch, duration);
+
+      // Report to interactive tutorial
+      if (tutorialActive) {
+        reportAction({ type: "place-note" });
+      }
     },
     [
       selectedTool,
@@ -817,6 +827,8 @@ export function NoteEditor({
       onStaffClick,
       allowChords,
       measuresPerSystem,
+      tutorialActive,
+      reportAction,
       staffRight,
       layout.beatsPerMeasure,
       onDuplicateNote,
@@ -834,11 +846,23 @@ export function NoteEditor({
       }
       if (selectedTool === "delete") {
         onNotesChange(notes.filter((n) => n.id !== noteId));
+        // Report to interactive tutorial
+        if (tutorialActive) {
+          reportAction({ type: "delete-note" });
+        }
         return;
       }
       setDraggedNote(noteId);
     },
-    [selectedTool, notes, onNotesChange, isPlaying, onPlaybackBlock],
+    [
+      selectedTool,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      tutorialActive,
+      reportAction,
+    ],
   );
 
   const handleMouseMove = useCallback(
@@ -1813,6 +1837,7 @@ export function NoteEditor({
   return (
     <div className="flex flex-col gap-2">
       <svg
+        id={TOUR_ELEMENT_IDS.staffCanvas}
         ref={svgRef}
         width={svgWidth}
         height={svgHeight}

@@ -19,6 +19,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { SongLibraryModal } from "@/components/SongLibraryModal";
 import { HelpModal } from "@/components/HelpModal";
 import { LyricsModal } from "@/components/LyricsModal";
+import { FirstVisitTour } from "@/components/FirstVisitTour";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
 import {
@@ -464,7 +465,6 @@ export default function EditorPage() {
             setMeasuresPerRow(newTotal);
           }
         }}
-        onSave={() => setUI({ ...ui, showSongLibrary: true })}
         onSettings={() => setUI({ ...ui, showSettings: true })}
         onHelp={() => setUI({ ...ui, showHelp: true })}
         onPlay={playback.handlePlay}
@@ -633,6 +633,9 @@ export default function EditorPage() {
         beatsPerMeasure={beatsPerMeasure}
         notes={composition.notes as EditorNote[]}
       />
+
+      {/* First visit tour */}
+      <FirstVisitTour />
     </div>
   );
 }

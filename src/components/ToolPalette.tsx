@@ -1,6 +1,8 @@
 "use client";
 
 import { NoteTool } from "./NoteEditor";
+import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
+import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 
 interface ToolPaletteProps {
   selectedTool: NoteTool;
@@ -231,18 +233,40 @@ const TOOLS: Array<{
   },
 ];
 
+// Map tool IDs to tour element IDs
+const TOOL_TOUR_IDS: Partial<Record<NonNullable<NoteTool>, string>> = {
+  whole: TOUR_ELEMENT_IDS.wholeNoteTool,
+  half: TOUR_ELEMENT_IDS.halfNoteTool,
+  "dotted-quarter": TOUR_ELEMENT_IDS.dottedQuarterTool,
+  quarter: TOUR_ELEMENT_IDS.quarterNoteTool,
+  eighth: TOUR_ELEMENT_IDS.eighthNoteTool,
+  delete: TOUR_ELEMENT_IDS.deleteTool,
+  repeat: TOUR_ELEMENT_IDS.repeatTool,
+  lyrics: TOUR_ELEMENT_IDS.lyricsTool,
+};
+
 export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
+  const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
+
   const handleToolClick = (toolId: NoteTool) => {
     // Toggle: if clicking the same tool, deselect it completely
-    if (selectedTool === toolId) {
-      onToolSelect(null);
-    } else {
-      onToolSelect(toolId);
+    const newTool = selectedTool === toolId ? null : toolId;
+    onToolSelect(newTool);
+
+    // Report to interactive tutorial
+    if (tutorialActive) {
+      reportAction({
+        type: "select-tool",
+        tool: newTool || "", // Empty string means deselected
+      });
     }
   };
 
   return (
-    <div className="w-20 bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-4 shadow-sm overflow-y-auto">
+    <div
+      id={TOUR_ELEMENT_IDS.toolPalette}
+      className="w-20 bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-4 shadow-sm overflow-y-auto"
+    >
       {/* Title */}
       <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
         TOOLS
@@ -252,9 +276,11 @@ export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
       <div className="flex flex-col items-center gap-2 flex-1 min-h-0">
         {TOOLS.map((tool) => {
           const isSelected = selectedTool === tool.id;
+          const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
           return (
             <button
               key={tool.id}
+              id={tourId}
               onClick={() => handleToolClick(tool.id)}
               className={`
               w-14 h-14 rounded-xl border-2 flex flex-col items-center justify-center
