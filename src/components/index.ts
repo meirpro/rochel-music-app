@@ -1,4 +1,3 @@
-export { Header } from "./Header";
 export { SheetMusic } from "./SheetMusic";
 export { SongSelector } from "./SongSelector";
 export { PlaybackControls } from "./PlaybackControls";

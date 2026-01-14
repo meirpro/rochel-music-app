@@ -1,318 +1,621 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useLocalStorage } from "usehooks-ts";
+import { toast, Toaster } from "sonner";
+import { NoteEditor, NoteTool, TimeSignature } from "@/components/NoteEditor";
+import { PianoDrawer } from "@/components/PianoDrawer";
+import { EditorHeader } from "@/components/EditorHeader";
+import { ToolPalette } from "@/components/ToolPalette";
+import { SettingsModal } from "@/components/SettingsModal";
+import { SongLibraryModal } from "@/components/SongLibraryModal";
+import { HelpModal } from "@/components/HelpModal";
+import { LyricsModal } from "@/components/LyricsModal";
+import { FirstVisitTour } from "@/components/FirstVisitTour";
 import {
-  SheetMusic,
-  SongSelector,
-  PlaybackControls,
-  DisplayOptions,
-  ColorLegend,
-} from "@/components";
-import { getSongById } from "@/lib/songs";
-import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
-import { expandNotesForPlayback, getTotalPlaybackBeats } from "@/lib/rendering";
-import { Song, LayoutResult, RenderedNote } from "@/lib/types";
+  SavedSong,
+  SavedSongsMap,
+  Composition,
+  LegacyComposition,
+  EditorNote,
+  RepeatMarker,
+} from "@/lib/types";
+import { getDefaultSongs } from "@/lib/defaultSongs";
+import {
+  migrateSavedSong,
+  migrateAllSongs,
+  isLegacyComposition,
+} from "@/lib/migration";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { usePlayback } from "@/hooks/usePlayback";
+import {
+  toLegacyNotes,
+  fromLegacyNotes,
+  toLegacyRepeatMarkers,
+  fromLegacyRepeatMarkers,
+} from "@/lib/coordinateAdapter";
+
+// Types for localStorage persistence
+// Supports both legacy (system-based) and new (absoluteBeat) formats during migration
+type EditorComposition = Composition | LegacyComposition;
+
+interface EditorSettings {
+  selectedTool: NoteTool;
+  showLabels: boolean;
+  showKidFaces: boolean;
+  showGrid: boolean;
+  allowChords: boolean;
+  tempo: number;
+  timeSignature: TimeSignature;
+  pianoUseColors: boolean;
+  pianoShowBlackKeys: boolean;
+}
+
+interface EditorUI {
+  showPiano: boolean;
+  showSongLibrary: boolean;
+  showSettings: boolean;
+  showHelp: boolean;
+  showLyricsModal: boolean;
+}
+
+const DEFAULT_COMPOSITION: Composition = {
+  notes: [],
+  repeatMarkers: [],
+  lyrics: [],
+};
+
+const DEFAULT_SETTINGS: EditorSettings = {
+  selectedTool: "quarter",
+  showLabels: true,
+  showKidFaces: false,
+  showGrid: false,
+  allowChords: false,
+  tempo: 100,
+  timeSignature: { numerator: 4, denominator: 4 },
+  pianoUseColors: true,
+  pianoShowBlackKeys: false,
+};
+
+const DEFAULT_UI: EditorUI = {
+  showPiano: false,
+  showSongLibrary: false,
+  showSettings: false,
+  showHelp: false,
+  showLyricsModal: false,
+};
 
 export default function Home() {
-  const [currentSongId, setCurrentSongId] = useState("dayenu");
-  const [song, setSong] = useState<Song>(() => getSongById("dayenu")!);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [activeNoteIndex, setActiveNoteIndex] = useState(-1);
-  const [currentBeat, setCurrentBeat] = useState(0);
-  const [tempo, setTempo] = useState(92);
-  const [showLabels, setShowLabels] = useState(true);
-  const [monoMode, setMonoMode] = useState(false);
-  const [useStandardNotation, setUseStandardNotation] = useState(false);
-  const [zoom, setZoom] = useState(100);
-  const [layout, setLayout] = useState<LayoutResult | null>(null);
+  // Persistent state
+  const [composition, setComposition] = useLocalStorage<EditorComposition>(
+    "rochel-editor-composition",
+    DEFAULT_COMPOSITION,
+  );
+  const [settings, setSettings] = useLocalStorage<EditorSettings>(
+    "rochel-editor-settings",
+    DEFAULT_SETTINGS,
+  );
+  const [ui, setUI] = useLocalStorage<EditorUI>("rochel-editor-ui", DEFAULT_UI);
+  const [savedSongs, setSavedSongs] = useLocalStorage<SavedSongsMap>(
+    "rochel-saved-songs",
+    getDefaultSongs(),
+  );
+  const [currentSongId, setCurrentSongId] = useLocalStorage<string | null>(
+    "rochel-current-song-id",
+    null,
+  );
+  const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
+    "rochel-measures-per-row",
+    2, // Default: 2 measures per row
+  );
+  const [totalMeasures, setTotalMeasures] = useLocalStorage<number>(
+    "rochel-total-measures",
+    4, // Default: 4 measures
+  );
 
-  // Refs for animation
-  const playStartTimeRef = useRef(0);
-  const startBeatRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
+  // SVG ref for export functionality
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  // Memoize expanded playback sequence for songs with repeats
-  const playbackSequence = useMemo(() => {
-    if (!layout) return null;
-    return expandNotesForPlayback(layout);
-  }, [layout]);
+  // Ref for responsive layout
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const totalPlaybackBeats = useMemo(() => {
-    if (!layout) return 0;
-    return getTotalPlaybackBeats(layout);
-  }, [layout]);
+  // Calculate total beats for layout based on user-defined totalMeasures
+  const beatsPerMeasure = settings.timeSignature.numerator;
+  const systemCount = Math.ceil(totalMeasures / measuresPerRow);
+  const totalBeats = totalMeasures * beatsPerMeasure;
 
-  // Update song when selection changes
-  useEffect(() => {
-    const newSong = getSongById(currentSongId);
-    if (newSong) {
-      setSong(newSong);
-      setTempo(newSong.tempo);
-      handleStop();
+  // Get responsive layout configuration
+  const layout = useResponsiveLayout(editorContainerRef, {
+    timeSignature: settings.timeSignature,
+    totalBeats,
+    userMeasuresPerRow: measuresPerRow,
+  });
+
+  // Scroll handler for playback follow
+  const handleScrollTo = useCallback((scrollLeft: number) => {
+    if (editorContainerRef.current) {
+      editorContainerRef.current.scrollLeft = scrollLeft;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSongId]);
+  }, []);
 
-  // Update audio player tempo
-  useEffect(() => {
-    const player = getAudioPlayer();
-    player.setTempo(tempo);
-  }, [tempo]);
+  // Playback hook
+  const playback = usePlayback({
+    composition: composition as Composition,
+    tempo: settings.tempo,
+    timeSignature: settings.timeSignature,
+    measuresPerRow,
+    totalMeasures,
+    onScrollTo: handleScrollTo,
+  });
 
-  // Animation loop for smooth playhead with repeat support
-  const animatePlayhead = useCallback(() => {
-    if (!isPlaying || !layout || !playbackSequence) return;
+  // Undo/Redo state
+  const [history, setHistory] = useState<EditorComposition[]>([composition]);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
-    const now = performance.now();
-    const elapsedMs = now - playStartTimeRef.current;
-    const beatsPerMs = tempo / 60 / 1000;
-    const playbackBeat = startBeatRef.current + elapsedMs * beatsPerMs;
+  // Current song title
+  const currentSongTitle =
+    currentSongId && savedSongs[currentSongId]
+      ? savedSongs[currentSongId].name
+      : "Untitled Song";
 
-    // Check if we've reached the end (including repeats)
-    if (playbackBeat >= totalPlaybackBeats) {
-      setIsPlaying(false);
-      setCurrentBeat(0);
-      setActiveNoteIndex(-1);
-      return;
+  // Update composition helper with history tracking
+  const updateComposition = useCallback(
+    (updates: Partial<EditorComposition>) => {
+      const newComposition = {
+        ...composition,
+        ...updates,
+      } as EditorComposition;
+      setComposition(newComposition);
+
+      // Add to history for undo/redo
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newComposition);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    },
+    [composition, history, historyIndex, setComposition],
+  );
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setComposition(history[newIndex]);
     }
+  }, [historyIndex, history, setComposition]);
 
-    // Find the current position in the playback sequence
-    let currentSeqIndex = 0;
-    for (let i = 0; i < playbackSequence.length; i++) {
-      const seq = playbackSequence[i];
-      const note = layout.notes[seq.noteIndex];
-      if (playbackBeat < seq.beatPosition + note.duration) {
-        currentSeqIndex = i;
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setComposition(history[newIndex]);
+    }
+  }, [historyIndex, history, setComposition]);
+
+  // Auto-migrate saved songs on mount (runs once)
+  useEffect(() => {
+    let needsMigration = false;
+
+    // Check if any songs need migration
+    for (const song of Object.values(savedSongs)) {
+      if (isLegacyComposition(song.composition)) {
+        needsMigration = true;
         break;
       }
     }
 
-    // Get the visual note index and beat position
-    const seq = playbackSequence[currentSeqIndex];
-    const visualNoteIndex = seq.noteIndex;
-    const visualNote = layout.notes[visualNoteIndex];
-
-    // Calculate visual beat for playhead (using the original note's beat position)
-    const beatWithinNote = playbackBeat - seq.beatPosition;
-    const visualBeat = visualNote.beatPosition + beatWithinNote;
-
-    setCurrentBeat(visualBeat);
-
-    if (activeNoteIndex !== visualNoteIndex) {
-      setActiveNoteIndex(visualNoteIndex);
+    // Perform migration if needed
+    if (needsMigration) {
+      console.log("Migrating saved songs to new format...");
+      const migratedSongs = migrateAllSongs(savedSongs);
+      setSavedSongs(migratedSongs);
+      toast.success("Songs updated to new format");
     }
 
-    rafRef.current = requestAnimationFrame(animatePlayhead);
-  }, [
-    isPlaying,
-    layout,
-    playbackSequence,
-    tempo,
-    totalPlaybackBeats,
-    activeNoteIndex,
-  ]);
-
-  // Start/stop animation when playing state changes
-  useEffect(() => {
-    if (isPlaying) {
-      rafRef.current = requestAnimationFrame(animatePlayhead);
-    } else if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    // Also migrate current composition if needed
+    if (isLegacyComposition(composition)) {
+      console.log("Migrating current composition to new format...");
+      const migratedComp = migrateSavedSong({
+        id: "temp",
+        name: "temp",
+        composition,
+        settings: settings,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }).composition;
+      setComposition(migratedComp);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [isPlaying, animatePlayhead]);
-
-  // Keyboard shortcut for space to play/pause
+  // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && e.target === document.body) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        handlePlayPause();
+        handleUndo();
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key === "Z" || (e.key === "z" && e.shiftKey))
+      ) {
+        e.preventDefault();
+        handleRedo();
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, layout, tempo, song]);
+  }, [handleUndo, handleRedo]);
 
-  const handlePlayPause = useCallback(() => {
-    const player = getAudioPlayer();
+  // Save current composition as song
+  const handleSaveSong = useCallback(
+    (name: string) => {
+      const songId = currentSongId || `song_${Date.now()}`;
 
-    if (isPlaying) {
-      player.pause();
-      setIsPlaying(false);
-    } else if (layout && playbackSequence) {
-      player.setTempo(tempo);
+      // Ensure composition is migrated before saving
+      const migratedComp = isLegacyComposition(composition)
+        ? migrateSavedSong({
+            id: songId,
+            name,
+            composition,
+            settings,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }).composition
+        : composition;
+      const migratedComposition = migratedComp as Composition;
 
-      // Store the start time and current beat position
-      playStartTimeRef.current = performance.now();
-      startBeatRef.current = 0; // Always start from beginning for now
+      const song: SavedSong = {
+        id: songId,
+        name,
+        composition: migratedComposition,
+        settings: {
+          tempo: settings.tempo,
+          timeSignature: settings.timeSignature,
+        },
+        createdAt: savedSongs[songId]?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
 
-      // Create expanded notes array for audio playback
-      const expandedNotes = playbackSequence.map(
-        (seq) => layout.notes[seq.noteIndex],
-      );
-
-      player.playSong(song, expandedNotes, (index) => {
-        if (index === -1) {
-          setIsPlaying(false);
-          setCurrentBeat(0);
-          setActiveNoteIndex(-1);
-        }
-      });
-      setIsPlaying(true);
-    }
-  }, [isPlaying, layout, playbackSequence, song, tempo]);
-
-  const handleStop = useCallback(() => {
-    const player = getAudioPlayer();
-    player.stop();
-    setIsPlaying(false);
-    setCurrentBeat(0);
-    setActiveNoteIndex(-1);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    const player = getAudioPlayer();
-    player.reset();
-    setCurrentBeat(0);
-    setActiveNoteIndex(-1);
-    startBeatRef.current = 0;
-  }, []);
-
-  const handleNoteClick = useCallback(
-    (index: number, note: RenderedNote) => {
-      setActiveNoteIndex(index);
-
-      if (isPlaying && layout && playbackSequence) {
-        // Find the position in playback sequence for this visual note
-        const seqIndex = playbackSequence.findIndex(
-          (seq) => seq.noteIndex === index,
-        );
-        if (seqIndex >= 0) {
-          const player = getAudioPlayer();
-          const expandedNotes = playbackSequence.map(
-            (seq) => layout.notes[seq.noteIndex],
-          );
-          player.seekTo(seqIndex, expandedNotes);
-
-          // Update playhead position
-          const seq = playbackSequence[seqIndex];
-          playStartTimeRef.current = performance.now();
-          startBeatRef.current = seq.beatPosition;
-          setCurrentBeat(note.beatPosition);
-        }
-      } else {
-        setTimeout(() => {
-          if (!isPlaying) {
-            setActiveNoteIndex(-1);
-          }
-        }, 160);
-      }
+      setSavedSongs({ ...savedSongs, [songId]: song });
+      setCurrentSongId(songId);
+      toast.success(`Saved "${name}"`);
     },
-    [isPlaying, layout, playbackSequence],
+    [
+      currentSongId,
+      composition,
+      settings,
+      savedSongs,
+      setSavedSongs,
+      setCurrentSongId,
+    ],
   );
 
-  const handleLayoutChange = useCallback((newLayout: LayoutResult) => {
-    setLayout(newLayout);
+  // Load song handler (with automatic migration)
+  const handleLoadSong = useCallback(
+    (song: SavedSong) => {
+      // Migrate if needed
+      const migratedSong = migrateSavedSong(song);
+
+      setComposition(migratedSong.composition);
+      setSettings({
+        ...settings,
+        tempo: migratedSong.settings.tempo,
+        timeSignature: migratedSong.settings.timeSignature,
+      });
+      setCurrentSongId(migratedSong.id);
+      setUI({ ...ui, showSongLibrary: false });
+      toast.success(`Loaded "${migratedSong.name}"`);
+
+      // Calculate and set totalMeasures based on song content
+      const notes = migratedSong.composition.notes as EditorNote[];
+      if (notes.length > 0) {
+        const maxBeat = Math.max(
+          ...notes.map((n) => n.absoluteBeat + n.duration),
+        );
+        const songBeatsPerMeasure =
+          migratedSong.settings.timeSignature.numerator;
+        const requiredMeasures = Math.ceil(maxBeat / songBeatsPerMeasure);
+        setTotalMeasures(Math.max(requiredMeasures, 4)); // Minimum 4 measures
+      }
+
+      // Save migrated version if it was updated
+      if (migratedSong.updatedAt !== song.updatedAt) {
+        setSavedSongs({ ...savedSongs, [migratedSong.id]: migratedSong });
+      }
+    },
+    [
+      settings,
+      ui,
+      savedSongs,
+      setComposition,
+      setSettings,
+      setCurrentSongId,
+      setUI,
+      setSavedSongs,
+      setTotalMeasures,
+    ],
+  );
+
+  // Delete song handler
+  const handleDeleteSong = useCallback(
+    (songId: string) => {
+      const newSongs = { ...savedSongs };
+      delete newSongs[songId];
+      setSavedSongs(newSongs);
+      if (currentSongId === songId) {
+        setCurrentSongId(null);
+      }
+      toast.success("Song deleted");
+    },
+    [savedSongs, currentSongId, setSavedSongs, setCurrentSongId],
+  );
+
+  // Restore defaults handler
+  const handleRestoreDefaults = useCallback(() => {
+    setSavedSongs(getDefaultSongs());
+    toast.success("Default songs restored");
+  }, [setSavedSongs]);
+
+  // Export handler
+  const handleExport = useCallback(() => {
+    const dataStr = JSON.stringify(savedSongs, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rochel-songs.json";
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Songs exported");
+  }, [savedSongs]);
+
+  // Save as PNG
+  const handleSavePNG = useCallback(() => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = svg.clientWidth * 2;
+      canvas.height = svg.clientHeight * 2;
+      ctx.scale(2, 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      const link = document.createElement("a");
+      link.download = "music-composition.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast.success("Exported as PNG");
+    };
+    img.src = url;
+  }, []);
+
+  // Save as SVG
+  const handleSaveSVG = useCallback(() => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    const link = document.createElement("a");
+    link.download = "music-composition.svg";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Exported as SVG");
   }, []);
 
   return (
-    <div className="min-h-screen">
-      <main className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-3.5">
-        {/* Controls Panel */}
-        <section className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-          <div className="px-3.5 py-3 border-b border-gray-200 flex items-center justify-between gap-2.5">
-            <div className="font-bold text-sm text-gray-800">Controls</div>
-            <div className="text-xs text-gray-500">
-              <kbd className="font-mono text-xs px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 text-gray-700">
-                Space
-              </kbd>{" "}
-              play / pause
+    <div className="flex flex-col h-screen bg-gray-50">
+      <Toaster position="top-center" />
+
+      {/* Header */}
+      <EditorHeader
+        currentSongTitle={currentSongTitle}
+        onSongTitleClick={() => setUI({ ...ui, showSongLibrary: true })}
+        tempo={settings.tempo}
+        onTempoChange={(tempo) => setSettings({ ...settings, tempo })}
+        timeSignature={settings.timeSignature}
+        measuresPerRow={measuresPerRow}
+        onMeasuresPerRowChange={setMeasuresPerRow}
+        totalMeasures={totalMeasures}
+        onTotalMeasuresChange={(newTotal) => {
+          setTotalMeasures(newTotal);
+          // Clamp measuresPerRow if it exceeds new total
+          if (measuresPerRow > newTotal) {
+            setMeasuresPerRow(newTotal);
+          }
+        }}
+        onSettings={() => setUI({ ...ui, showSettings: true })}
+        onHelp={() => setUI({ ...ui, showHelp: true })}
+        onPlay={playback.handlePlay}
+        isPlaying={playback.isPlaying}
+        hasNotes={composition.notes.length > 0}
+        showPiano={ui.showPiano}
+        onTogglePiano={() => setUI({ ...ui, showPiano: !ui.showPiano })}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onDownloadPNG={handleSavePNG}
+        onDownloadSVG={handleSaveSVG}
+      />
+
+      {/* Main content area */}
+      <div className="flex-1 flex relative overflow-hidden">
+        {/* Canvas area */}
+        <div ref={editorContainerRef} className="flex-1 overflow-auto">
+          <div className="py-4">
+            <div className="mx-auto w-fit">
+              <NoteEditor
+                notes={toLegacyNotes(composition.notes as EditorNote[], layout)}
+                onNotesChange={(legacyNotes) => {
+                  const newNotes = fromLegacyNotes(legacyNotes, layout);
+                  updateComposition({ notes: newNotes });
+                }}
+                repeatMarkers={toLegacyRepeatMarkers(
+                  composition.repeatMarkers as RepeatMarker[],
+                  layout,
+                )}
+                onRepeatMarkersChange={(legacyMarkers) => {
+                  const newMarkers = fromLegacyRepeatMarkers(
+                    legacyMarkers,
+                    layout,
+                  );
+                  updateComposition({ repeatMarkers: newMarkers });
+                }}
+                lyrics={(composition as Composition).lyrics || []}
+                onLyricsChange={(newLyrics) => {
+                  updateComposition({ lyrics: newLyrics });
+                }}
+                selectedTool={settings.selectedTool}
+                showLabels={settings.showLabels}
+                showKidFaces={settings.showKidFaces}
+                showGrid={settings.showGrid}
+                allowChords={settings.allowChords}
+                timeSignature={settings.timeSignature}
+                measuresPerRow={measuresPerRow}
+                systemCount={systemCount}
+                onSystemCountChange={(count) => {
+                  // System count is now calculated dynamically from layout
+                  // This callback is kept for compatibility but does nothing
+                  console.log(
+                    "System count is now dynamic based on layout:",
+                    count,
+                  );
+                }}
+                tempo={settings.tempo}
+                isPlaying={playback.isPlaying}
+                playheadX={playback.playheadX}
+                playheadSystem={playback.playheadSystem}
+                activeNoteId={playback.activeNoteId}
+                svgRef={svgRef}
+              />
             </div>
           </div>
+        </div>
 
-          <div className="p-3.5 space-y-4">
-            <SongSelector value={currentSongId} onChange={setCurrentSongId} />
+        {/* Tool Palette */}
+        <ToolPalette
+          selectedTool={settings.selectedTool}
+          onToolSelect={(tool) => {
+            if (tool === "lyrics") {
+              // Open the lyrics modal instead of selecting the tool
+              setUI({ ...ui, showLyricsModal: true });
+            } else {
+              setSettings({ ...settings, selectedTool: tool });
+            }
+          }}
+        />
+      </div>
 
-            <PlaybackControls
-              isPlaying={isPlaying}
-              tempo={tempo}
-              onPlay={handlePlayPause}
-              onStop={handleStop}
-              onReset={handleReset}
-              onTempoChange={setTempo}
-            />
+      {/* Piano drawer */}
+      {ui.showPiano && (
+        <PianoDrawer
+          activePitch={playback.activePitch}
+          activeNoteDuration={playback.activeNoteDuration}
+          activeNoteStartTime={playback.activeNoteStartTime}
+          tempo={settings.tempo}
+          useColors={settings.pianoUseColors}
+          onToggleColors={() =>
+            setSettings({
+              ...settings,
+              pianoUseColors: !settings.pianoUseColors,
+            })
+          }
+          showBlackKeys={settings.pianoShowBlackKeys}
+          onToggleBlackKeys={() =>
+            setSettings({
+              ...settings,
+              pianoShowBlackKeys: !settings.pianoShowBlackKeys,
+            })
+          }
+        />
+      )}
 
-            <DisplayOptions
-              showLabels={showLabels}
-              monoMode={monoMode}
-              useStandardNotation={useStandardNotation}
-              onShowLabelsChange={setShowLabels}
-              onMonoModeChange={setMonoMode}
-              onNotationStyleChange={setUseStandardNotation}
-            />
+      {/* Modals */}
+      <SongLibraryModal
+        isOpen={ui.showSongLibrary}
+        onClose={() => setUI({ ...ui, showSongLibrary: false })}
+        savedSongs={savedSongs}
+        currentSongId={currentSongId}
+        onLoadSong={handleLoadSong}
+        onDeleteSong={handleDeleteSong}
+        onSaveSong={handleSaveSong}
+        onUpdateCurrentSong={() => {
+          if (currentSongId && savedSongs[currentSongId]) {
+            handleSaveSong(savedSongs[currentSongId].name);
+          }
+        }}
+        onRestoreDefaults={handleRestoreDefaults}
+        onExport={handleExport}
+      />
 
-            <ColorLegend monoMode={monoMode} />
+      <SettingsModal
+        isOpen={ui.showSettings}
+        onClose={() => setUI({ ...ui, showSettings: false })}
+        tempo={settings.tempo}
+        onTempoChange={(tempo) => setSettings({ ...settings, tempo })}
+        timeSignature={settings.timeSignature}
+        onTimeSignatureChange={(ts) =>
+          setSettings({ ...settings, timeSignature: ts })
+        }
+        showLabels={settings.showLabels}
+        onShowLabelsChange={(show) =>
+          setSettings({ ...settings, showLabels: show })
+        }
+        showKidFaces={settings.showKidFaces}
+        onShowKidFacesChange={(show) =>
+          setSettings({ ...settings, showKidFaces: show })
+        }
+        showGrid={settings.showGrid}
+        onShowGridChange={(show) =>
+          setSettings({ ...settings, showGrid: show })
+        }
+        allowChords={settings.allowChords}
+        onAllowChordsChange={(allow) =>
+          setSettings({ ...settings, allowChords: allow })
+        }
+      />
 
-            <div className="flex flex-wrap gap-2.5 text-xs text-gray-500">
-              <div className="px-2.5 py-1.5 rounded-full border border-gray-200 bg-gray-50">
-                Time signature: 4/4
-              </div>
-              <div className="px-2.5 py-1.5 rounded-full border border-gray-200 bg-gray-50">
-                No sharps / flats
-              </div>
-              <div className="px-2.5 py-1.5 rounded-full border border-gray-200 bg-gray-50">
-                Range: C4 - C5
-              </div>
-            </div>
-          </div>
-        </section>
+      <HelpModal
+        isOpen={ui.showHelp}
+        onClose={() => setUI({ ...ui, showHelp: false })}
+      />
 
-        {/* Score Panel */}
-        <section className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-          <div className="px-3.5 py-3 border-b border-gray-200 flex items-center justify-between gap-2.5">
-            <div className="font-bold text-sm text-gray-800">Score</div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Zoom:</label>
-                <input
-                  type="range"
-                  min="50"
-                  max="300"
-                  step="10"
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-24 h-1.5"
-                />
-                <span className="text-xs text-gray-600 w-10">{zoom}%</span>
-              </div>
-              <div className="text-xs text-gray-500">
-                Click a note to hear it
-              </div>
-            </div>
-          </div>
+      <LyricsModal
+        isOpen={ui.showLyricsModal}
+        onClose={() => setUI({ ...ui, showLyricsModal: false })}
+        lyrics={(composition as Composition).lyrics || []}
+        onLyricsChange={(newLyrics) => {
+          updateComposition({ lyrics: newLyrics });
+        }}
+        totalMeasures={totalMeasures}
+        beatsPerMeasure={beatsPerMeasure}
+        notes={composition.notes as EditorNote[]}
+      />
 
-          <SheetMusic
-            song={song}
-            isPlaying={isPlaying}
-            currentBeat={currentBeat}
-            activeNoteIndex={activeNoteIndex}
-            showLabels={showLabels}
-            monoMode={monoMode}
-            useStandardNotation={useStandardNotation}
-            zoom={zoom}
-            onNoteClick={handleNoteClick}
-            onLayoutChange={handleLayoutChange}
-          />
-        </section>
-      </main>
+      {/* First visit tour */}
+      <FirstVisitTour />
     </div>
   );
 }

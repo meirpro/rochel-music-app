@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components";
 import { Providers } from "@/components/Providers";
 
 const fredoka = Fredoka({
@@ -26,10 +25,7 @@ export default function RootLayout({
       <body
         className={`${fredoka.variable} font-fredoka antialiased bg-app text-white`}
       >
-        <Providers>
-          <Header />
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
