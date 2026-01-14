@@ -242,20 +242,21 @@ export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
   };
 
   return (
-    <div className="w-20 bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center gap-2 py-4 shadow-sm">
+    <div className="w-20 bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-4 shadow-sm overflow-y-auto">
       {/* Title */}
-      <div className="text-xs font-semibold text-purple-600 mb-2 text-center">
+      <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
         TOOLS
       </div>
 
-      {/* Tool buttons */}
-      {TOOLS.map((tool) => {
-        const isSelected = selectedTool === tool.id;
-        return (
-          <button
-            key={tool.id}
-            onClick={() => handleToolClick(tool.id)}
-            className={`
+      {/* Tool buttons - scrollable area */}
+      <div className="flex flex-col items-center gap-2 flex-1 min-h-0">
+        {TOOLS.map((tool) => {
+          const isSelected = selectedTool === tool.id;
+          return (
+            <button
+              key={tool.id}
+              onClick={() => handleToolClick(tool.id)}
+              className={`
               w-14 h-14 rounded-xl border-2 flex flex-col items-center justify-center
               transition-all duration-200 hover:scale-105 active:scale-95
               ${
@@ -264,13 +265,14 @@ export function ToolPalette({ selectedTool, onToolSelect }: ToolPaletteProps) {
                   : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100"
               }
             `}
-            title={tool.label}
-          >
-            <div className="mb-0.5">{tool.icon}</div>
-            <span className="text-[9px] font-semibold">{tool.label}</span>
-          </button>
-        );
-      })}
+              title={tool.label}
+            >
+              <div className="mb-0.5">{tool.icon}</div>
+              <span className="text-[9px] font-semibold">{tool.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Keyboard hint at bottom */}
       <div className="mt-auto pt-4 text-[8px] text-gray-400 text-center leading-tight">
