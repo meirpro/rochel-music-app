@@ -225,78 +225,80 @@ export function EditorHeader({
         </button>
       </div>
 
-      {/* Center section - Tempo and Controls */}
-      <div className="flex items-center gap-2">
-        {/* Music Settings Group */}
-        <div
-          id={TOUR_ELEMENT_IDS.sectionMusicSettings}
-          className="flex items-center gap-2"
-        >
-          {/* Time signature display */}
-          <button
-            id={TOUR_ELEMENT_IDS.timeSigDisplay}
-            onClick={onSettings}
-            className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-lg shadow-sm transition-colors"
-            title="Click to change time signature"
-          >
-            <span className="text-purple-700 font-semibold text-lg">
-              {timeSignature.numerator}
-            </span>
-            <span className="text-purple-400 font-semibold text-lg">/</span>
-            <span className="text-purple-700 font-semibold text-lg">
-              {timeSignature.denominator}
-            </span>
-          </button>
-
-          {/* Tempo input/display */}
+      {/* Center section - Tempo and Controls (hidden on mobile) */}
+      {!isMobile && (
+        <div className="flex items-center gap-2">
+          {/* Music Settings Group */}
           <div
-            id={TOUR_ELEMENT_IDS.tempoDisplay}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/60 rounded-lg shadow-sm"
+            id={TOUR_ELEMENT_IDS.sectionMusicSettings}
+            className="flex items-center gap-2"
           >
-            {isEditingTempo ? (
-              <input
-                ref={tempoInputRef}
-                type="number"
-                min="40"
-                max="200"
-                value={tempoInputValue}
-                onChange={(e) => setTempoInputValue(e.target.value)}
-                onBlur={handleTempoBlur}
-                onKeyDown={handleTempoKeyDown}
-                className="w-12 text-purple-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
+            {/* Time signature display */}
+            <button
+              id={TOUR_ELEMENT_IDS.timeSigDisplay}
+              onClick={onSettings}
+              className="flex items-center gap-1 px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-lg shadow-sm transition-colors"
+              title="Click to change time signature"
+            >
+              <span className="text-purple-700 font-semibold text-lg">
+                {timeSignature.numerator}
+              </span>
+              <span className="text-purple-400 font-semibold text-lg">/</span>
+              <span className="text-purple-700 font-semibold text-lg">
+                {timeSignature.denominator}
+              </span>
+            </button>
+
+            {/* Tempo input/display */}
+            <div
+              id={TOUR_ELEMENT_IDS.tempoDisplay}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/60 rounded-lg shadow-sm"
+            >
+              {isEditingTempo ? (
+                <input
+                  ref={tempoInputRef}
+                  type="number"
+                  min="40"
+                  max="200"
+                  value={tempoInputValue}
+                  onChange={(e) => setTempoInputValue(e.target.value)}
+                  onBlur={handleTempoBlur}
+                  onKeyDown={handleTempoKeyDown}
+                  className="w-12 text-purple-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
+                />
+              ) : (
+                <button
+                  onClick={() => setIsEditingTempo(true)}
+                  className="text-purple-700 font-semibold text-sm hover:text-purple-800"
+                >
+                  {tempo}
+                </button>
+              )}
+              <span className="text-purple-500 text-xs">BPM</span>
+            </div>
+
+            {/* Measures per row control - max is totalMeasures (can't show more per row than exist) */}
+            <div className="hidden xl:block">
+              <MeasuresControlCompact
+                value={measuresPerRow}
+                onChange={onMeasuresPerRowChange}
+                maxMeasures={totalMeasures}
+                label="Per row:"
               />
-            ) : (
-              <button
-                onClick={() => setIsEditingTempo(true)}
-                className="text-purple-700 font-semibold text-sm hover:text-purple-800"
-              >
-                {tempo}
-              </button>
-            )}
-            <span className="text-purple-500 text-xs">BPM</span>
-          </div>
+            </div>
 
-          {/* Measures per row control - max is totalMeasures (can't show more per row than exist) */}
-          <div className="hidden md:block">
-            <MeasuresControlCompact
-              value={measuresPerRow}
-              onChange={onMeasuresPerRowChange}
-              maxMeasures={totalMeasures}
-              label="Per row:"
-            />
-          </div>
-
-          {/* Total measures control */}
-          <div className="hidden md:block ml-2 pl-2 border-l border-purple-300">
-            <MeasuresControlCompact
-              value={totalMeasures}
-              onChange={onTotalMeasuresChange}
-              maxMeasures={99}
-              label="Total measures:"
-            />
+            {/* Total measures control */}
+            <div className="hidden xl:block ml-2 pl-2 border-l border-purple-300">
+              <MeasuresControlCompact
+                value={totalMeasures}
+                onChange={onTotalMeasuresChange}
+                maxMeasures={99}
+                label="Total measures:"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Right section - Actions */}
       <div className="flex items-center gap-2">
