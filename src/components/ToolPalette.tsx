@@ -158,6 +158,23 @@ const DeleteIcon = () => (
   </svg>
 );
 
+const LyricsIcon = () => (
+  <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
+    {/* Text/lyrics icon - "Aa" symbol */}
+    <text
+      x="10"
+      y="18"
+      textAnchor="middle"
+      fontSize="12"
+      fontWeight="bold"
+      fill="currentColor"
+      fontFamily="system-ui, sans-serif"
+    >
+      Aa
+    </text>
+  </svg>
+);
+
 const TOOLS: Array<{
   id: NoteTool;
   icon: React.ReactNode;
@@ -205,6 +222,12 @@ const TOOLS: Array<{
     icon: <RepeatIcon />,
     label: "Repeat",
     color: "bg-indigo-100 border-indigo-300 text-indigo-600 shadow-sm",
+  },
+  {
+    id: "lyrics",
+    icon: <LyricsIcon />,
+    label: "Lyrics",
+    color: "bg-amber-100 border-amber-300 text-amber-600 shadow-sm",
   },
 ];
 

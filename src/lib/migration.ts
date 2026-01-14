@@ -97,7 +97,23 @@ export function migrateLegacyComposition(
   return {
     notes,
     repeatMarkers,
+    lyrics: [],
   };
+}
+
+/**
+ * Ensure composition has lyrics field (for songs saved before lyrics feature)
+ */
+export function ensureCompositionHasLyrics(
+  composition: Composition,
+): Composition {
+  if (!composition.lyrics) {
+    return {
+      ...composition,
+      lyrics: [],
+    };
+  }
+  return composition;
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { Pitch } from "@/lib/types";
+import { Pitch, LyricSyllable } from "@/lib/types";
 import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 
@@ -145,6 +145,7 @@ export type NoteTool =
   | "whole"
   | "delete"
   | "repeat"
+  | "lyrics"
   | null;
 
 interface NoteEditorProps {
@@ -152,6 +153,8 @@ interface NoteEditorProps {
   onNotesChange: (notes: EditorNote[]) => void;
   repeatMarkers: RepeatMarker[];
   onRepeatMarkersChange: (markers: RepeatMarker[]) => void;
+  lyrics?: LyricSyllable[];
+  onLyricsChange?: (lyrics: LyricSyllable[]) => void;
   selectedTool: NoteTool;
   showLabels?: boolean;
   showKidFaces?: boolean;
@@ -413,6 +416,8 @@ export function NoteEditor({
   onNotesChange,
   repeatMarkers,
   onRepeatMarkersChange,
+  lyrics = [],
+  onLyricsChange,
   selectedTool,
   showLabels = true,
   showKidFaces = false,
@@ -1865,6 +1870,31 @@ export function NoteEditor({
         {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
 
+        {/* Lyrics below each system */}
+        {lyrics.map((lyric) => {
+          const system = Math.floor(lyric.absoluteBeat / beatsPerSystem);
+          if (system >= systemCount) return null;
+          const beatInSystem = lyric.absoluteBeat % beatsPerSystem;
+          const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
+          const staffCenterY = getStaffCenterY(system);
+          const lyricsY = staffCenterY + LINE_SPACING + 55;
+
+          return (
+            <text
+              key={`lyric-${lyric.absoluteBeat}`}
+              x={x}
+              y={lyricsY}
+              textAnchor="middle"
+              fontSize={12}
+              fontFamily="system-ui, sans-serif"
+              fill="#374151"
+              style={{ unicodeBidi: "isolate" }}
+            >
+              {lyric.text}
+            </text>
+          );
+        })}
+
         {/* Render beams for grouped eighth notes */}
         {beamGroups.map((group, groupIndex) => {
           const { notes: groupNotes, stemDirection } = group;
@@ -2149,11 +2179,12 @@ export function NoteEditor({
         {/* Marker drag preview - shows target measure highlight and floating marker */}
         {draggedMarker && markerDragPosition && (
           <g style={{ pointerEvents: "none" }}>
-            {/* Target measure highlight */}
+            {/* Target measure highlight - end markers highlight the measure BEFORE the bar line */}
             <rect
               x={
                 LEFT_MARGIN +
-                markerDragPosition.targetMeasure *
+                (markerDragPosition.targetMeasure -
+                  (draggedMarker.type === "end" ? 1 : 0)) *
                   layout.beatsPerMeasure *
                   BEAT_WIDTH
               }

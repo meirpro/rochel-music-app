@@ -18,6 +18,7 @@ import { ToolPalette } from "@/components/ToolPalette";
 import { SettingsModal } from "@/components/SettingsModal";
 import { SongLibraryModal } from "@/components/SongLibraryModal";
 import { HelpModal } from "@/components/HelpModal";
+import { LyricsModal } from "@/components/LyricsModal";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { MIDI_NOTES } from "@/lib/constants";
 import {
@@ -28,6 +29,7 @@ import {
   LegacyComposition,
   EditorNote,
   RepeatMarker,
+  LyricSyllable,
 } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
 import {
@@ -70,11 +72,13 @@ interface EditorUI {
   showSongLibrary: boolean;
   showSettings: boolean;
   showHelp: boolean;
+  showLyricsModal: boolean;
 }
 
 const DEFAULT_COMPOSITION: Composition = {
   notes: [],
   repeatMarkers: [],
+  lyrics: [],
 };
 
 const DEFAULT_SETTINGS: EditorSettings = {
@@ -94,6 +98,7 @@ const DEFAULT_UI: EditorUI = {
   showSongLibrary: false,
   showSettings: false,
   showHelp: false,
+  showLyricsModal: false,
 };
 
 export default function EditorPage() {
@@ -322,6 +327,18 @@ export default function EditorPage() {
       setUI({ ...ui, showSongLibrary: false });
       toast.success(`Loaded "${migratedSong.name}"`);
 
+      // Calculate and set totalMeasures based on song content
+      const notes = migratedSong.composition.notes as EditorNote[];
+      if (notes.length > 0) {
+        const maxBeat = Math.max(
+          ...notes.map((n) => n.absoluteBeat + n.duration),
+        );
+        const songBeatsPerMeasure =
+          migratedSong.settings.timeSignature.numerator;
+        const requiredMeasures = Math.ceil(maxBeat / songBeatsPerMeasure);
+        setTotalMeasures(Math.max(requiredMeasures, 4)); // Minimum 4 measures
+      }
+
       // Save migrated version if it was updated
       if (migratedSong.updatedAt !== song.updatedAt) {
         setSavedSongs({ ...savedSongs, [migratedSong.id]: migratedSong });
@@ -336,6 +353,7 @@ export default function EditorPage() {
       setCurrentSongId,
       setUI,
       setSavedSongs,
+      setTotalMeasures,
     ],
   );
 
@@ -488,6 +506,10 @@ export default function EditorPage() {
                   );
                   updateComposition({ repeatMarkers: newMarkers });
                 }}
+                lyrics={(composition as Composition).lyrics || []}
+                onLyricsChange={(newLyrics) => {
+                  updateComposition({ lyrics: newLyrics });
+                }}
                 selectedTool={settings.selectedTool}
                 showLabels={settings.showLabels}
                 showKidFaces={settings.showKidFaces}
@@ -518,9 +540,14 @@ export default function EditorPage() {
         {/* Tool Palette */}
         <ToolPalette
           selectedTool={settings.selectedTool}
-          onToolSelect={(tool) =>
-            setSettings({ ...settings, selectedTool: tool })
-          }
+          onToolSelect={(tool) => {
+            if (tool === "lyrics") {
+              // Open the lyrics modal instead of selecting the tool
+              setUI({ ...ui, showLyricsModal: true });
+            } else {
+              setSettings({ ...settings, selectedTool: tool });
+            }
+          }}
         />
       </div>
 
@@ -591,6 +618,18 @@ export default function EditorPage() {
       <HelpModal
         isOpen={ui.showHelp}
         onClose={() => setUI({ ...ui, showHelp: false })}
+      />
+
+      <LyricsModal
+        isOpen={ui.showLyricsModal}
+        onClose={() => setUI({ ...ui, showLyricsModal: false })}
+        lyrics={(composition as Composition).lyrics || []}
+        onLyricsChange={(newLyrics) => {
+          updateComposition({ lyrics: newLyrics });
+        }}
+        totalMeasures={totalMeasures}
+        beatsPerMeasure={beatsPerMeasure}
+        notes={composition.notes as EditorNote[]}
       />
     </div>
   );

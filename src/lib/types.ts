@@ -144,10 +144,20 @@ export interface LegacyComposition {
   systemCount: number;
 }
 
+// Lyric syllable positioned at a specific beat
+export interface LyricSyllable {
+  text: string; // The syllable text (supports Hebrew/English)
+  absoluteBeat: number; // Beat position (0, 0.5, 1, 1.5, 2...)
+}
+
+// Lyrics container for a composition
+export type Lyrics = LyricSyllable[];
+
 // New composition format (no systemCount needed)
 export interface Composition {
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
+  lyrics: Lyrics;
 }
 
 // Saved song structure for localStorage persistence
