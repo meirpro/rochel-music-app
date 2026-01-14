@@ -25,7 +25,9 @@
       "Bash(git branch:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:nextstepjs.com)"
     ]
   },
   "enabledMcpjsonServers": [

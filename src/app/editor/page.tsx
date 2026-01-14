@@ -464,10 +464,7 @@ export default function EditorPage() {
             setMeasuresPerRow(newTotal);
           }
         }}
-        onSave={() => {
-          const name = prompt("Enter song name:");
-          if (name) handleSaveSong(name);
-        }}
+        onSave={() => setUI({ ...ui, showSongLibrary: true })}
         onSettings={() => setUI({ ...ui, showSettings: true })}
         onHelp={() => setUI({ ...ui, showHelp: true })}
         onPlay={playback.handlePlay}
@@ -584,6 +581,11 @@ export default function EditorPage() {
         onLoadSong={handleLoadSong}
         onDeleteSong={handleDeleteSong}
         onSaveSong={handleSaveSong}
+        onUpdateCurrentSong={() => {
+          if (currentSongId && savedSongs[currentSongId]) {
+            handleSaveSong(savedSongs[currentSongId].name);
+          }
+        }}
         onRestoreDefaults={handleRestoreDefaults}
         onExport={handleExport}
       />

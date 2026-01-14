@@ -11,6 +11,7 @@ interface SongLibraryModalProps {
   onLoadSong: (song: SavedSong) => void;
   onDeleteSong: (songId: string) => void;
   onSaveSong: (name: string) => void;
+  onUpdateCurrentSong: () => void;
   onRestoreDefaults: () => void;
   onExport: () => void;
 }
@@ -23,6 +24,7 @@ export function SongLibraryModal({
   onLoadSong,
   onDeleteSong,
   onSaveSong,
+  onUpdateCurrentSong,
   onRestoreDefaults,
   onExport,
 }: SongLibraryModalProps) {
@@ -147,7 +149,14 @@ export function SongLibraryModal({
 
                     {/* Actions */}
                     <div className="flex gap-2">
-                      {!isCurrent && (
+                      {isCurrent ? (
+                        <button
+                          onClick={onUpdateCurrentSong}
+                          className="flex-1 px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-800 text-xs font-medium rounded-lg transition-colors"
+                        >
+                          Save
+                        </button>
+                      ) : (
                         <button
                           onClick={() => onLoadSong(song)}
                           className="flex-1 px-3 py-1.5 bg-blue-200 hover:bg-blue-300 text-blue-800 text-xs font-medium rounded-lg transition-colors"
