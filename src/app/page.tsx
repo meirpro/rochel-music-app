@@ -469,7 +469,6 @@ export default function Home() {
         onRedo={handleRedo}
         onDownloadPNG={handleSavePNG}
         onDownloadSVG={handleSaveSVG}
-        isMobile={isMobile}
       />
 
       {/* Main content area */}
