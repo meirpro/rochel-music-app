@@ -26,7 +26,10 @@ import {
   migrateAllSongs,
   isLegacyComposition,
 } from "@/lib/migration";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import {
+  useResponsiveLayout,
+  getInitialMeasuresPerRow,
+} from "@/hooks/useResponsiveLayout";
 import { usePlayback } from "@/hooks/usePlayback";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileBanner } from "@/components/MobileBanner";
@@ -110,12 +113,32 @@ export default function Home() {
   );
   const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
     "rochel-measures-per-row",
-    4, // Default: 4 measures per row
+    4, // Default: 4 measures per row (overridden by viewport on first load)
   );
   const [totalMeasures, setTotalMeasures] = useLocalStorage<number>(
     "rochel-total-measures",
     4, // Default: 4 measures
   );
+  const [hasInitializedLayout, setHasInitializedLayout] =
+    useLocalStorage<boolean>("rochel-layout-initialized", false);
+
+  // Set viewport-based default for measuresPerRow on first visit only
+  useEffect(() => {
+    if (!hasInitializedLayout && typeof window !== "undefined") {
+      const beatsPerMeasure = settings.timeSignature.numerator;
+      const optimalMeasures = getInitialMeasuresPerRow(
+        window.innerWidth,
+        beatsPerMeasure,
+      );
+      setMeasuresPerRow(optimalMeasures);
+      setHasInitializedLayout(true);
+    }
+  }, [
+    hasInitializedLayout,
+    settings.timeSignature.numerator,
+    setMeasuresPerRow,
+    setHasInitializedLayout,
+  ]);
 
   // SVG ref for export functionality
   const svgRef = useRef<SVGSVGElement>(null);
@@ -345,6 +368,17 @@ export default function Home() {
       setTotalMeasures,
     ],
   );
+
+  // Auto-load default song on first visit (when composition is empty but currentSongId is set)
+  useEffect(() => {
+    const isEmptyComposition =
+      composition.notes.length === 0 && composition.repeatMarkers.length === 0;
+    if (isEmptyComposition && currentSongId && savedSongs[currentSongId]) {
+      handleLoadSong(savedSongs[currentSongId]);
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Delete song handler
   const handleDeleteSong = useCallback(

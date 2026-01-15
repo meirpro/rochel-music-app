@@ -1,12 +1,18 @@
 /**
- * Responsive Layout Hook
+ * Layout Configuration Hook
  *
- * Calculates dynamic layout parameters based on container width and user preferences.
- * Replaces the hardcoded system-based layout with flexible measures-per-row approach.
+ * Provides layout parameters based on user preferences.
+ * Uses FIXED beatWidth (60px) - layout does not change on resize.
+ * The measuresPerRow is a user preference stored in localStorage.
  */
 
-import { useState, useEffect, RefObject } from "react";
+import { useMemo } from "react";
 import { TimeSignature } from "@/lib/types";
+
+// Fixed layout constants (matching NoteEditor)
+const BEAT_WIDTH = 60;
+const LEFT_MARGIN = 100;
+const RIGHT_MARGIN = 20;
 
 export interface LayoutConfig {
   // User preferences
@@ -15,12 +21,11 @@ export interface LayoutConfig {
   // Time signature info
   beatsPerMeasure: number; // From time signature numerator
 
-  // Calculated dimensions
-  beatWidth: number; // Pixels per beat (dynamic based on container)
+  // Fixed dimensions
+  beatWidth: number; // Fixed at 60px per beat
   beatsPerRow: number; // measuresPerRow * beatsPerMeasure
 
   // Layout calculations
-  containerWidth: number; // Available width for content
   rowWidth: number; // Total width of a row
   totalRows: number; // Number of rows needed for composition
 
@@ -32,176 +37,69 @@ export interface LayoutConfig {
 export interface UseResponsiveLayoutOptions {
   timeSignature: TimeSignature;
   totalBeats: number; // Total beats in composition
-  userMeasuresPerRow?: number; // User's preferred measures per row (default: 4)
-  minBeatWidth?: number; // Minimum readable beat width (default: 40)
-  maxBeatWidth?: number; // Maximum beat width before too sparse (default: 80)
-  leftMargin?: number; // Left margin (default: 100)
-  rightMargin?: number; // Right margin (default: 20)
-}
-
-const DEFAULT_MEASURES_PER_ROW = 4;
-const MIN_BEAT_WIDTH = 40;
-const MAX_BEAT_WIDTH = 80;
-const LEFT_MARGIN = 100;
-const RIGHT_MARGIN = 20;
-
-/**
- * Calculate optimal measures per row based on container width
- */
-function calculateOptimalMeasures(
-  containerWidth: number,
-  beatsPerMeasure: number,
-  userPreference: number | "auto",
-  minBeatWidth: number,
-  maxBeatWidth: number,
-  leftMargin: number,
-  rightMargin: number,
-): number {
-  const availableWidth = containerWidth - leftMargin - rightMargin;
-
-  // Calculate how many measures can fit with comfortable beat width
-  const maxMeasuresAtMinWidth = Math.floor(
-    availableWidth / (beatsPerMeasure * minBeatWidth),
-  );
-
-  if (userPreference === "auto") {
-    // Auto mode: Try to fit up to 4 measures, scale down for smaller screens
-    return Math.min(4, Math.max(1, maxMeasuresAtMinWidth));
-  }
-
-  // Respect user's choice, but ensure it fits
-  return Math.max(1, Math.min(userPreference, maxMeasuresAtMinWidth));
+  userMeasuresPerRow: number; // User's preferred measures per row
 }
 
 /**
- * Calculate beat width based on measures per row and container width
- */
-function calculateBeatWidth(
-  containerWidth: number,
-  measuresPerRow: number,
-  beatsPerMeasure: number,
-  leftMargin: number,
-  rightMargin: number,
-  minBeatWidth: number,
-  maxBeatWidth: number,
-): number {
-  const availableWidth = containerWidth - leftMargin - rightMargin;
-  const totalBeats = measuresPerRow * beatsPerMeasure;
-
-  // Calculate ideal beat width
-  const idealBeatWidth = availableWidth / totalBeats;
-
-  // Clamp to min/max for readability
-  return Math.max(minBeatWidth, Math.min(maxBeatWidth, idealBeatWidth));
-}
-
-/**
- * Hook to calculate responsive layout parameters
+ * Hook to calculate layout parameters (fixed layout, no resize response)
  */
 export function useResponsiveLayout(
-  containerRef: RefObject<HTMLElement | null>,
+  _containerRef: React.RefObject<HTMLElement | null>, // Kept for API compatibility
   options: UseResponsiveLayoutOptions,
 ): LayoutConfig {
-  const {
-    timeSignature,
-    totalBeats,
-    userMeasuresPerRow = DEFAULT_MEASURES_PER_ROW,
-    minBeatWidth = MIN_BEAT_WIDTH,
-    maxBeatWidth = MAX_BEAT_WIDTH,
-    leftMargin = LEFT_MARGIN,
-    rightMargin = RIGHT_MARGIN,
-  } = options;
+  const { timeSignature, totalBeats, userMeasuresPerRow } = options;
 
   const beatsPerMeasure = timeSignature.numerator;
 
-  // Track container width
-  const [containerWidth, setContainerWidth] = useState<number>(800);
+  // Memoize layout calculations
+  const layout = useMemo(() => {
+    const measuresPerRow = Math.max(1, userMeasuresPerRow);
+    const beatsPerRow = measuresPerRow * beatsPerMeasure;
+    const rowWidth = beatsPerRow * BEAT_WIDTH + LEFT_MARGIN + RIGHT_MARGIN;
+    const totalRows = Math.ceil(totalBeats / beatsPerRow) || 1;
 
-  // Calculate measures per row
-  const [measuresPerRow, setMeasuresPerRow] =
-    useState<number>(userMeasuresPerRow);
-
-  // Update measures per row when user preference changes
-  useEffect(() => {
-    const optimal = calculateOptimalMeasures(
-      containerWidth,
+    return {
+      measuresPerRow,
       beatsPerMeasure,
-      userMeasuresPerRow,
-      minBeatWidth,
-      maxBeatWidth,
-      leftMargin,
-      rightMargin,
-    );
-    setMeasuresPerRow(optimal);
-  }, [
-    containerWidth,
-    beatsPerMeasure,
-    userMeasuresPerRow,
-    minBeatWidth,
-    maxBeatWidth,
-    leftMargin,
-    rightMargin,
-  ]);
-
-  // Track container size with ResizeObserver
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    // Initial size
-    setContainerWidth(container.clientWidth);
-
-    // Setup ResizeObserver
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
-        setContainerWidth(width);
-      }
-    });
-
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
+      beatWidth: BEAT_WIDTH,
+      beatsPerRow,
+      rowWidth,
+      totalRows,
+      leftMargin: LEFT_MARGIN,
+      rightMargin: RIGHT_MARGIN,
     };
-  }, [containerRef]);
+  }, [userMeasuresPerRow, beatsPerMeasure, totalBeats]);
 
-  // Calculate beat width
-  const beatWidth = calculateBeatWidth(
-    containerWidth,
-    measuresPerRow,
-    beatsPerMeasure,
-    leftMargin,
-    rightMargin,
-    minBeatWidth,
-    maxBeatWidth,
-  );
-
-  // Calculate derived values
-  const beatsPerRow = measuresPerRow * beatsPerMeasure;
-  const rowWidth = beatsPerRow * beatWidth + leftMargin + rightMargin;
-  const totalRows = Math.ceil(totalBeats / beatsPerRow) || 1;
-
-  return {
-    measuresPerRow,
-    beatsPerMeasure,
-    beatWidth,
-    beatsPerRow,
-    containerWidth,
-    rowWidth,
-    totalRows,
-    leftMargin,
-    rightMargin,
-  };
+  return layout;
 }
 
 /**
- * Get maximum measures that can fit in container
+ * Calculate recommended measures per row based on viewport width.
+ * Called ONCE on initial load to set a sensible default.
+ */
+export function getInitialMeasuresPerRow(
+  viewportWidth: number,
+  beatsPerMeasure: number = 4,
+): number {
+  const availableWidth = viewportWidth - LEFT_MARGIN - RIGHT_MARGIN - 100; // Extra padding for tools
+  const minBeatWidth = 50; // Minimum readable beat width
+
+  // Calculate how many measures fit comfortably
+  const maxMeasures = Math.floor(
+    availableWidth / (beatsPerMeasure * minBeatWidth),
+  );
+
+  // Return 1-4 measures, clamped
+  return Math.min(4, Math.max(1, maxMeasures));
+}
+
+/**
+ * Get maximum measures that can fit in container (for UI limits)
  */
 export function getMaxMeasuresPerRow(
   containerWidth: number,
   beatsPerMeasure: number,
-  minBeatWidth: number = MIN_BEAT_WIDTH,
+  minBeatWidth: number = 40,
   leftMargin: number = LEFT_MARGIN,
   rightMargin: number = RIGHT_MARGIN,
 ): number {
