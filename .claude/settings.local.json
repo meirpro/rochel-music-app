@@ -27,7 +27,13 @@
       "Bash(cp:*)",
       "Bash(npx eslint:*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:nextstepjs.com)"
+      "WebFetch(domain:nextstepjs.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm run test:run:*)",
+      "Skill(commit-emoji)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__get-library-docs",
+      "Bash(npm test:*)"
     ]
   },
   "enabledMcpjsonServers": [
