@@ -106,7 +106,7 @@ export default function Home() {
   );
   const [currentSongId, setCurrentSongId] = useLocalStorage<string | null>(
     "rochel-current-song-id",
-    null,
+    "default-dayenu",
   );
   const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
     "rochel-measures-per-row",
