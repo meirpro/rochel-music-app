@@ -7,6 +7,7 @@ import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
+import { InlineLyricInput } from "./InlineLyricInput";
 
 // Time signature type
 export interface TimeSignature {
@@ -486,6 +487,11 @@ export function NoteEditor({
     system: number;
     originalMeasure: number;
   } | null>(null);
+  // Inline lyric editing state
+  const [editingLyric, setEditingLyric] = useState<{
+    absoluteBeat: number;
+    initialText: string;
+  } | null>(null);
   // Track mouse position during marker drag for preview
   const [markerDragPosition, setMarkerDragPosition] = useState<{
     x: number;
@@ -787,6 +793,39 @@ export function NoteEditor({
 
       if (selectedTool === "delete") return;
 
+      // Handle lyrics tool - detect clicks in the lyrics area
+      if (selectedTool === "lyrics") {
+        const lyricsZoneTop = staffCenterY + LINE_SPACING + 40;
+        const lyricsZoneBottom = staffCenterY + LINE_SPACING + 70;
+
+        // Check if click is in the lyrics area
+        if (y >= lyricsZoneTop && y <= lyricsZoneBottom) {
+          // Calculate the beat position from click
+          const beatInSystem = (x - LEFT_MARGIN - NOTE_OFFSET) / BEAT_WIDTH;
+          // Snap to nearest half-beat
+          const snappedBeatInSystem = Math.round(beatInSystem * 2) / 2;
+          // Clamp to valid range
+          const clampedBeatInSystem = Math.max(
+            0,
+            Math.min(beatsPerSystem - 1, snappedBeatInSystem),
+          );
+          // Calculate absolute beat
+          const absoluteBeat = system * beatsPerSystem + clampedBeatInSystem;
+
+          // Find existing lyric at this beat
+          const existingLyric = lyrics.find(
+            (l) => Math.abs(l.absoluteBeat - absoluteBeat) < 0.1,
+          );
+
+          // Open inline editor
+          setEditingLyric({
+            absoluteBeat,
+            initialText: existingLyric?.text || "",
+          });
+        }
+        return;
+      }
+
       const pitch = getPitchFromY(y, system);
       const snappedX = snapX(x, staffRight);
       const beat = getBeatFromX(snappedX);
@@ -845,6 +884,8 @@ export function NoteEditor({
       isPlaying,
       onPlaybackBlock,
       readOnly,
+      beatsPerSystem,
+      lyrics,
     ],
   );
 
@@ -1034,6 +1075,80 @@ export function NoteEditor({
       justDraggedRef.current = true;
     }
   }, [draggedNote, draggedMarker, notes, playNoteSound]);
+
+  // Lyric editing handlers
+  const handleSaveLyric = useCallback(
+    (text: string) => {
+      if (!editingLyric || !onLyricsChange) return;
+
+      const { absoluteBeat } = editingLyric;
+      const newLyrics = lyrics.filter(
+        (l) => Math.abs(l.absoluteBeat - absoluteBeat) >= 0.1,
+      );
+
+      if (text.trim()) {
+        newLyrics.push({ text: text.trim(), absoluteBeat });
+        newLyrics.sort((a, b) => a.absoluteBeat - b.absoluteBeat);
+      }
+
+      onLyricsChange(newLyrics);
+      setEditingLyric(null);
+    },
+    [editingLyric, lyrics, onLyricsChange],
+  );
+
+  const handleCancelLyricEdit = useCallback(() => {
+    setEditingLyric(null);
+  }, []);
+
+  const handleNavigateLyric = useCallback(
+    (direction: "next" | "prev") => {
+      if (!editingLyric) return;
+
+      const totalBeats = systemCount * beatsPerSystem;
+      const currentBeat = editingLyric.absoluteBeat;
+      const nextBeat =
+        direction === "next"
+          ? Math.min(totalBeats - 1, currentBeat + 1)
+          : Math.max(0, currentBeat - 1);
+
+      // Don't navigate if at bounds
+      if (nextBeat === currentBeat) {
+        setEditingLyric(null);
+        return;
+      }
+
+      // Find existing lyric at next beat
+      const existingLyric = lyrics.find(
+        (l) => Math.abs(l.absoluteBeat - nextBeat) < 0.1,
+      );
+
+      setEditingLyric({
+        absoluteBeat: nextBeat,
+        initialText: existingLyric?.text || "",
+      });
+    },
+    [editingLyric, systemCount, beatsPerSystem, lyrics],
+  );
+
+  // Calculate inline input position for editing lyric
+  const getInlineLyricPosition = useCallback(() => {
+    if (!editingLyric || !svgRef.current) return null;
+
+    const { absoluteBeat } = editingLyric;
+    const system = Math.floor(absoluteBeat / beatsPerSystem);
+    const beatInSystem = absoluteBeat % beatsPerSystem;
+
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
+    const staffCenterY = getStaffCenterY(system);
+    const y = staffCenterY + LINE_SPACING + 55;
+
+    return {
+      x: svgRect.left + x,
+      y: svgRect.top + y,
+    };
+  }, [editingLyric, beatsPerSystem]);
 
   const getNoteType = (duration: number): string => {
     if (duration >= 4) return "whole";
@@ -1930,14 +2045,48 @@ export function NoteEditor({
         {notes.map(renderDurationExtension)}
         {notes.map(renderNote)}
 
+        {/* Lyrics editing zone highlight when lyrics tool is selected */}
+        {selectedTool === "lyrics" &&
+          !readOnly &&
+          !isPlaying &&
+          Array.from({ length: systemCount }, (_, systemIndex) => {
+            const staffCenterY = getStaffCenterY(systemIndex);
+            const lyricsZoneY = staffCenterY + LINE_SPACING + 40;
+            return (
+              <rect
+                key={`lyrics-zone-${systemIndex}`}
+                x={LEFT_MARGIN}
+                y={lyricsZoneY}
+                width={beatsPerSystem * BEAT_WIDTH}
+                height={30}
+                fill="#fef3c7"
+                opacity={0.5}
+                rx={4}
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          })}
+
         {/* Lyrics below each system */}
         {lyrics.map((lyric) => {
           const system = Math.floor(lyric.absoluteBeat / beatsPerSystem);
           if (system >= systemCount) return null;
+
+          // Skip rendering if this lyric is being edited inline
+          if (
+            editingLyric &&
+            Math.abs(editingLyric.absoluteBeat - lyric.absoluteBeat) < 0.1
+          ) {
+            return null;
+          }
+
           const beatInSystem = lyric.absoluteBeat % beatsPerSystem;
           const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
           const staffCenterY = getStaffCenterY(system);
           const lyricsY = staffCenterY + LINE_SPACING + 55;
+
+          const isLyricToolActive =
+            selectedTool === "lyrics" && !readOnly && !isPlaying;
 
           return (
             <text
@@ -1947,8 +2096,22 @@ export function NoteEditor({
               textAnchor="middle"
               fontSize={12}
               fontFamily="system-ui, sans-serif"
-              fill="#374151"
-              style={{ unicodeBidi: "isolate" }}
+              fill={isLyricToolActive ? "#b45309" : "#374151"}
+              style={{
+                unicodeBidi: "isolate",
+                cursor: isLyricToolActive ? "text" : "default",
+              }}
+              onClick={
+                isLyricToolActive
+                  ? (e) => {
+                      e.stopPropagation();
+                      setEditingLyric({
+                        absoluteBeat: lyric.absoluteBeat,
+                        initialText: lyric.text,
+                      });
+                    }
+                  : undefined
+              }
             >
               {lyric.text}
             </text>
@@ -2361,6 +2524,22 @@ export function NoteEditor({
           </button>
         </div>
       )}
+
+      {/* Inline lyric input - rendered as HTML overlay */}
+      {editingLyric &&
+        (() => {
+          const position = getInlineLyricPosition();
+          if (!position) return null;
+          return (
+            <InlineLyricInput
+              initialText={editingLyric.initialText}
+              position={position}
+              onSave={handleSaveLyric}
+              onCancel={handleCancelLyricEdit}
+              onNavigate={handleNavigateLyric}
+            />
+          );
+        })()}
     </div>
   );
 }

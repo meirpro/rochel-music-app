@@ -335,7 +335,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo and bulk lyrics editor
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
@@ -347,12 +347,16 @@ export default function Home() {
       ) {
         e.preventDefault();
         handleRedo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "l") {
+        // Cmd+L opens bulk lyrics editor modal
+        e.preventDefault();
+        setUI((prev) => ({ ...prev, showLyricsModal: true }));
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, setUI]);
 
   // Save current composition as song
   const handleSaveSong = useCallback(
@@ -645,12 +649,8 @@ export default function Home() {
           <ToolPalette
             selectedTool={settings.selectedTool}
             onToolSelect={(tool) => {
-              if (tool === "lyrics") {
-                // Open the lyrics modal instead of selecting the tool
-                setUI({ ...ui, showLyricsModal: true });
-              } else {
-                setSettings({ ...settings, selectedTool: tool });
-              }
+              // All tools (including lyrics) are now toggleable
+              setSettings({ ...settings, selectedTool: tool });
             }}
             allowMove={settings.allowMove}
             onAllowMoveChange={(allow) =>
