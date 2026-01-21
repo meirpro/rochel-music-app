@@ -1,8 +1,12 @@
 import { Song, RenderedNote } from "../types";
 import { MIDI_NOTES } from "../constants";
+import {
+  playNote as tonePlayNote,
+  getCurrentTime,
+  initAudio,
+} from "./TonePlayer";
 
 export class AudioPlayer {
-  private audioCtx: AudioContext | null = null;
   private isPlaying = false;
   private currentIndex = 0;
   private nextNoteTime = 0;
@@ -11,99 +15,14 @@ export class AudioPlayer {
   private onNoteCallback: ((index: number) => void) | null = null;
   private song: Song | null = null;
 
-  private getContext(): AudioContext {
-    if (!this.audioCtx) {
-      this.audioCtx = new AudioContext();
-    }
-    return this.audioCtx;
-  }
-
   private beatsToSeconds(beats: number): number {
     return (60 / this.tempo) * beats;
   }
 
-  // Play a single note (for click-to-play) with piano-like sound
+  // Play a single note (for click-to-play)
   // startDelay allows scheduling notes slightly in the future for sync
   playNote(midi: number, durationSeconds = 0.35, startDelay = 0): void {
-    if (midi === 0) return; // REST
-
-    const ctx = this.getContext();
-    const startTime = ctx.currentTime + startDelay;
-
-    // Calculate frequency from MIDI note number
-    const freq = 440 * Math.pow(2, (midi - 69) / 12);
-
-    // Create main oscillator (triangle for warmer tone)
-    const osc1 = ctx.createOscillator();
-    osc1.type = "triangle";
-    osc1.frequency.setValueAtTime(freq, startTime);
-
-    // Create second oscillator slightly detuned for richness
-    const osc2 = ctx.createOscillator();
-    osc2.type = "triangle";
-    osc2.frequency.setValueAtTime(freq * 1.003, startTime); // Slight detune
-
-    // Create third oscillator one octave higher (soft)
-    const osc3 = ctx.createOscillator();
-    osc3.type = "sine";
-    osc3.frequency.setValueAtTime(freq * 2, startTime);
-
-    // Individual gains for mixing
-    const gain1 = ctx.createGain();
-    const gain2 = ctx.createGain();
-    const gain3 = ctx.createGain();
-
-    // Low-pass filter for warmer piano tone
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(freq * 6, startTime);
-    filter.Q.setValueAtTime(1, startTime);
-
-    // Master gain with piano-like ADSR envelope
-    const masterGain = ctx.createGain();
-
-    // Piano envelope: quick attack, gradual decay over duration, then release
-    const attackTime = 0.01;
-    const releaseTime = 0.12;
-    const sustainEnd = Math.max(
-      durationSeconds - releaseTime,
-      attackTime + 0.05,
-    );
-
-    masterGain.gain.setValueAtTime(0.0001, startTime);
-    masterGain.gain.linearRampToValueAtTime(0.25, startTime + attackTime); // Fast attack
-    masterGain.gain.linearRampToValueAtTime(0.12, startTime + sustainEnd); // Gradual decay during note
-    masterGain.gain.linearRampToValueAtTime(
-      0.0001,
-      startTime + sustainEnd + releaseTime,
-    ); // Release
-
-    // Mix levels
-    gain1.gain.setValueAtTime(0.5, startTime);
-    gain2.gain.setValueAtTime(0.3, startTime);
-    gain3.gain.setValueAtTime(0.1, startTime); // Subtle octave
-
-    // Connect oscillators through gains to filter
-    osc1.connect(gain1);
-    osc2.connect(gain2);
-    osc3.connect(gain3);
-
-    gain1.connect(filter);
-    gain2.connect(filter);
-    gain3.connect(filter);
-
-    filter.connect(masterGain);
-    masterGain.connect(ctx.destination);
-
-    // Start and stop all oscillators
-    osc1.start(startTime);
-    osc2.start(startTime);
-    osc3.start(startTime);
-
-    const stopTime = startTime + sustainEnd + releaseTime + 0.02;
-    osc1.stop(stopTime);
-    osc2.stop(stopTime);
-    osc3.stop(stopTime);
+    tonePlayNote(midi, durationSeconds, startDelay);
   }
 
   // Play a pitch by name
@@ -116,12 +35,15 @@ export class AudioPlayer {
   }
 
   // Start playing a song
-  playSong(
+  async playSong(
     song: Song,
     notes: RenderedNote[],
     onNote?: (index: number) => void,
-  ): void {
+  ): Promise<void> {
     this.stop();
+
+    // Ensure audio is initialized (handles iOS)
+    await initAudio();
 
     this.song = song;
     this.tempo = song.tempo;
@@ -130,15 +52,13 @@ export class AudioPlayer {
     this.onNoteCallback = onNote || null;
     this.nextNoteTime = 0;
 
-    this.getContext(); // Ensure audio context is initialized
     this.scheduleNotes(notes);
   }
 
   private scheduleNotes(notes: RenderedNote[]): void {
     if (!this.isPlaying || !this.song) return;
 
-    const ctx = this.getContext();
-    const now = ctx.currentTime;
+    const now = getCurrentTime();
 
     // Delay audio by the same fraction of a beat as the visual note offset (0.25 beats)
     // This keeps audio-visual sync consistent across all tempos

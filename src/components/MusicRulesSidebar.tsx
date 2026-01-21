@@ -2,6 +2,9 @@
 
 import { useLocalStorage } from "usehooks-ts";
 
+// Prevent SSR hydration mismatch
+const SSR_SAFE = { initializeWithValue: false };
+
 // Note colors matching the color legend
 const NOTE_COLORS: Record<string, string> = {
   C: "#ff5a5f",
@@ -22,6 +25,7 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
   const [expandedSection, setExpandedSection] = useLocalStorage<string | null>(
     "rochel-editor-sidebar-section",
     "durations",
+    SSR_SAFE,
   );
 
   const toggleSection = (section: string) => {

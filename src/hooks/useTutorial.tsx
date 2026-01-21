@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import { useLocalStorage } from "usehooks-ts";
 
+// Prevent SSR hydration mismatch
+const SSR_SAFE = { initializeWithValue: false };
+
 // Tutorial module IDs
 export type TutorialModule =
   | "ui-overview"
@@ -88,6 +91,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
   const [state, setState] = useLocalStorage<TutorialState>(
     "rochel-tutorial-state",
     DEFAULT_STATE,
+    SSR_SAFE,
   );
 
   const [activeTour, setActiveTour] = useState<TutorialModule | null>(null);

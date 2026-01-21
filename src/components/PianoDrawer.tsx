@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
-import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
+import {
+  playNote,
+  startSustainedNote,
+  stopAllNotes,
+  initAudio,
+} from "@/lib/audio/TonePlayer";
 import { NOTE_COLORS, MIDI_NOTES } from "@/lib/constants";
 import { Pitch } from "@/lib/types";
 
@@ -78,91 +83,37 @@ export function PianoDrawer({
   useEffect(() => {
     const oscillatorsRef = activeOscillators.current;
     return () => {
+      // Stop all tracked oscillators
       oscillatorsRef.forEach((osc) => {
         osc.stop();
       });
       oscillatorsRef.clear();
+      // Also tell TonePlayer to release all notes
+      stopAllNotes();
     };
   }, []);
 
   // Play a note with optional sustain (returns stop function)
+  // Uses shared TonePlayer for DRY code and iOS compatibility
   const startNote = useCallback((pitch: Pitch): (() => void) | null => {
     const midi = MIDI_NOTES[pitch];
     if (midi <= 0) return null;
 
-    // For sustained notes, play a longer duration
-    // The note will be stopped manually on key release
-    const ctx = new AudioContext();
-    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    // Initialize audio on first interaction (handles iOS)
+    initAudio();
 
-    // Create oscillators (similar to AudioPlayer but with manual control)
-    const osc1 = ctx.createOscillator();
-    osc1.type = "triangle";
-    osc1.frequency.setValueAtTime(freq, ctx.currentTime);
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = "triangle";
-    osc2.frequency.setValueAtTime(freq * 1.003, ctx.currentTime);
-
-    const osc3 = ctx.createOscillator();
-    osc3.type = "sine";
-    osc3.frequency.setValueAtTime(freq * 2, ctx.currentTime);
-
-    const gain1 = ctx.createGain();
-    const gain2 = ctx.createGain();
-    const gain3 = ctx.createGain();
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(freq * 6, ctx.currentTime);
-    filter.Q.setValueAtTime(1, ctx.currentTime);
-
-    const masterGain = ctx.createGain();
-
-    // Attack
-    masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    masterGain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.008);
-    masterGain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.1);
-
-    gain1.gain.setValueAtTime(0.5, ctx.currentTime);
-    gain2.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain3.gain.setValueAtTime(0.1, ctx.currentTime);
-
-    osc1.connect(gain1);
-    osc2.connect(gain2);
-    osc3.connect(gain3);
-    gain1.connect(filter);
-    gain2.connect(filter);
-    gain3.connect(filter);
-    filter.connect(masterGain);
-    masterGain.connect(ctx.destination);
-
-    osc1.start();
-    osc2.start();
-    osc3.start();
-
-    // Return stop function for sustain release
-    return () => {
-      const now = ctx.currentTime;
-      masterGain.gain.cancelScheduledValues(now);
-      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-
-      setTimeout(() => {
-        osc1.stop();
-        osc2.stop();
-        osc3.stop();
-        ctx.close();
-      }, 200);
-    };
+    // Start sustained note and return the stop function
+    return startSustainedNote(midi);
   }, []);
 
   // Play a short note (for clicks)
+  // Uses shared TonePlayer for DRY code and iOS compatibility
   const playShortNote = useCallback((pitch: Pitch) => {
-    const player = getAudioPlayer();
     const midi = MIDI_NOTES[pitch];
     if (midi > 0) {
-      player.playNote(midi, 0.4);
+      // Initialize audio on first interaction (handles iOS)
+      initAudio();
+      playNote(midi, 0.4);
     }
   }, []);
 
@@ -179,8 +130,8 @@ export function PianoDrawer({
       // Ignore repeat events (key held down)
       if (e.repeat) return;
 
-      // Check for sustain pedal (Shift or Space)
-      if (e.key === "Shift" || e.key === " ") {
+      // Check for sustain pedal (Shift only - Space is used for play/pause)
+      if (e.key === "Shift") {
         e.preventDefault();
         setSustainActive(true);
         return;
@@ -208,8 +159,8 @@ export function PianoDrawer({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      // Check for sustain pedal release
-      if (e.key === "Shift" || e.key === " ") {
+      // Check for sustain pedal release (Shift only)
+      if (e.key === "Shift") {
         setSustainActive(false);
         // Stop all sustained notes that are no longer being pressed
         sustainedKeys.forEach((pitch) => {
@@ -258,30 +209,57 @@ export function PianoDrawer({
     };
   }, [pressedKeys, startNote, showBlackKeys, sustainActive, sustainedKeys]);
 
-  // Ref to track the timeout for clearing highlight
+  // Refs for managing highlight timing
   const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const attackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNoteStartTimeRef = useRef<number>(0);
 
   // Handle playback highlight with proper timing and gaps
-  // activeNoteStartTime changes for each new note, ensuring we get a fresh cycle even for repeated pitches
+  // Creates visible press/release cycle even for consecutive notes
   useEffect(() => {
-    // Clear any pending timeout
+    // Clear any pending timeouts
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
       highlightTimeoutRef.current = null;
     }
+    if (attackTimeoutRef.current) {
+      clearTimeout(attackTimeoutRef.current);
+      attackTimeoutRef.current = null;
+    }
 
     if (activePitch && activeNoteStartTime > 0) {
+      const isNewNote = activeNoteStartTime !== lastNoteStartTimeRef.current;
+      lastNoteStartTimeRef.current = activeNoteStartTime;
+
       // Calculate how long to show the highlight based on note duration
       const durationMs = (activeNoteDuration * 60000) / tempo;
       // Release the key earlier to create clear separation between notes
-      // Shorter notes release earlier, longer notes can hold longer
-      const releaseRatio = Math.min(0.8, 0.55 + activeNoteDuration * 0.1);
-      const highlightDuration = Math.max(30, durationMs * releaseRatio);
+      const releaseRatio = Math.min(0.8, 0.5 + activeNoteDuration * 0.1);
+      const highlightDuration = Math.max(40, durationMs * releaseRatio);
 
-      highlightTimeoutRef.current = setTimeout(() => {
+      if (isNewNote) {
+        // Force a brief "release" state before showing new note (creates visual gap)
         setPlaybackHighlight(null);
-        highlightTimeoutRef.current = null;
-      }, highlightDuration);
+
+        // After a tiny gap, show the new note press
+        attackTimeoutRef.current = setTimeout(() => {
+          setPlaybackHighlight(activePitch);
+
+          // Schedule the release
+          highlightTimeoutRef.current = setTimeout(() => {
+            setPlaybackHighlight(null);
+            highlightTimeoutRef.current = null;
+          }, highlightDuration);
+        }, 20); // 20ms gap between notes for visible release
+      } else {
+        // Same note continuing - just set highlight
+        setPlaybackHighlight(activePitch);
+
+        highlightTimeoutRef.current = setTimeout(() => {
+          setPlaybackHighlight(null);
+          highlightTimeoutRef.current = null;
+        }, highlightDuration);
+      }
     }
 
     return () => {
@@ -289,12 +267,16 @@ export function PianoDrawer({
         clearTimeout(highlightTimeoutRef.current);
         highlightTimeoutRef.current = null;
       }
+      if (attackTimeoutRef.current) {
+        clearTimeout(attackTimeoutRef.current);
+        attackTimeoutRef.current = null;
+      }
     };
   }, [activePitch, activeNoteDuration, activeNoteStartTime, tempo]);
 
-  // Derive playback highlight directly from props - shows immediately when note starts
-  const currentPlaybackHighlight =
-    activePitch && activeNoteStartTime > 0 ? activePitch : playbackHighlight;
+  // Use the managed playbackHighlight state (not directly from props)
+  // This allows us to control the visual timing with gaps
+  const currentPlaybackHighlight = playbackHighlight;
 
   // Get color for a key
   const getKeyColor = (pitch: Pitch) => {
@@ -335,8 +317,7 @@ export function PianoDrawer({
             </span>
             <span className="border-l border-purple-400 pl-3 flex items-center gap-1">
               Sustain:{" "}
-              <span className="text-purple-800 font-semibold">Shift</span> or{" "}
-              <span className="text-purple-800 font-semibold">Space</span>
+              <span className="text-purple-800 font-semibold">Shift</span>
               {sustainActive && (
                 <span className="ml-1 px-1.5 py-0.5 bg-emerald-400 text-white text-[10px] font-bold rounded animate-pulse">
                   ON

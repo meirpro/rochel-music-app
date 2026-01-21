@@ -5,6 +5,7 @@ import {
   TIME_SIG_NUMERATORS,
   TIME_SIG_DENOMINATORS,
 } from "./NoteEditor";
+import { InstrumentType, INSTRUMENT_NAMES } from "@/lib/audio/TonePlayer";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -16,6 +17,9 @@ interface SettingsModalProps {
 
   timeSignature: TimeSignature;
   onTimeSignatureChange: (ts: TimeSignature) => void;
+
+  instrument: InstrumentType;
+  onInstrumentChange: (instrument: InstrumentType) => void;
 
   showLabels: boolean;
   onShowLabelsChange: (show: boolean) => void;
@@ -37,6 +41,8 @@ export function SettingsModal({
   onTempoChange,
   timeSignature,
   onTimeSignatureChange,
+  instrument,
+  onInstrumentChange,
   showLabels,
   onShowLabelsChange,
   showKidFaces,
@@ -166,6 +172,38 @@ export function SettingsModal({
                 {timeSignature.numerator}/{timeSignature.denominator}
               </span>
             </div>
+          </div>
+
+          {/* Instrument Section */}
+          <div className="space-y-3">
+            <label className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              Instrument Sound
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(INSTRUMENT_NAMES) as InstrumentType[]).map(
+                (inst) => (
+                  <button
+                    key={inst}
+                    onClick={() => onInstrumentChange(inst)}
+                    className={`px-3 py-2.5 rounded-xl font-medium transition-all text-sm ${
+                      instrument === inst
+                        ? "bg-purple-500 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-purple-100"
+                    }`}
+                  >
+                    {INSTRUMENT_NAMES[inst]}
+                  </button>
+                ),
+              )}
+            </div>
+            <a
+              href="https://tonejs.github.io/examples/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-purple-500 hover:text-purple-700 underline"
+            >
+              Explore more sounds on Tone.js →
+            </a>
           </div>
 
           {/* Display Options */}

@@ -1,16 +1,27 @@
 /**
- * Playback Hook
+ * Playback Hook (Tone.js Transport-based)
+ *
+ * Uses Tone.Transport for sample-accurate scheduling and
+ * Tone.Draw for synchronized visual updates.
  *
  * Encapsulates all playback logic including:
  * - Play/pause/stop controls
- * - Animation loop with playhead cursor
+ * - Playhead cursor animation (synced to audio)
  * - Repeat marker expansion
  * - Note scheduling and audio playback
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
+import {
+  initAudio,
+  getTransport,
+  getDraw,
+  beatsToSeconds,
+  scheduleNote,
+  stopAllNotes,
+  Tone,
+} from "@/lib/audio/TonePlayer";
 import { MIDI_NOTES } from "@/lib/constants";
 import { Pitch, EditorNote, RepeatMarker, TimeSignature } from "@/lib/types";
 import {
@@ -41,7 +52,7 @@ interface UsePlaybackOptions {
   timeSignature: TimeSignature;
   measuresPerRow: number;
   totalMeasures: number;
-  onScrollTo?: (scrollLeft: number) => void; // Callback to scroll the container
+  onScrollTo?: (scrollLeft: number) => void;
 }
 
 interface UsePlaybackReturn {
@@ -83,58 +94,36 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     number | undefined
   >();
 
-  // Refs for playback
+  // Refs for playback control
   const isPlayingRef = useRef(false);
   const isPausedRef = useRef(false);
-  const animationRef = useRef<number | null>(null);
-  const playbackStartTimeRef = useRef<number>(0);
-  const pausedAtBeatRef = useRef<number>(0);
-  const playedNotesRef = useRef<Set<number>>(new Set());
-  const playbackSequenceRef = useRef<PlaybackNote[]>([]);
+  const partRef = useRef<Tone.Part | null>(null);
+  const rafRef = useRef<number | null>(null); // For playhead animation
+  const endEventRef = useRef<number | null>(null);
   const timelineRef = useRef<TimelineSegment[]>([]);
-  const msPerBeatRef = useRef<number>(0);
-  const totalPlaybackMsRef = useRef<number>(0);
+  const totalPlaybackSecondsRef = useRef<number>(0);
+  const systemCountRef = useRef<number>(1);
+  const tempoRef = useRef<number>(120); // Store tempo for RAF calculations
 
-  // Stop playback handler (resets everything)
-  const handleStop = useCallback(() => {
-    const player = getAudioPlayer();
-    player.stop();
-    setIsPlaying(false);
-    setIsPaused(false);
-    isPlayingRef.current = false;
-    isPausedRef.current = false;
-    pausedAtBeatRef.current = 0;
-    setPlayheadX(null);
-    setPlayheadSystem(0);
-    setActivePitch(null);
-    setActiveNoteId(null);
-    playedNotesRef.current = new Set();
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
+  // Refs for Tone.js singletons (following React best practices)
+  // These are initialized lazily when playback starts
+  const transportRef = useRef<typeof Tone.Transport | null>(null);
+  const drawRef = useRef<typeof Tone.Draw | null>(null);
+
+  // Helper to get Transport (initializes on first use)
+  const getTransportInstance = useCallback(() => {
+    if (!transportRef.current) {
+      transportRef.current = getTransport();
     }
+    return transportRef.current;
   }, []);
 
-  // Pause playback handler (keeps position)
-  const handlePause = useCallback(() => {
-    if (!isPlayingRef.current) return;
-
-    const player = getAudioPlayer();
-    player.stop();
-
-    // Calculate current beat position
-    const elapsed = performance.now() - playbackStartTimeRef.current;
-    pausedAtBeatRef.current = elapsed / msPerBeatRef.current;
-
-    setIsPlaying(false);
-    setIsPaused(true);
-    isPlayingRef.current = false;
-    isPausedRef.current = true;
-
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
+  // Helper to get Draw (initializes on first use)
+  const getDrawInstance = useCallback(() => {
+    if (!drawRef.current) {
+      drawRef.current = getDraw();
     }
+    return drawRef.current;
   }, []);
 
   // Build playback data (extracted for reuse)
@@ -142,7 +131,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     const layout = getLayoutConfig(timeSignature, measuresPerRow);
     const beatsPerMeasure = layout.beatsPerMeasure;
     const BEATS_PER_SYSTEM = measuresPerRow * beatsPerMeasure;
-    const msPerBeat = 60000 / tempo;
     const totalBeats = totalMeasures * beatsPerMeasure;
 
     // Sort notes by absoluteBeat for playback
@@ -333,71 +321,20 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     }
 
     const totalPlaybackBeats = timelineBeat || currentBeatOffset;
-    const totalPlaybackMs = totalPlaybackBeats * msPerBeat;
+    const totalPlaybackSeconds = beatsToSeconds(totalPlaybackBeats, tempo);
 
     return {
       playbackSequence,
       timeline,
-      msPerBeat,
-      totalPlaybackMs,
+      totalPlaybackSeconds,
+      totalPlaybackBeats,
       BEATS_PER_SYSTEM,
     };
   }, [composition, tempo, timeSignature, measuresPerRow, totalMeasures]);
 
-  // Play handler
-  const handlePlay = useCallback(() => {
-    if (composition.notes.length === 0) {
-      toast.error("No notes to play");
-      return;
-    }
-
-    const { playbackSequence, timeline, msPerBeat, totalPlaybackMs } =
-      buildPlaybackData();
-
-    const systemCount = Math.ceil(totalMeasures / measuresPerRow);
-    const player = getAudioPlayer();
-    player.setTempo(tempo);
-
-    // Determine starting beat (resume from pause or start fresh)
-    const startingBeat = isPausedRef.current ? pausedAtBeatRef.current : 0;
-
-    // Build set of already-played notes if resuming
-    const playedNotes = new Set<number>();
-    if (isPausedRef.current) {
-      for (let i = 0; i < playbackSequence.length; i++) {
-        if (playbackSequence[i].playBeat < startingBeat) {
-          playedNotes.add(i);
-        }
-      }
-    }
-
-    setIsPlaying(true);
-    setIsPaused(false);
-    isPlayingRef.current = true;
-    isPausedRef.current = false;
-
-    const activeNotes = new Map<string, number>();
-    const startTime = performance.now() - startingBeat * msPerBeat;
-
-    playbackSequenceRef.current = playbackSequence;
-    timelineRef.current = timeline;
-    msPerBeatRef.current = msPerBeat;
-    totalPlaybackMsRef.current = totalPlaybackMs;
-    playbackStartTimeRef.current = startTime;
-    playedNotesRef.current = playedNotes;
-
-    const animate = () => {
-      if (!isPlayingRef.current) {
-        setPlayheadX(null);
-        setActiveNoteId(null);
-        setActivePitch(null);
-        setIsPlaying(false);
-        return;
-      }
-
-      const elapsed = performance.now() - playbackStartTimeRef.current;
-      const currentBeat = elapsed / msPerBeatRef.current;
-
+  // Calculate playhead position from current beat
+  const getPlayheadPosition = useCallback(
+    (currentBeat: number, timeline: TimelineSegment[]) => {
       let currentSystem = 0;
       let currentX = LEFT_MARGIN;
 
@@ -416,65 +353,183 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         }
       }
 
-      setPlayheadX(currentX);
-      setPlayheadSystem(currentSystem);
+      return { x: currentX, system: currentSystem };
+    },
+    [],
+  );
+
+  // Clean up Transport events
+  const cleanupTransport = useCallback(() => {
+    const transport = getTransportInstance();
+
+    // Stop and clear Transport
+    transport.stop();
+    transport.cancel();
+
+    // Dispose of Part if exists
+    if (partRef.current) {
+      partRef.current.dispose();
+      partRef.current = null;
+    }
+
+    // Cancel RAF animation
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    // Clear end event if scheduled
+    if (endEventRef.current !== null) {
+      transport.clear(endEventRef.current);
+      endEventRef.current = null;
+    }
+
+    // Stop any playing notes
+    stopAllNotes();
+  }, [getTransportInstance]);
+
+  // Stop playback handler (resets everything)
+  const handleStop = useCallback(() => {
+    cleanupTransport();
+
+    setIsPlaying(false);
+    setIsPaused(false);
+    isPlayingRef.current = false;
+    isPausedRef.current = false;
+    setPlayheadX(null);
+    setPlayheadSystem(0);
+    setActivePitch(null);
+    setActiveNoteId(null);
+    setActiveNoteDuration(undefined);
+    setActiveNoteStartTime(undefined);
+  }, [cleanupTransport]);
+
+  // Pause playback handler (keeps position)
+  const handlePause = useCallback(() => {
+    if (!isPlayingRef.current) return;
+
+    getTransportInstance().pause();
+    stopAllNotes();
+
+    setIsPlaying(false);
+    setIsPaused(true);
+    isPlayingRef.current = false;
+    isPausedRef.current = true;
+  }, [getTransportInstance]);
+
+  // Play handler
+  const handlePlay = useCallback(async () => {
+    // Initialize audio on first interaction (handles iOS Safari)
+    await initAudio();
+
+    if (composition.notes.length === 0) {
+      toast.error("No notes to play");
+      return;
+    }
+
+    const { playbackSequence, timeline, totalPlaybackSeconds } =
+      buildPlaybackData();
+
+    // Get Tone.js instances (lazy initialization)
+    const transport = getTransportInstance();
+    const draw = getDrawInstance();
+
+    // Store for playhead calculation
+    timelineRef.current = timeline;
+    totalPlaybackSecondsRef.current = totalPlaybackSeconds;
+    systemCountRef.current = Math.ceil(totalMeasures / measuresPerRow);
+
+    // Set tempo on Transport
+    transport.bpm.value = tempo;
+    tempoRef.current = tempo;
+
+    // RAF-based playhead animation function (reused for play and resume)
+    const animatePlayhead = () => {
+      if (!isPlayingRef.current) return;
+
+      const currentSeconds = transport.seconds;
+      const currentBeat = (currentSeconds * tempoRef.current) / 60;
+      const { x, system } = getPlayheadPosition(
+        currentBeat,
+        timelineRef.current,
+      );
+
+      setPlayheadX(x);
+      setPlayheadSystem(system);
+
+      // Check if playback should end
+      if (currentSeconds >= totalPlaybackSecondsRef.current) {
+        handleStop();
+        return;
+      }
 
       // Scroll-follow: keep playhead centered in viewport
       if (onScrollTo) {
         const viewportCenter = 400;
-        const desiredScroll = currentX - viewportCenter;
-        if (currentSystem === 0 || systemCount === 1) {
+        const desiredScroll = x - viewportCenter;
+        if (system === 0 || systemCountRef.current === 1) {
           onScrollTo(Math.max(0, desiredScroll));
         }
       }
 
-      for (let i = 0; i < playbackSequence.length; i++) {
-        if (playedNotesRef.current.has(i)) continue;
-        const note = playbackSequence[i];
-        if (currentBeat >= note.playBeat) {
-          const midi = MIDI_NOTES[note.pitch];
-          if (midi > 0) {
-            const durationSeconds = (note.duration * 60) / tempo;
-            player.playNote(midi, durationSeconds * 0.9);
-          }
-          playedNotesRef.current.add(i);
-
-          const noteEndTime = elapsed + note.duration * msPerBeatRef.current;
-          activeNotes.set(note.id, noteEndTime);
-          setActiveNoteId(note.id);
-          setActivePitch(note.pitch);
-          setActiveNoteDuration(note.duration);
-          setActiveNoteStartTime(performance.now());
-        }
-      }
-
-      for (const [noteId, endTime] of activeNotes) {
-        if (elapsed >= endTime) {
-          activeNotes.delete(noteId);
-          if (activeNotes.size === 0) {
-            setActiveNoteId(null);
-            setActivePitch(null);
-          }
-        }
-      }
-
-      if (elapsed < totalPlaybackMs) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        // Playback finished - reset everything
-        setPlayheadX(null);
-        setActiveNoteId(null);
-        setActivePitch(null);
-        setIsPlaying(false);
-        setIsPaused(false);
-        isPlayingRef.current = false;
-        isPausedRef.current = false;
-        pausedAtBeatRef.current = 0;
-        playedNotesRef.current = new Set();
-      }
+      rafRef.current = requestAnimationFrame(animatePlayhead);
     };
 
-    animationRef.current = requestAnimationFrame(animate);
+    // If resuming from pause, just start Transport and RAF
+    if (isPausedRef.current) {
+      setIsPlaying(true);
+      setIsPaused(false);
+      isPlayingRef.current = true;
+      isPausedRef.current = false;
+      transport.start();
+      rafRef.current = requestAnimationFrame(animatePlayhead);
+      return;
+    }
+
+    // Clean up any existing playback
+    cleanupTransport();
+
+    // Create note events for Tone.Part
+    const noteEvents = playbackSequence.map((note) => ({
+      time: beatsToSeconds(note.playBeat, tempo),
+      midi: MIDI_NOTES[note.pitch],
+      duration: beatsToSeconds(note.duration, tempo) * 0.9,
+      id: note.id,
+      pitch: note.pitch,
+      noteDuration: note.duration,
+    }));
+
+    // Create Part for note scheduling
+    partRef.current = new Tone.Part((time, value) => {
+      // Play the audio at the scheduled time
+      if (value.midi > 0) {
+        scheduleNote(value.midi, value.duration, time);
+      }
+
+      // Schedule visual update synced to audio
+      draw.schedule(() => {
+        setActiveNoteId(value.id);
+        setActivePitch(value.pitch as Pitch);
+        setActiveNoteDuration(value.noteDuration);
+        setActiveNoteStartTime(performance.now());
+      }, time);
+    }, noteEvents);
+
+    partRef.current.start(0);
+
+    // Update state
+    setIsPlaying(true);
+    setIsPaused(false);
+    isPlayingRef.current = true;
+    isPausedRef.current = false;
+
+    // Start playhead at beginning
+    setPlayheadX(LEFT_MARGIN);
+    setPlayheadSystem(0);
+
+    // Start Transport and RAF animation together
+    transport.start();
+    rafRef.current = requestAnimationFrame(animatePlayhead);
   }, [
     composition,
     tempo,
@@ -483,6 +538,11 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     totalMeasures,
     onScrollTo,
     buildPlaybackData,
+    cleanupTransport,
+    getPlayheadPosition,
+    getTransportInstance,
+    getDrawInstance,
+    handleStop,
   ]);
 
   // Toggle play/pause
@@ -494,9 +554,9 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     }
   }, [handlePause, handlePlay]);
 
-  // Global spacebar listener
+  // Global spacebar listener - uses keyup to prevent repeated triggers when holding
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyUp = (e: KeyboardEvent) => {
       // Only trigger if spacebar and not in an input/textarea
       if (
         e.code === "Space" &&
@@ -509,9 +569,16 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => window.removeEventListener("keyup", handleKeyUp);
   }, [handleTogglePlayPause]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupTransport();
+    };
+  }, [cleanupTransport]);
 
   return {
     isPlaying,
