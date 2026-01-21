@@ -57,3 +57,20 @@ Location: `/src/components/NoteEditor.tsx`
 - `groupEighthNotes()`: ~line 211 - Groups eighth notes by beat
 - `createBeamGroup()`: ~line 311 - Determines stem direction
 - Beam rendering: ~line 1243 - SVG polygon with slope limiting
+
+## Next.js SSR + useLocalStorage
+
+**Always use `{ initializeWithValue: false }` with `useLocalStorage` from usehooks-ts.**
+
+`useLocalStorage` reads from localStorage immediately on the client, causing hydration mismatch with server-rendered defaults. Setting `initializeWithValue: false` makes it use the default value on first render, then update from localStorage after hydration.
+
+```typescript
+// ALWAYS do this in Next.js:
+const SSR_SAFE = { initializeWithValue: false };
+
+const [settings, setSettings] = useLocalStorage<Settings>(
+  "storage-key",
+  DEFAULT_VALUE,
+  SSR_SAFE,  // Prevents hydration errors
+);
+```
