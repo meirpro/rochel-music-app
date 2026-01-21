@@ -10,9 +10,24 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: "Kids Music Teaching App - 3-Line Treble Staff",
+  title: {
+    default: "Rochel's Piano School - The Batya Method",
+    template: "%s | Rochel's Piano School",
+  },
   description:
-    "Learn music with a simplified 3-line staff, color-coded notes, and interactive playback",
+    "Learn piano from zero to hero with The Batya Method! A step-by-step piano course for kids using a simplified 3-line staff, color-coded notes, and interactive playback.",
+  keywords: [
+    "learn piano",
+    "piano for beginners",
+    "kids piano lessons",
+    "piano course",
+    "music education",
+    "treble clef",
+    "music notation",
+    "piano for children",
+    "batya method",
+    "piano teacher",
+  ],
 };
 
 export default function RootLayout({

@@ -60,6 +60,16 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
+/* Hide scrollbar utility - keeps scroll functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Range input styling */
 input[type="range"] {
   -webkit-appearance: none;

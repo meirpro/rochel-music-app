@@ -111,7 +111,7 @@ const HELP_SECTIONS = [
     content: (
       <div className="space-y-4">
         <p className="text-gray-700">
-          Welcome to Rochel Music! Here's how to create your first song:
+          Welcome to Rochel Music! Here&apos;s how to create your first song:
         </p>
         <ol className="list-decimal list-inside space-y-2 text-gray-700">
           <li>
@@ -368,9 +368,28 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Navigation */}
-          <div className="w-48 bg-orange-50 border-r border-orange-200 overflow-y-auto p-3">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          {/* Mobile: Horizontal scrollable tabs */}
+          <div className="md:hidden bg-orange-50 border-b border-orange-200 overflow-x-auto overflow-y-hidden hide-scrollbar px-3 py-3">
+            <div className="flex gap-2 min-w-max">
+              {HELP_SECTIONS.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition-colors ${
+                    activeSection === section.id
+                      ? "bg-orange-200 text-orange-800 font-semibold shadow-sm"
+                      : "text-gray-700 bg-white/60 hover:bg-orange-100"
+                  }`}
+                >
+                  {section.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: Sidebar Navigation */}
+          <div className="hidden md:block w-48 bg-orange-50 border-r border-orange-200 overflow-y-auto p-3">
             <div className="space-y-1">
               {HELP_SECTIONS.map((section) => (
                 <button
@@ -389,8 +408,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
               {currentSection.title}
             </h3>
             {currentSection.content}

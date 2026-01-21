@@ -28,6 +28,8 @@ import {
   getLayoutConfig,
   LEFT_MARGIN,
   BEAT_WIDTH,
+  SYSTEM_HEIGHT,
+  SYSTEM_TOP_MARGIN,
 } from "@/components/NoteEditor";
 
 // Playback types
@@ -52,7 +54,9 @@ interface UsePlaybackOptions {
   timeSignature: TimeSignature;
   measuresPerRow: number;
   totalMeasures: number;
-  onScrollTo?: (scrollLeft: number) => void;
+  containerWidth?: number;
+  containerHeight?: number;
+  onScrollTo?: (scrollLeft: number, scrollTop: number) => void;
 }
 
 interface UsePlaybackReturn {
@@ -77,6 +81,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     timeSignature,
     measuresPerRow,
     totalMeasures,
+    containerWidth,
+    containerHeight,
     onScrollTo,
   } = options;
 
@@ -463,13 +469,17 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         return;
       }
 
-      // Scroll-follow: keep playhead centered in viewport
-      if (onScrollTo) {
-        const viewportCenter = 400;
-        const desiredScroll = x - viewportCenter;
-        if (system === 0 || systemCountRef.current === 1) {
-          onScrollTo(Math.max(0, desiredScroll));
-        }
+      // Scroll-follow: keep playhead visible with system snapping
+      if (onScrollTo && containerWidth && containerHeight) {
+        // Horizontal: center playhead in viewport
+        const desiredScrollX = x - containerWidth / 2;
+
+        // Vertical: snap to current system row
+        const systemY = SYSTEM_TOP_MARGIN + system * SYSTEM_HEIGHT;
+        const desiredScrollY =
+          systemY - containerHeight / 2 + SYSTEM_HEIGHT / 2;
+
+        onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
       }
 
       rafRef.current = requestAnimationFrame(animatePlayhead);
@@ -536,6 +546,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     timeSignature,
     measuresPerRow,
     totalMeasures,
+    containerWidth,
+    containerHeight,
     onScrollTo,
     buildPlaybackData,
     cleanupTransport,

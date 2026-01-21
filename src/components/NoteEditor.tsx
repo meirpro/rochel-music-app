@@ -2366,4 +2366,11 @@ export function NoteEditor({
 }
 
 // Export constants and helpers for use in page
-export { LEFT_MARGIN, BEAT_WIDTH, getLayoutConfig, getBeatFromX };
+export {
+  LEFT_MARGIN,
+  BEAT_WIDTH,
+  SYSTEM_HEIGHT,
+  SYSTEM_TOP_MARGIN,
+  getLayoutConfig,
+  getBeatFromX,
+};

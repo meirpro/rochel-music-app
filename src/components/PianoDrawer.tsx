@@ -239,7 +239,8 @@ export function PianoDrawer({
 
       if (isNewNote) {
         // Force a brief "release" state before showing new note (creates visual gap)
-        setPlaybackHighlight(null);
+        // Using queueMicrotask to avoid synchronous setState in effect
+        queueMicrotask(() => setPlaybackHighlight(null));
 
         // After a tiny gap, show the new note press
         attackTimeoutRef.current = setTimeout(() => {
@@ -253,7 +254,8 @@ export function PianoDrawer({
         }, 20); // 20ms gap between notes for visible release
       } else {
         // Same note continuing - just set highlight
-        setPlaybackHighlight(activePitch);
+        // Using queueMicrotask to avoid synchronous setState in effect
+        queueMicrotask(() => setPlaybackHighlight(activePitch));
 
         highlightTimeoutRef.current = setTimeout(() => {
           setPlaybackHighlight(null);
@@ -301,7 +303,8 @@ export function PianoDrawer({
       <div className="h-full flex flex-col">
         {/* Header with toggles */}
         <div className="flex items-center justify-between px-4 py-1 bg-purple-200 border-b border-purple-300">
-          <div className="text-xs text-purple-700 flex items-center gap-3">
+          {/* Keyboard hints - hidden on mobile (no physical keyboard) */}
+          <div className="text-xs text-purple-700 hidden md:flex items-center gap-3">
             <span>
               Keys: <span className="text-purple-800 font-semibold">A-K</span>{" "}
               or <span className="text-purple-800 font-semibold">1-8</span>
@@ -325,6 +328,8 @@ export function PianoDrawer({
               )}
             </span>
           </div>
+          {/* Spacer on mobile to push toggles right */}
+          <div className="md:hidden" />
           <div className="flex items-center gap-4">
             {/* Black keys toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
@@ -371,10 +376,10 @@ export function PianoDrawer({
           </div>
         </div>
 
-        {/* Piano keys */}
-        <div className="flex-1 flex items-center justify-center px-4 py-2">
+        {/* Piano keys - scrollable horizontally on mobile */}
+        <div className="flex-1 flex items-center justify-start md:justify-center px-4 py-2 overflow-x-auto overflow-y-hidden hide-scrollbar">
           {/* White keys container - relative for black keys positioning */}
-          <div className="flex gap-1 relative">
+          <div className="flex gap-1 relative flex-shrink-0">
             {WHITE_KEYS.map((key, index) => {
               const pressed = isKeyPressed(key.pitch);
               const bgColor = getKeyColor(key.pitch);
@@ -421,9 +426,9 @@ export function PianoDrawer({
                       <span className="text-xs align-super">5</span>
                     )}
                   </span>
-                  {/* Keyboard hint */}
+                  {/* Keyboard hint - hidden on mobile */}
                   <span
-                    className={`text-xs ${
+                    className={`text-xs hidden md:block ${
                       useColors ? "text-white/70" : "text-purple-500"
                     }`}
                   >
@@ -478,8 +483,8 @@ export function PianoDrawer({
                     <span className="text-xs font-semibold text-white">
                       {blackKey.name}
                     </span>
-                    {/* Keyboard hint */}
-                    <span className="text-[10px] text-purple-100">
+                    {/* Keyboard hint - hidden on mobile */}
+                    <span className="text-[10px] text-purple-100 hidden md:block">
                       {blackKey.keyboard[0].toUpperCase()}
                     </span>
                   </button>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { MeasuresControlCompact } from "@/components/MeasuresControl";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { TutorialMenu } from "@/components/TutorialMenu";
+import { LogoIcon } from "@/components/LogoIcon";
 
 interface TimeSignature {
   numerator: number;
@@ -147,27 +148,9 @@ export function EditorHeader({
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Piano logo icon */}
-          <svg
-            className="w-6 h-6 sm:w-7 sm:h-7 text-purple-700"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <rect
-              x="2"
-              y="4"
-              width="20"
-              height="16"
-              rx="2"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <rect x="5" y="4" width="3" height="10" fill="currentColor" />
-            <rect x="10" y="4" width="3" height="10" fill="currentColor" />
-            <rect x="16" y="4" width="3" height="10" fill="currentColor" />
-          </svg>
+          <LogoIcon className="w-6 h-6 sm:w-7 sm:h-7 text-purple-700" />
           <span className="text-purple-700 font-semibold text-lg hidden md:inline">
-            Rochel Music
+            Rochel&apos;s Piano School
           </span>
         </div>
 
@@ -418,37 +401,7 @@ export function EditorHeader({
                 }}
                 className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3"
               >
-                <svg
-                  className="w-5 h-5"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <rect
-                    x="2"
-                    y="4"
-                    width="20"
-                    height="16"
-                    rx="2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <rect x="5" y="4" width="3" height="10" fill="currentColor" />
-                  <rect
-                    x="10"
-                    y="4"
-                    width="3"
-                    height="10"
-                    fill="currentColor"
-                  />
-                  <rect
-                    x="16"
-                    y="4"
-                    width="3"
-                    height="10"
-                    fill="currentColor"
-                  />
-                </svg>
+                <LogoIcon className="w-5 h-5" />
                 <span>Piano {showPiano ? "(ON)" : "(OFF)"}</span>
               </button>
 
@@ -573,21 +526,7 @@ export function EditorHeader({
             }`}
             title="Toggle Piano"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <rect
-                x="2"
-                y="4"
-                width="20"
-                height="16"
-                rx="2"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <rect x="5" y="4" width="3" height="10" fill="currentColor" />
-              <rect x="10" y="4" width="3" height="10" fill="currentColor" />
-              <rect x="16" y="4" width="3" height="10" fill="currentColor" />
-            </svg>
+            <LogoIcon className="w-5 h-5" />
           </button>
 
           {/* Settings button */}
