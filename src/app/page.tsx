@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useLocalStorage } from "usehooks-ts";
+import { useLocalStorage, useDocumentTitle } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
 import { NoteEditor, NoteTool, TimeSignature } from "@/components/NoteEditor";
 import { PianoDrawer } from "@/components/PianoDrawer";
@@ -169,6 +169,43 @@ export default function Home() {
   // Ref for responsive layout
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
+  // Container size state for playback scroll-follow
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Track container size for auto-scroll during playback
+  // Uses requestAnimationFrame to defer updates and avoid hydration mismatch
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    let rafId: number | null = null;
+
+    const updateSize = () => {
+      // Cancel pending update to avoid batching issues
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      // Defer state update to next frame (ensures hydration completes first)
+      rafId = requestAnimationFrame(() => {
+        setContainerSize({
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(container);
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      observer.disconnect();
+    };
+  }, []);
+
   // Mobile detection for read-only mode
   const isMobile = useIsMobile();
 
@@ -184,12 +221,19 @@ export default function Home() {
     userMeasuresPerRow: measuresPerRow,
   });
 
-  // Scroll handler for playback follow
-  const handleScrollTo = useCallback((scrollLeft: number) => {
-    if (editorContainerRef.current) {
-      editorContainerRef.current.scrollLeft = scrollLeft;
-    }
-  }, []);
+  // Scroll handler for playback follow (smooth scroll with both axes)
+  const handleScrollTo = useCallback(
+    (scrollLeft: number, scrollTop: number) => {
+      if (editorContainerRef.current) {
+        editorContainerRef.current.scrollTo({
+          left: scrollLeft,
+          top: scrollTop,
+          behavior: "smooth",
+        });
+      }
+    },
+    [],
+  );
 
   // Playback hook
   const playback = usePlayback({
@@ -198,6 +242,8 @@ export default function Home() {
     timeSignature: settings.timeSignature,
     measuresPerRow,
     totalMeasures,
+    containerWidth: containerSize.width,
+    containerHeight: containerSize.height,
     onScrollTo: handleScrollTo,
   });
 
@@ -210,6 +256,13 @@ export default function Home() {
     currentSongId && savedSongs[currentSongId]
       ? savedSongs[currentSongId].name
       : "Untitled Song";
+
+  // Update document title dynamically with current song name
+  useDocumentTitle(
+    currentSongTitle !== "Untitled Song"
+      ? `${currentSongTitle} | Rochel's Piano School`
+      : "Rochel's Piano School - The Batya Method",
+  );
 
   // Update composition helper with history tracking
   const updateComposition = useCallback(
@@ -346,8 +399,9 @@ export default function Home() {
   );
 
   // Load song handler (with automatic migration)
+  // showToast: false on initial page load, true when user manually selects a song
   const handleLoadSong = useCallback(
-    (song: SavedSong) => {
+    (song: SavedSong, showToast = true) => {
       // Migrate if needed
       const migratedSong = migrateSavedSong(song);
 
@@ -359,7 +413,9 @@ export default function Home() {
       });
       setCurrentSongId(migratedSong.id);
       setUI({ ...ui, showSongLibrary: false });
-      toast.success(`Loaded "${migratedSong.name}"`);
+      if (showToast) {
+        toast.success(`Loaded "${migratedSong.name}"`);
+      }
 
       // Calculate and set totalMeasures based on song content
       const notes = migratedSong.composition.notes as EditorNote[];
@@ -397,7 +453,7 @@ export default function Home() {
     const isEmptyComposition =
       composition.notes.length === 0 && composition.repeatMarkers.length === 0;
     if (isEmptyComposition && currentSongId && savedSongs[currentSongId]) {
-      handleLoadSong(savedSongs[currentSongId]);
+      handleLoadSong(savedSongs[currentSongId], false); // false = don't show toast on initial load
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
