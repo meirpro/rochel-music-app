@@ -5,8 +5,8 @@ import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 
 interface ToolPaletteProps {
-  selectedTool: NoteTool;
-  onToolSelect: (tool: NoteTool) => void;
+  selectedTool: NoteTool | null;
+  onToolSelect: (tool: NoteTool | null) => void;
   allowMove: boolean;
   onAllowMoveChange: (allow: boolean) => void;
   // Undo/redo

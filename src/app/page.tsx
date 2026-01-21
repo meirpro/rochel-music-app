@@ -39,13 +39,14 @@ import {
   toLegacyRepeatMarkers,
   fromLegacyRepeatMarkers,
 } from "@/lib/coordinateAdapter";
+import { InstrumentType, setInstrument } from "@/lib/audio/TonePlayer";
 
 // Types for localStorage persistence
 // Supports both legacy (system-based) and new (absoluteBeat) formats during migration
 type EditorComposition = Composition | LegacyComposition;
 
 interface EditorSettings {
-  selectedTool: NoteTool;
+  selectedTool: NoteTool | null;
   showLabels: boolean;
   showKidFaces: boolean;
   showGrid: boolean;
@@ -53,6 +54,7 @@ interface EditorSettings {
   allowMove: boolean;
   tempo: number;
   timeSignature: TimeSignature;
+  instrument: InstrumentType;
   pianoUseColors: boolean;
   pianoShowBlackKeys: boolean;
 }
@@ -72,7 +74,7 @@ const DEFAULT_COMPOSITION: Composition = {
 };
 
 const DEFAULT_SETTINGS: EditorSettings = {
-  selectedTool: "quarter",
+  selectedTool: null, // No tool selected by default
   showLabels: true,
   showKidFaces: false,
   showGrid: false,
@@ -80,6 +82,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   allowMove: false,
   tempo: 100,
   timeSignature: { numerator: 4, denominator: 4 },
+  instrument: "piano",
   pianoUseColors: true,
   pianoShowBlackKeys: false,
 };
@@ -92,35 +95,48 @@ const DEFAULT_UI: EditorUI = {
   showLyricsModal: false,
 };
 
+// Options to prevent SSR hydration mismatch - load from localStorage after mount
+const SSR_SAFE = { initializeWithValue: false };
+
 export default function Home() {
-  // Persistent state
+  // Persistent state (SSR safe to prevent hydration mismatch)
   const [composition, setComposition] = useLocalStorage<EditorComposition>(
     "rochel-editor-composition",
     DEFAULT_COMPOSITION,
+    SSR_SAFE,
   );
   const [settings, setSettings] = useLocalStorage<EditorSettings>(
     "rochel-editor-settings",
     DEFAULT_SETTINGS,
+    SSR_SAFE,
   );
-  const [ui, setUI] = useLocalStorage<EditorUI>("rochel-editor-ui", DEFAULT_UI);
+  const [ui, setUI] = useLocalStorage<EditorUI>(
+    "rochel-editor-ui",
+    DEFAULT_UI,
+    SSR_SAFE,
+  );
   const [savedSongs, setSavedSongs] = useLocalStorage<SavedSongsMap>(
     "rochel-saved-songs",
     getDefaultSongs(),
+    SSR_SAFE,
   );
   const [currentSongId, setCurrentSongId] = useLocalStorage<string | null>(
     "rochel-current-song-id",
     "default-dayenu",
+    SSR_SAFE,
   );
   const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
     "rochel-measures-per-row",
     4, // Default: 4 measures per row (overridden by viewport on first load)
+    SSR_SAFE,
   );
   const [totalMeasures, setTotalMeasures] = useLocalStorage<number>(
     "rochel-total-measures",
     4, // Default: 4 measures
+    SSR_SAFE,
   );
   const [hasInitializedLayout, setHasInitializedLayout] =
-    useLocalStorage<boolean>("rochel-layout-initialized", false);
+    useLocalStorage<boolean>("rochel-layout-initialized", false, SSR_SAFE);
 
   // Set viewport-based default for measuresPerRow on first visit only
   useEffect(() => {
@@ -139,6 +155,13 @@ export default function Home() {
     setMeasuresPerRow,
     setHasInitializedLayout,
   ]);
+
+  // Sync instrument setting with TonePlayer on mount
+  useEffect(() => {
+    if (settings.instrument) {
+      setInstrument(settings.instrument);
+    }
+  }, [settings.instrument]);
 
   // SVG ref for export functionality
   const svgRef = useRef<SVGSVGElement>(null);
@@ -636,6 +659,11 @@ export default function Home() {
         onTimeSignatureChange={(ts) =>
           setSettings({ ...settings, timeSignature: ts })
         }
+        instrument={settings.instrument}
+        onInstrumentChange={(instrument) => {
+          setSettings({ ...settings, instrument });
+          setInstrument(instrument);
+        }}
         showLabels={settings.showLabels}
         onShowLabelsChange={(show) =>
           setSettings({ ...settings, showLabels: show })

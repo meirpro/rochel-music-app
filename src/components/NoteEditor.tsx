@@ -157,7 +157,7 @@ interface NoteEditorProps {
   onRepeatMarkersChange: (markers: RepeatMarker[]) => void;
   lyrics?: LyricSyllable[];
   onLyricsChange?: (lyrics: LyricSyllable[]) => void;
-  selectedTool: NoteTool;
+  selectedTool: NoteTool | null;
   showLabels?: boolean;
   showKidFaces?: boolean;
   showGrid?: boolean;
