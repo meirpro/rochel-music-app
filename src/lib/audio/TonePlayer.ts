@@ -1,4 +1,10 @@
 import * as Tone from "tone";
+import {
+  startKeepAlive,
+  registerSynthGetter,
+  rewarmSynth,
+  handleVisibilityKeepAlive,
+} from "./keepAlive";
 
 /**
  * Configure Tone.js context for low latency
@@ -128,7 +134,8 @@ export function setInstrument(instrument: InstrumentType): void {
     synth = null;
   }
 
-  // New synth will be created on next note with new preset
+  // Re-warm the new synth for instant playback
+  rewarmSynth();
 }
 
 /**
@@ -145,6 +152,11 @@ export function initAudio(): Promise<void> {
       await Tone.start();
       audioReady = true;
       console.log("[TonePlayer] Tone.js started:", Tone.context.state);
+
+      // Start keep-alive layer to prevent Safari suspension
+      registerSynthGetter(getSynth);
+      startKeepAlive();
+
       // Handle Safari suspending audio when window loses focus
       document.addEventListener("visibilitychange", handleVisibilityChange);
     })();
@@ -176,6 +188,8 @@ async function handleVisibilityChange(): Promise<void> {
       await Tone.context.resume();
       console.log("[TonePlayer] Context resumed:", Tone.context.state);
     }
+    // Ensure keep-alive layer persists after tab switch
+    await handleVisibilityKeepAlive();
   }
 }
 
@@ -189,8 +203,9 @@ export function isAudioInitialized(): boolean {
 /**
  * Get or create the shared synth instance.
  * Uses PolySynth for playing multiple notes simultaneously.
+ * Exported for keep-alive layer to prewarm the synth.
  */
-function getSynth(): Tone.PolySynth {
+export function getSynth(): Tone.PolySynth {
   if (!synth) {
     const preset = INSTRUMENT_PRESETS[currentInstrument];
     synth = new Tone.PolySynth(Tone.Synth, {
