@@ -496,6 +496,36 @@ export default function Home() {
     toast.success("Songs exported");
   }, [savedSongs]);
 
+  // Export selected songs handler
+  const handleExportSelected = useCallback(
+    (songIds: string[]) => {
+      const selectedSongs = songIds.reduce(
+        (acc, id) => {
+          if (savedSongs[id]) {
+            acc[id] = savedSongs[id];
+          }
+          return acc;
+        },
+        {} as typeof savedSongs,
+      );
+      const dataStr = JSON.stringify(selectedSongs, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download =
+        songIds.length === 1
+          ? `${savedSongs[songIds[0]]?.name || "song"}.json`
+          : `rochel-songs-${songIds.length}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `${songIds.length} song${songIds.length > 1 ? "s" : ""} exported`,
+      );
+    },
+    [savedSongs],
+  );
+
   // Save as PNG
   const handleSavePNG = useCallback(() => {
     if (!svgRef.current) return;
@@ -586,6 +616,10 @@ export default function Home() {
         onRedo={handleRedo}
         onDownloadPNG={handleSavePNG}
         onDownloadSVG={handleSaveSVG}
+        isMobile={isMobile}
+        savedSongs={savedSongs}
+        currentSongId={currentSongId}
+        onQuickLoadSong={handleLoadSong}
       />
 
       {/* Main content area */}
@@ -704,6 +738,7 @@ export default function Home() {
         }}
         onRestoreDefaults={handleRestoreDefaults}
         onExport={handleExport}
+        onExportSelected={handleExportSelected}
       />
 
       <SettingsModal

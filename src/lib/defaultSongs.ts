@@ -225,14 +225,15 @@ const dayenuLyrics: LyricSyllable[] = [
   { text: "u", absoluteBeat: 22.5 },
   // Section B - Measures 7-8
   { text: "dai", absoluteBeat: 24 },
-  { text: "ein", absoluteBeat: 25 },
-  { text: "u", absoluteBeat: 26 },
-  { text: "dai", absoluteBeat: 26.5 },
-  { text: "ein", absoluteBeat: 27.5 },
-  { text: "u", absoluteBeat: 28 },
-  { text: "dai", absoluteBeat: 28.5 },
-  { text: "ei", absoluteBeat: 29 },
-  { text: "nu", absoluteBeat: 29.5 },
+  { text: "dai", absoluteBeat: 25 },
+  { text: "ein", absoluteBeat: 26 },
+  { text: "u", absoluteBeat: 26.5 },
+  { text: "dai", absoluteBeat: 27.5 },
+  { text: "ein", absoluteBeat: 28 },
+  { text: "u", absoluteBeat: 28.5 },
+  { text: "dai", absoluteBeat: 29 },
+  { text: "ei", absoluteBeat: 29.5 },
+  { text: "nu", absoluteBeat: 30 },
 ];
 
 // Generate default songs

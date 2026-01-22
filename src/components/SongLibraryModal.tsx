@@ -14,6 +14,7 @@ interface SongLibraryModalProps {
   onUpdateCurrentSong: () => void;
   onRestoreDefaults: () => void;
   onExport: () => void;
+  onExportSelected: (songIds: string[]) => void;
 }
 
 export function SongLibraryModal({
@@ -27,9 +28,14 @@ export function SongLibraryModal({
   onUpdateCurrentSong,
   onRestoreDefaults,
   onExport,
+  onExportSelected,
 }: SongLibraryModalProps) {
   const [newSongName, setNewSongName] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedForExport, setSelectedForExport] = useState<Set<string>>(
+    new Set(),
+  );
 
   const songs = Object.values(savedSongs).sort(
     (a, b) => b.updatedAt - a.updatedAt,
@@ -50,6 +56,43 @@ export function SongLibraryModal({
       setConfirmingDelete(songId);
       setTimeout(() => setConfirmingDelete(null), 3000);
     }
+  };
+
+  const toggleSelection = (songId: string) => {
+    setSelectedForExport((prev) => {
+      const next = new Set(prev);
+      if (next.has(songId)) {
+        next.delete(songId);
+      } else {
+        next.add(songId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedForExport.size === songs.length) {
+      setSelectedForExport(new Set());
+    } else {
+      setSelectedForExport(new Set(songs.map((s) => s.id)));
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedForExport.size > 0) {
+      onExportSelected(Array.from(selectedForExport));
+      exitSelectMode();
+    }
+  };
+
+  const enterSelectMode = () => {
+    setIsSelectMode(true);
+    setSelectedForExport(new Set());
+  };
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedForExport(new Set());
   };
 
   return (
@@ -117,6 +160,7 @@ export function SongLibraryModal({
               {songs.map((song) => {
                 const isCurrent = song.id === currentSongId;
                 const isConfirming = confirmingDelete === song.id;
+                const isSelected = selectedForExport.has(song.id);
 
                 return (
                   <div
@@ -124,11 +168,23 @@ export function SongLibraryModal({
                     className={`p-3 rounded-lg border transition-all ${
                       isCurrent
                         ? "bg-purple-50 border-purple-300"
-                        : "bg-white border-gray-200 hover:border-gray-300"
+                        : isSelectMode && isSelected
+                          ? "bg-indigo-50 border-indigo-300"
+                          : "bg-white border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     {/* Song Info */}
                     <div className="flex items-center gap-2 mb-1">
+                      {/* Export checkbox - only in select mode */}
+                      {isSelectMode && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelection(song.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                          title="Select for export"
+                        />
+                      )}
                       <h3 className="text-sm font-semibold text-gray-800 truncate flex-1">
                         {song.name}
                       </h3>
@@ -184,31 +240,72 @@ export function SongLibraryModal({
 
         {/* Footer Actions */}
         <div className="bg-gray-50 px-3 py-3 border-t border-gray-200 space-y-2">
-          <div className="flex gap-2">
-            <button
-              onClick={onRestoreDefaults}
-              className="flex-1 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-medium rounded-lg transition-colors"
-            >
-              Restore Defaults
-            </button>
-            <button
-              onClick={onExport}
-              disabled={songs.length === 0}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-                songs.length > 0
-                  ? "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Export All
-            </button>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-full py-2 bg-gradient-to-r from-blue-200 to-purple-200 text-blue-800 text-sm font-medium rounded-lg hover:from-blue-300 hover:to-purple-300 transition-all"
-          >
-            Done
-          </button>
+          {isSelectMode ? (
+            <>
+              {/* Select Mode Controls */}
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  {selectedForExport.size === songs.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
+                <span className="text-xs text-gray-500">
+                  {selectedForExport.size} of {songs.length} selected
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={exitSelectMode}
+                  className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExportSelected}
+                  disabled={selectedForExport.size === 0}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+                    selectedForExport.size > 0
+                      ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Export ({selectedForExport.size})
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Normal Mode Controls */}
+              <div className="flex gap-2">
+                <button
+                  onClick={onRestoreDefaults}
+                  className="flex-1 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-medium rounded-lg transition-colors"
+                >
+                  Restore Defaults
+                </button>
+                <button
+                  onClick={enterSelectMode}
+                  disabled={songs.length === 0}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+                    songs.length > 0
+                      ? "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Export...
+                </button>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-full py-2 bg-gradient-to-r from-blue-200 to-purple-200 text-blue-800 text-sm font-medium rounded-lg hover:from-blue-300 hover:to-purple-300 transition-all"
+              >
+                Done
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>

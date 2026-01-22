@@ -5,6 +5,7 @@ import { MeasuresControlCompact } from "@/components/MeasuresControl";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { TutorialMenu } from "@/components/TutorialMenu";
 import { LogoIcon } from "@/components/LogoIcon";
+import { SavedSong, SavedSongsMap } from "@/lib/types";
 
 interface TimeSignature {
   numerator: number;
@@ -50,6 +51,12 @@ interface EditorHeaderProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+
+  // Mobile song dropdown
+  isMobile?: boolean;
+  savedSongs?: SavedSongsMap;
+  currentSongId?: string | null;
+  onQuickLoadSong?: (song: SavedSong) => void;
 }
 
 export function EditorHeader({
@@ -74,16 +81,27 @@ export function EditorHeader({
   onDownloadSVG,
   showPiano,
   onTogglePiano,
+  isMobile,
+  savedSongs,
+  currentSongId,
+  onQuickLoadSong,
 }: EditorHeaderProps) {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [showTutorialMenu, setShowTutorialMenu] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
+  const [showMobileSongMenu, setShowMobileSongMenu] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
   const tutorialMenuRef = useRef<HTMLDivElement>(null);
   const hamburgerMenuRef = useRef<HTMLDivElement>(null);
+  const mobileSongMenuRef = useRef<HTMLDivElement>(null);
   const [isEditingTempo, setIsEditingTempo] = useState(false);
   const [tempoInputValue, setTempoInputValue] = useState(tempo.toString());
   const tempoInputRef = useRef<HTMLInputElement>(null);
+
+  // Sort songs for mobile dropdown
+  const sortedSongs = savedSongs
+    ? Object.values(savedSongs).sort((a, b) => b.updatedAt - a.updatedAt)
+    : [];
 
   // Sync tempo input value when tempo changes
   useEffect(() => {
@@ -113,15 +131,21 @@ export function EditorHeader({
       ) {
         setShowHamburgerMenu(false);
       }
+      if (
+        mobileSongMenuRef.current &&
+        !mobileSongMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowMobileSongMenu(false);
+      }
     }
 
-    if (showDownloadMenu || showHamburgerMenu) {
+    if (showDownloadMenu || showHamburgerMenu || showMobileSongMenu) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showDownloadMenu, showHamburgerMenu]);
+  }, [showDownloadMenu, showHamburgerMenu, showMobileSongMenu]);
 
   const handleTempoBlur = () => {
     const newTempo = parseInt(tempoInputValue);
@@ -156,48 +180,121 @@ export function EditorHeader({
 
         <div className="h-8 w-px bg-purple-300 hidden md:block flex-shrink-0" />
 
-        {/* Song Library Button */}
-        <button
-          id={TOUR_ELEMENT_IDS.songSelector}
-          onClick={onSongTitleClick}
-          className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-white/70 hover:bg-white/90 rounded-lg transition-colors shadow-sm border border-purple-200 hover:border-purple-300 group min-w-0"
-        >
-          {/* Folder/Library icon */}
-          <svg
-            className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {/* Song Library Button / Mobile Dropdown */}
+        <div className="relative" ref={mobileSongMenuRef}>
+          <button
+            id={TOUR_ELEMENT_IDS.songSelector}
+            onClick={() => {
+              if (isMobile && savedSongs && onQuickLoadSong) {
+                setShowMobileSongMenu(!showMobileSongMenu);
+              } else {
+                onSongTitleClick();
+              }
+            }}
+            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm border group min-w-0 ${
+              showMobileSongMenu
+                ? "bg-purple-100 border-purple-300"
+                : "bg-white/70 hover:bg-white/90 border-purple-200 hover:border-purple-300"
+            }`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-            />
-          </svg>
-          <div className="flex flex-col items-start min-w-0">
-            <span className="text-[10px] text-purple-400 leading-none hidden sm:block">
-              Current Song
-            </span>
-            <span className="text-purple-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
-              {currentSongTitle}
-            </span>
-          </div>
-          <svg
-            className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400 group-hover:text-purple-600 transition-colors flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
+            {/* Folder/Library icon */}
+            <svg
+              className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
+            <div className="flex flex-col items-start min-w-0">
+              <span className="text-[10px] text-purple-400 leading-none hidden sm:block">
+                Current Song
+              </span>
+              <span className="text-purple-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
+                {currentSongTitle}
+              </span>
+            </div>
+            <svg
+              className={`w-3 h-3 sm:w-4 sm:h-4 text-purple-400 group-hover:text-purple-600 transition-all flex-shrink-0 ${
+                showMobileSongMenu ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {/* Mobile Song Dropdown */}
+          {showMobileSongMenu && isMobile && (
+            <div className="absolute left-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[200px] max-w-[280px] max-h-[60vh] overflow-y-auto">
+              <div className="px-3 py-2 bg-gradient-to-r from-blue-100 to-purple-100 border-b border-purple-200">
+                <span className="text-xs font-semibold text-purple-700">
+                  Select a Song
+                </span>
+              </div>
+              {sortedSongs.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-gray-500">
+                  No songs saved
+                </div>
+              ) : (
+                sortedSongs.map((song) => {
+                  const isCurrent = song.id === currentSongId;
+                  return (
+                    <button
+                      key={song.id}
+                      onClick={() => {
+                        if (!isCurrent && onQuickLoadSong) {
+                          onQuickLoadSong(song);
+                        }
+                        setShowMobileSongMenu(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between gap-2 ${
+                        isCurrent
+                          ? "bg-purple-50 text-purple-700"
+                          : "hover:bg-gray-50 text-gray-700"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">
+                          {song.name}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {song.composition.notes.length} notes •{" "}
+                          {song.settings.tempo} BPM
+                        </div>
+                      </div>
+                      {isCurrent && (
+                        <svg
+                          className="w-4 h-4 text-purple-500 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Center section - Time sig, Tempo, and Measures (responsive) */}
