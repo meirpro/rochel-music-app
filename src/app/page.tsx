@@ -33,6 +33,7 @@ import {
 import { usePlayback } from "@/hooks/usePlayback";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileBanner } from "@/components/MobileBanner";
+import { Footer } from "@/components/Footer";
 import {
   toLegacyNotes,
   fromLegacyNotes,
@@ -405,14 +406,15 @@ export default function Home() {
   // Load song handler (with automatic migration)
   // showToast: false on initial page load, true when user manually selects a song
   const handleLoadSong = useCallback(
-    (song: SavedSong, showToast = true) => {
+    (song: SavedSong, showToast = true, preserveTempo = false) => {
       // Migrate if needed
       const migratedSong = migrateSavedSong(song);
 
       setComposition(migratedSong.composition);
       setSettings({
         ...settings,
-        tempo: migratedSong.settings.tempo,
+        // Preserve user's tempo on initial page load, use song's tempo on explicit load
+        tempo: preserveTempo ? settings.tempo : migratedSong.settings.tempo,
         timeSignature: migratedSong.settings.timeSignature,
       });
       setCurrentSongId(migratedSong.id);
@@ -452,13 +454,44 @@ export default function Home() {
     ],
   );
 
-  // Auto-load default song on first visit (when composition is empty but currentSongId is set)
+  // Auto-load default song on first visit (when composition is truly empty)
+  // Check localStorage directly to avoid stale closure issues with SSR_SAFE
   useEffect(() => {
-    const isEmptyComposition =
-      composition.notes.length === 0 && composition.repeatMarkers.length === 0;
-    if (isEmptyComposition && currentSongId && savedSongs[currentSongId]) {
-      handleLoadSong(savedSongs[currentSongId], false); // false = don't show toast on initial load
-    }
+    const timer = setTimeout(() => {
+      // Read directly from localStorage to get hydrated values
+      const storedComposition = localStorage.getItem(
+        "rochel-editor-composition",
+      );
+      const storedSettings = localStorage.getItem("rochel-editor-settings");
+      const storedSongId = localStorage.getItem("rochel-current-song-id");
+      const storedSongs = localStorage.getItem("rochel-saved-songs");
+
+      const parsedComp = storedComposition
+        ? JSON.parse(storedComposition)
+        : null;
+      const parsedSettings = storedSettings ? JSON.parse(storedSettings) : null;
+      const parsedSongId = storedSongId ? JSON.parse(storedSongId) : null;
+      const parsedSongs = storedSongs ? JSON.parse(storedSongs) : null;
+
+      const isEmptyComposition =
+        !parsedComp ||
+        (parsedComp.notes?.length === 0 &&
+          parsedComp.repeatMarkers?.length === 0);
+
+      if (isEmptyComposition && parsedSongId && parsedSongs?.[parsedSongId]) {
+        const song = parsedSongs[parsedSongId];
+        // Load song but preserve user's tempo from localStorage
+        const userTempo = parsedSettings?.tempo ?? DEFAULT_SETTINGS.tempo;
+        setComposition(song.composition);
+        setSettings((prev) => ({
+          ...prev,
+          tempo: userTempo, // Use localStorage tempo, not song tempo
+          timeSignature: song.settings.timeSignature,
+        }));
+        setCurrentSongId(song.id);
+      }
+    }, 50); // Small delay for localStorage hydration
+    return () => clearTimeout(timer);
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -589,6 +622,9 @@ export default function Home() {
         onSongTitleClick={() => setUI({ ...ui, showSongLibrary: true })}
         tempo={settings.tempo}
         onTempoChange={(tempo) => setSettings({ ...settings, tempo })}
+        songTempo={
+          currentSongId ? savedSongs[currentSongId]?.settings.tempo : undefined
+        }
         timeSignature={settings.timeSignature}
         measuresPerRow={measuresPerRow}
         onMeasuresPerRowChange={setMeasuresPerRow}
@@ -795,6 +831,9 @@ export default function Home() {
 
       {/* Mobile banner - suggests using desktop for editing */}
       {isMobile && <MobileBanner />}
+
+      {/* Footer - fixed at bottom */}
+      <Footer />
     </div>
   );
 }
