@@ -5,7 +5,9 @@ import { SongData } from "./types";
 
 export const avinuMalkenu: SongData = {
   id: "default-avinu",
-  name: "Avinu Malkenu (אבינו מלכנו)",
+  name: "Avinu Malkenu",
+  hebrewName: "אבינו מלכנו",
+  description: "ניגון מאדמו״ר הזקן. מילים: מהתפילה",
   notes: [
     // Pickup measure (starts at beat 2 in 3/4)
     { id: "avinu-0", pitch: "G4", duration: 0.75, absoluteBeat: 2 },

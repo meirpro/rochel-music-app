@@ -7,6 +7,8 @@ import {
   koliDodiDofek,
   avinuMalkenu,
   animZemirot,
+  shibnehBeitHamikdash,
+  eimatiKaatiMar,
 } from "./songs";
 
 // Helper to create a SavedSong from a SongData
@@ -37,6 +39,8 @@ export function getDefaultSongs(): Record<string, SavedSong> {
     createSavedSong(koliDodiDofek, now - 4000),
     createSavedSong(avinuMalkenu, now - 5000),
     createSavedSong(animZemirot, now - 6000),
+    createSavedSong(shibnehBeitHamikdash, now - 7000),
+    createSavedSong(eimatiKaatiMar, now - 8000),
   ];
 
   return Object.fromEntries(songs.map((song) => [song.id, song]));
@@ -51,4 +55,6 @@ export const DEFAULT_SONG_IDS = [
   "default-koli",
   "default-avinu",
   "default-anim",
+  "default-shibneh",
+  "default-eimati",
 ];

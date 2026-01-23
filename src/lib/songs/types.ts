@@ -4,6 +4,8 @@ import { EditorNote, RepeatMarker, LyricSyllable } from "../types";
 export interface SongData {
   id: string;
   name: string;
+  hebrewName?: string;
+  description?: string;
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
   lyrics: LyricSyllable[];

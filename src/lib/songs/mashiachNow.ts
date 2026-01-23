@@ -4,7 +4,9 @@ import { SongData } from "./types";
 
 export const mashiachNow: SongData = {
   id: "default-mashiach",
-  name: "Mashiach Now (משיח נאו)",
+  name: "Mashiach Now",
+  hebrewName: "משיח נאו",
+  description: "שיר חב״ד",
   notes: [
     // === VERSE (Measures 1-2, beats 0-7) ===
     { id: "mashiach-0", pitch: "D4", duration: 0.5, absoluteBeat: 0 },

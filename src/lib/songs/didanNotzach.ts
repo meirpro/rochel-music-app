@@ -5,7 +5,9 @@ import { SongData } from "./types";
 
 export const didanNotzach: SongData = {
   id: "default-didan",
-  name: "Didan Notzach (דידן נצח)",
+  name: "Didan Notzach",
+  hebrewName: "דידן נצח",
+  description: "שיר לה׳ טבת. ניגון חב״ד",
   notes: [
     // === SECTION A (Measures 1-4, beats 0-15) ===
     // Key: F major (1 flat = Bb). Melody outlines F-A-C with Bb passing tones

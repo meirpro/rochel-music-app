@@ -4,7 +4,9 @@ import { SongData } from "./types";
 
 export const dayenu: SongData = {
   id: "default-dayenu",
-  name: "Dayenu (דיינו)",
+  name: "Dayenu",
+  hebrewName: "דיינו",
+  description: "שיר לפסח",
   notes: [
     // === SECTION A (Measures 1-4, beats 0-15) ===
     // M1: E G G G | G A G F (all eighths)

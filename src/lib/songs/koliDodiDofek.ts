@@ -5,7 +5,9 @@ import { SongData } from "./types";
 
 export const koliDodiDofek: SongData = {
   id: "default-koli",
-  name: "Koli Dodi Dofek (קולי דודי דופק)",
+  name: "Koli Dodi Dofek",
+  hebrewName: "קולי דודי דופק",
+  description: "ניגון מאדמו״ר הזקן. מילים: משיר השירים",
   notes: [
     // Pickup measure (1 beat)
     { id: "koli-0", pitch: "E4", duration: 1, absoluteBeat: 0 },

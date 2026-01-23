@@ -5,7 +5,9 @@ import { SongData } from "./types";
 
 export const nigunSimcha: SongData = {
   id: "default-simcha",
-  name: "Nigun Simcha (ניגון שמחה)",
+  name: "Nigun Simcha",
+  hebrewName: "ניגון שמחה",
+  description: "ניגון שמחה",
   notes: [
     // === SECTION A (Measures 1-8, beats 0-31) ===
     // M1: C D | G G F E E D

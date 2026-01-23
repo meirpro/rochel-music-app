@@ -5,7 +5,9 @@ import { SongData } from "./types";
 
 export const animZemirot: SongData = {
   id: "default-anim",
-  name: "Ani'm Zemirot (אנעים זמירות)",
+  name: "Ani'm Zemirot",
+  hebrewName: "אנעים זמירות",
+  description: "ניגון חב״ד",
   notes: [
     // Pickup measure (starts at beat 3.5)
     { id: "anim-0", pitch: "G4", duration: 0.5, absoluteBeat: 3.5 },
