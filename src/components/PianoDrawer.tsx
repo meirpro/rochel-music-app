@@ -7,7 +7,7 @@ import {
   stopAllNotes,
   initAudio,
 } from "@/lib/audio/TonePlayer";
-import { NOTE_COLORS, MIDI_NOTES } from "@/lib/constants";
+import { NOTE_COLORS, pitchToMidi } from "@/lib/constants";
 import { Pitch } from "@/lib/types";
 
 // White piano keys configuration
@@ -96,7 +96,7 @@ export function PianoDrawer({
   // Play a note with optional sustain (returns stop function)
   // Uses shared TonePlayer for DRY code and iOS compatibility
   const startNote = useCallback((pitch: Pitch): (() => void) | null => {
-    const midi = MIDI_NOTES[pitch];
+    const midi = pitchToMidi(pitch);
     if (midi <= 0) return null;
 
     // Initialize audio on first interaction (handles iOS)
@@ -109,7 +109,7 @@ export function PianoDrawer({
   // Play a short note (for clicks)
   // Uses shared TonePlayer for DRY code and iOS compatibility
   const playShortNote = useCallback((pitch: Pitch) => {
-    const midi = MIDI_NOTES[pitch];
+    const midi = pitchToMidi(pitch);
     if (midi > 0) {
       // Initialize audio on first interaction (handles iOS)
       initAudio();

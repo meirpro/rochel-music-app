@@ -1,5 +1,5 @@
-import { Song, RenderedNote } from "../types";
-import { MIDI_NOTES } from "../constants";
+import { Song, RenderedNote, Pitch } from "../types";
+import { pitchToMidi } from "../constants";
 import {
   playNote as tonePlayNote,
   getCurrentTime,
@@ -26,11 +26,8 @@ export class AudioPlayer {
   }
 
   // Play a pitch by name
-  playPitch(
-    pitch: "C4" | "D4" | "E4" | "F4" | "G4" | "A4" | "B4" | "C5" | "REST",
-    durationSeconds = 0.35,
-  ): void {
-    const midi = MIDI_NOTES[pitch];
+  playPitch(pitch: Pitch, durationSeconds = 0.35): void {
+    const midi = pitchToMidi(pitch);
     this.playNote(midi, durationSeconds);
   }
 

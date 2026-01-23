@@ -131,6 +131,96 @@ const EighthNoteIcon = () => (
   </svg>
 );
 
+const DottedEighthIcon = () => (
+  <svg width="26" height="28" viewBox="0 0 26 28" className="inline-block">
+    <ellipse
+      cx="10"
+      cy="20"
+      rx="5"
+      ry="3.5"
+      fill="currentColor"
+      stroke="#000"
+      strokeWidth="0.5"
+      transform="rotate(-15 10 20)"
+    />
+    <line
+      x1="14"
+      y1="19"
+      x2="14"
+      y2="6"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M 14 6 Q 18 9 17 14"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <circle cx="20" cy="20" r="2" fill="currentColor" />
+  </svg>
+);
+
+const SixteenthNoteIcon = () => (
+  <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
+    <ellipse
+      cx="10"
+      cy="20"
+      rx="5"
+      ry="3.5"
+      fill="currentColor"
+      stroke="#000"
+      strokeWidth="0.5"
+      transform="rotate(-15 10 20)"
+    />
+    <line
+      x1="14"
+      y1="19"
+      x2="14"
+      y2="6"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    {/* Two flags for sixteenth note */}
+    <path
+      d="M 14 6 Q 18 8 17 12"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <path
+      d="M 14 9 Q 18 11 17 15"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+  </svg>
+);
+
+const DottedHalfIcon = () => (
+  <svg width="26" height="28" viewBox="0 0 26 28" className="inline-block">
+    <ellipse
+      cx="10"
+      cy="20"
+      rx="5"
+      ry="3.5"
+      fill="#fff"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      transform="rotate(-15 10 20)"
+    />
+    <line
+      x1="14"
+      y1="19"
+      x2="14"
+      y2="6"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <circle cx="19" cy="20" r="2" fill="currentColor" />
+  </svg>
+);
+
 const RepeatIcon = () => (
   <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
     {/* Two vertical lines with dots - matching original editor */}
@@ -275,6 +365,12 @@ const TOOLS: Array<{
     color: "bg-blue-100 border-blue-300 text-blue-600 shadow-sm",
   },
   {
+    id: "dotted-half",
+    icon: <DottedHalfIcon />,
+    label: "Dot Half",
+    color: "bg-teal-100 border-teal-300 text-teal-600 shadow-sm",
+  },
+  {
     id: "half",
     icon: <HalfNoteIcon />,
     label: "Half",
@@ -283,7 +379,7 @@ const TOOLS: Array<{
   {
     id: "dotted-quarter",
     icon: <DottedQuarterIcon />,
-    label: "Dotted",
+    label: "Dot Qtr",
     color: "bg-orange-100 border-orange-300 text-orange-600 shadow-sm",
   },
   {
@@ -293,10 +389,22 @@ const TOOLS: Array<{
     color: "bg-purple-100 border-purple-300 text-purple-600 shadow-sm",
   },
   {
+    id: "dotted-eighth",
+    icon: <DottedEighthIcon />,
+    label: "Dot 8th",
+    color: "bg-rose-100 border-rose-300 text-rose-600 shadow-sm",
+  },
+  {
     id: "eighth",
     icon: <EighthNoteIcon />,
     label: "Eighth",
     color: "bg-pink-100 border-pink-300 text-pink-600 shadow-sm",
+  },
+  {
+    id: "sixteenth",
+    icon: <SixteenthNoteIcon />,
+    label: "16th",
+    color: "bg-fuchsia-100 border-fuchsia-300 text-fuchsia-600 shadow-sm",
   },
   {
     id: "delete",
@@ -321,10 +429,13 @@ const TOOLS: Array<{
 // Map tool IDs to tour element IDs
 const TOOL_TOUR_IDS: Partial<Record<NonNullable<NoteTool>, string>> = {
   whole: TOUR_ELEMENT_IDS.wholeNoteTool,
+  "dotted-half": TOUR_ELEMENT_IDS.dottedHalfTool,
   half: TOUR_ELEMENT_IDS.halfNoteTool,
   "dotted-quarter": TOUR_ELEMENT_IDS.dottedQuarterTool,
   quarter: TOUR_ELEMENT_IDS.quarterNoteTool,
+  "dotted-eighth": TOUR_ELEMENT_IDS.dottedEighthTool,
   eighth: TOUR_ELEMENT_IDS.eighthNoteTool,
+  sixteenth: TOUR_ELEMENT_IDS.sixteenthNoteTool,
   delete: TOUR_ELEMENT_IDS.deleteTool,
   repeat: TOUR_ELEMENT_IDS.repeatTool,
   lyrics: TOUR_ELEMENT_IDS.lyricsTool,

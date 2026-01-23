@@ -22,7 +22,7 @@ import {
   stopAllNotes,
   Tone,
 } from "@/lib/audio/TonePlayer";
-import { MIDI_NOTES } from "@/lib/constants";
+import { pitchToMidi } from "@/lib/constants";
 import { Pitch, EditorNote, RepeatMarker, TimeSignature } from "@/lib/types";
 import {
   getLayoutConfig,
@@ -502,7 +502,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     // Create note events for Tone.Part
     const noteEvents = playbackSequence.map((note) => ({
       time: beatsToSeconds(note.playBeat, tempo),
-      midi: MIDI_NOTES[note.pitch],
+      midi: pitchToMidi(note.pitch),
       duration: beatsToSeconds(note.duration, tempo) * 0.9,
       id: note.id,
       pitch: note.pitch,

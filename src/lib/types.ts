@@ -1,23 +1,68 @@
-// Pitch names for the kid staff (C4 to C5 range)
-// Includes sharps for piano keyboard (not used in kid staff notation)
+// Pitch names for musical notation
+// Extended range from C3 to C6 with both sharps and flats
 export type Pitch =
+  // Octave 3
+  | "C3"
+  | "C#3"
+  | "Db3"
+  | "D3"
+  | "D#3"
+  | "Eb3"
+  | "E3"
+  | "F3"
+  | "F#3"
+  | "Gb3"
+  | "G3"
+  | "G#3"
+  | "Ab3"
+  | "A3"
+  | "A#3"
+  | "Bb3"
+  | "B3"
+  // Octave 4
   | "C4"
   | "C#4"
+  | "Db4"
   | "D4"
   | "D#4"
+  | "Eb4"
   | "E4"
   | "F4"
   | "F#4"
+  | "Gb4"
   | "G4"
   | "G#4"
+  | "Ab4"
   | "A4"
   | "A#4"
+  | "Bb4"
   | "B4"
+  // Octave 5
   | "C5"
+  | "C#5"
+  | "Db5"
+  | "D5"
+  | "D#5"
+  | "Eb5"
+  | "E5"
+  | "F5"
+  | "F#5"
+  | "Gb5"
+  | "G5"
+  | "G#5"
+  | "Ab5"
+  | "A5"
+  | "A#5"
+  | "Bb5"
+  | "B5"
+  // Octave 6
+  | "C6"
   | "REST";
 
 // Note durations in beats
-export type Duration = 0.5 | 1 | 1.5 | 2 | 4;
+// 0.25 = sixteenth, 0.5 = eighth, 0.75 = dotted eighth
+// 1 = quarter, 1.5 = dotted quarter, 2 = half, 3 = dotted half, 4 = whole
+export type Duration = 0.25 | 0.5 | 0.75 | 1 | 1.5 | 2 | 3 | 4;
 
 // A single note in a song
 export interface Note {

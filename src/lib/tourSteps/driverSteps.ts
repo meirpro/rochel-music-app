@@ -16,10 +16,13 @@ export const TOUR_ELEMENT_IDS = {
   // Tool palette
   toolPalette: "tour-tool-palette",
   wholeNoteTool: "tour-whole-note",
+  dottedHalfTool: "tour-dotted-half",
   halfNoteTool: "tour-half-note",
   dottedQuarterTool: "tour-dotted-quarter",
   quarterNoteTool: "tour-quarter-note",
+  dottedEighthTool: "tour-dotted-eighth",
   eighthNoteTool: "tour-eighth-note",
+  sixteenthNoteTool: "tour-sixteenth-note",
   deleteTool: "tour-delete-tool",
   repeatTool: "tour-repeat-tool",
   lyricsTool: "tour-lyrics-tool",

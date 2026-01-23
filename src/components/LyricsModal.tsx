@@ -13,22 +13,12 @@ interface LyricsModalProps {
   notes: EditorNote[];
 }
 
-const PITCH_DISPLAY: Record<Pitch, string> = {
-  C4: "C",
-  "C#4": "C#",
-  D4: "D",
-  "D#4": "D#",
-  E4: "E",
-  F4: "F",
-  "F#4": "F#",
-  G4: "G",
-  "G#4": "G#",
-  A4: "A",
-  "A#4": "A#",
-  B4: "B",
-  C5: "C",
-  REST: "",
-};
+// Extract display name from any pitch (e.g., "Bb4" -> "Bb", "C#5" -> "C#")
+function getPitchDisplay(pitch: Pitch): string {
+  if (pitch === "REST") return "";
+  // Remove the octave number to get the note name with accidental
+  return pitch.replace(/\d+$/, "");
+}
 
 // Helper to create initial lyrics map
 function createLyricsMap(lyrics: LyricSyllable[]): Map<number, string> {
@@ -168,7 +158,7 @@ function LyricsModalContent({
                       const absoluteBeat = measureStartBeat + beatIndex;
                       const notesAtBeat = getNotesAtBeat(absoluteBeat);
                       const pitchDisplay = notesAtBeat
-                        .map((n) => PITCH_DISPLAY[n.pitch])
+                        .map((n) => getPitchDisplay(n.pitch))
                         .join(",");
 
                       return (

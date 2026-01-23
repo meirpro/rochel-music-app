@@ -11,8 +11,37 @@ export const NOTE_COLORS: Record<string, string> = {
   B: "#ff77c8", // Pink
 };
 
-// MIDI note numbers for each pitch (including sharps for piano)
-export const MIDI_NOTES: Record<Pitch, number> = {
+// Base MIDI note numbers for natural notes (C = 0 in each octave)
+const NOTE_TO_SEMITONE: Record<string, number> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
+
+// Convert any pitch string to MIDI note number
+export function pitchToMidi(pitch: Pitch): number {
+  if (pitch === "REST") return 0;
+
+  // Parse pitch: e.g., "Bb4" -> note="B", accidental="b", octave=4
+  const match = pitch.match(/^([A-G])(#|b)?(\d)$/);
+  if (!match) return 60; // Default to middle C
+
+  const [, note, accidental, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+
+  // MIDI note = (octave + 1) * 12 + semitone offset + accidental
+  const baseMidi = (octave + 1) * 12 + NOTE_TO_SEMITONE[note];
+  const accidentalOffset = accidental === "#" ? 1 : accidental === "b" ? -1 : 0;
+
+  return baseMidi + accidentalOffset;
+}
+
+// Legacy object for backwards compatibility (common pitches only)
+export const MIDI_NOTES: Partial<Record<Pitch, number>> = {
   C4: 60,
   "C#4": 61,
   D4: 62,

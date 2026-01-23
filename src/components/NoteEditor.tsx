@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Pitch, LyricSyllable } from "@/lib/types";
-import { getNoteColor, MIDI_NOTES } from "@/lib/constants";
+import { getNoteColor, pitchToMidi } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
@@ -141,10 +141,13 @@ export interface RepeatMarker {
 }
 
 export type NoteTool =
+  | "sixteenth"
   | "eighth"
+  | "dotted-eighth"
   | "quarter"
   | "dotted-quarter"
   | "half"
+  | "dotted-half"
   | "whole"
   | "delete"
   | "repeat"
@@ -192,8 +195,42 @@ const STAFF_LEFT = 40;
 // Note: STAFF_RIGHT, BEATS_PER_SYSTEM, MEASURES_PER_SYSTEM, SVG_WIDTH are now dynamic
 // based on time signature - use getLayoutConfig(timeSignature)
 
-// Pitch positions (sharps included for type completeness, positioned between naturals)
-const PITCH_POSITIONS: Record<Pitch, number> = {
+// Base position for natural notes within an octave (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
+const NOTE_BASE_POSITIONS: Record<string, number> = {
+  C: 0,
+  D: 1,
+  E: 2,
+  F: 3,
+  G: 4,
+  A: 5,
+  B: 6,
+};
+
+// Calculate staff position for any pitch (e.g., "Bb4" -> position relative to C4)
+function getPitchPosition(pitch: Pitch): number {
+  if (pitch === "REST") return -1;
+
+  // Parse pitch: e.g., "Bb4" -> note="B", accidental="b", octave=4
+  const match = pitch.match(/^([A-G])(#|b)?(\d)$/);
+  if (!match) return 0;
+
+  const [, note, accidental, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+
+  // Position within octave (0-6 for C-B)
+  const positionInOctave = NOTE_BASE_POSITIONS[note];
+  // Accidentals shift position slightly for visual distinction
+  const accidentalOffset =
+    accidental === "#" ? 0.5 : accidental === "b" ? -0.5 : 0;
+
+  // Calculate position relative to C4 (octave 4 starts at position 0)
+  const octaveOffset = (octave - 4) * 7;
+
+  return octaveOffset + positionInOctave + accidentalOffset;
+}
+
+// Legacy lookup for common pitches (for backwards compatibility)
+const PITCH_POSITIONS: Partial<Record<Pitch, number>> = {
   C4: 0,
   "C#4": 0.5,
   D4: 1,
@@ -239,10 +276,11 @@ function getPitchFromY(y: number, system: number): Pitch {
 }
 
 function getYFromPitch(pitch: Pitch, system: number): number {
-  const pos = PITCH_POSITIONS[pitch];
+  // Use lookup table if available, otherwise compute dynamically
+  const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;
-  // Round position to handle sharps (which have fractional positions like 0.5)
+  // Round position to handle sharps/flats (which have fractional positions like 0.5)
   // This ensures they render at valid staff positions
   const roundedPos = Math.round(pos);
   const bottomLineY = staffCenterY + LINE_SPACING;
@@ -285,14 +323,20 @@ function getMeasureFromX(x: number, beatsPerMeasure: number): number {
 
 function getDurationFromTool(tool: NoteTool): number {
   switch (tool) {
+    case "sixteenth":
+      return 0.25;
     case "eighth":
       return 0.5;
+    case "dotted-eighth":
+      return 0.75;
     case "quarter":
       return 1;
     case "dotted-quarter":
       return 1.5;
     case "half":
       return 2;
+    case "dotted-half":
+      return 3;
     case "whole":
       return 4;
     default:
@@ -541,7 +585,7 @@ export function NoteEditor({
 
   const playNoteSound = useCallback(
     (pitch: Pitch, durationBeats: number) => {
-      const midi = MIDI_NOTES[pitch];
+      const midi = pitchToMidi(pitch);
       if (midi > 0) {
         const player = getAudioPlayer();
         // Convert beats to seconds using tempo
