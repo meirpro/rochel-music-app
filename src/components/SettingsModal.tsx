@@ -32,6 +32,9 @@ interface SettingsModalProps {
 
   allowChords: boolean;
   onAllowChordsChange: (allow: boolean) => void;
+
+  staffLines: number;
+  onStaffLinesChange: (count: number) => void;
 }
 
 export function SettingsModal({
@@ -51,6 +54,8 @@ export function SettingsModal({
   onShowGridChange,
   allowChords,
   onAllowChordsChange,
+  staffLines,
+  onStaffLinesChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -211,6 +216,44 @@ export function SettingsModal({
             <label className="text-lg font-semibold text-gray-800">
               Display Options
             </label>
+
+            {/* Staff Lines Slider - controls horizontal lines per staff */}
+            <div className="p-3 bg-white rounded-xl border-2 border-gray-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-medium text-gray-700">
+                  Staff Lines
+                </span>
+                <span className="text-lg font-semibold text-blue-600">
+                  {staffLines}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-4">2</span>
+                <input
+                  type="range"
+                  min="2"
+                  max="5"
+                  step="1"
+                  value={staffLines}
+                  onChange={(e) => onStaffLinesChange(Number(e.target.value))}
+                  className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #60a5fa 0%, #60a5fa ${((staffLines - 2) / 3) * 100}%, #e5e7eb ${((staffLines - 2) / 3) * 100}%, #e5e7eb 100%)`,
+                  }}
+                />
+                <span className="text-xs text-gray-500 w-4">5</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 px-5">
+                {[2, 3, 4, 5].map((n) => (
+                  <span
+                    key={n}
+                    className={n === staffLines ? "text-blue-600" : ""}
+                  >
+                    {n === staffLines ? "●" : "○"}
+                  </span>
+                ))}
+              </div>
+            </div>
 
             {/* Toggle Switches */}
             <div className="space-y-3">

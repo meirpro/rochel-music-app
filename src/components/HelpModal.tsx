@@ -104,6 +104,84 @@ const EighthNote = ({ color = "#EC4899" }: { color?: string }) => (
   </svg>
 );
 
+const DottedHalfNote = ({ color = "#14B8A6" }: { color?: string }) => (
+  <svg width="60" height="56" viewBox="0 0 60 56">
+    {/* Stem */}
+    <line x1="36" y1="32" x2="36" y2="4" stroke={color} strokeWidth="3" />
+    {/* Notehead (hollow) */}
+    <ellipse
+      cx="24"
+      cy="32"
+      rx="13"
+      ry="11"
+      fill="#ffffff"
+      stroke={color}
+      strokeWidth="2.5"
+      transform="rotate(-20 24 32)"
+    />
+    {/* Dot */}
+    <circle cx="44" cy="30" r="4" fill={color} />
+  </svg>
+);
+
+const DottedEighthNote = ({ color = "#F59E0B" }: { color?: string }) => (
+  <svg width="60" height="56" viewBox="0 0 60 56">
+    {/* Stem */}
+    <line x1="36" y1="32" x2="36" y2="4" stroke={color} strokeWidth="3" />
+    {/* Notehead */}
+    <ellipse
+      cx="24"
+      cy="32"
+      rx="13"
+      ry="11"
+      fill={color}
+      stroke={color}
+      strokeWidth="2.5"
+      transform="rotate(-20 24 32)"
+    />
+    {/* Flag */}
+    <path
+      d="M 36 4 Q 46 14 46 28"
+      stroke={color}
+      strokeWidth="3.5"
+      fill="none"
+    />
+    {/* Dot */}
+    <circle cx="50" cy="30" r="4" fill={color} />
+  </svg>
+);
+
+const SixteenthNote = ({ color = "#EF4444" }: { color?: string }) => (
+  <svg width="48" height="56" viewBox="0 0 48 56">
+    {/* Stem */}
+    <line x1="36" y1="32" x2="36" y2="4" stroke={color} strokeWidth="3" />
+    {/* Notehead */}
+    <ellipse
+      cx="24"
+      cy="32"
+      rx="13"
+      ry="11"
+      fill={color}
+      stroke={color}
+      strokeWidth="2.5"
+      transform="rotate(-20 24 32)"
+    />
+    {/* Double flags */}
+    <path
+      d="M 36 4 Q 46 12 46 22"
+      stroke={color}
+      strokeWidth="3.5"
+      fill="none"
+    />
+    <path
+      d="M 36 10 Q 46 18 46 28"
+      stroke={color}
+      strokeWidth="3.5"
+      fill="none"
+    />
+  </svg>
+);
+
 const HELP_SECTIONS = [
   {
     id: "getting-started",
@@ -152,6 +230,13 @@ const HELP_SECTIONS = [
               <div className="text-sm text-gray-600">4 beats (longest)</div>
             </div>
           </div>
+          <div className="flex items-center gap-3 p-2 bg-teal-50 rounded-lg">
+            <DottedHalfNote color="#14B8A6" />
+            <div>
+              <div className="font-bold text-teal-700">Dotted Half</div>
+              <div className="text-sm text-gray-600">3 beats</div>
+            </div>
+          </div>
           <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
             <HalfNote color="#22C55E" />
             <div>
@@ -173,11 +258,25 @@ const HELP_SECTIONS = [
               <div className="text-sm text-gray-600">1 beat</div>
             </div>
           </div>
+          <div className="flex items-center gap-3 p-2 bg-amber-50 rounded-lg">
+            <DottedEighthNote color="#F59E0B" />
+            <div>
+              <div className="font-bold text-amber-700">Dotted Eighth</div>
+              <div className="text-sm text-gray-600">0.75 beats</div>
+            </div>
+          </div>
           <div className="flex items-center gap-3 p-2 bg-pink-50 rounded-lg">
             <EighthNote color="#EC4899" />
             <div>
               <div className="font-bold text-pink-700">Eighth Note</div>
-              <div className="text-sm text-gray-600">0.5 beats (shortest)</div>
+              <div className="text-sm text-gray-600">0.5 beats</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-2 bg-red-50 rounded-lg">
+            <SixteenthNote color="#EF4444" />
+            <div>
+              <div className="font-bold text-red-700">Sixteenth Note</div>
+              <div className="text-sm text-gray-600">0.25 beats (shortest)</div>
             </div>
           </div>
         </div>
@@ -243,6 +342,12 @@ const HELP_SECTIONS = [
               </div>
             </div>
           ))}
+        </div>
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-600">
+            <strong>Sharps & Flats:</strong> C♯/D♭ uses the same color as C,
+            D♯/E♭ uses D&apos;s color, etc. The note label shows ♯ or ♭.
+          </p>
         </div>
       </div>
     ),

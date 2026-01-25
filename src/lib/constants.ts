@@ -79,7 +79,8 @@ export function getNoteInfo(pitch: Pitch): NotePosition {
 // Get color for a pitch
 export function getNoteColor(pitch: Pitch): string {
   if (pitch === "REST") return "transparent";
-  const baseName = pitch.replace(/[0-9]/g, "");
+  // Extract just the base note letter (A-G), ignoring accidentals and octave
+  const baseName = pitch[0];
   return NOTE_COLORS[baseName] || "#eaeef6";
 }
 
@@ -102,6 +103,10 @@ export const STAFF_CONFIG = {
   minMeasuresPerSystem: 2,
   maxMeasuresPerSystem: 6,
 };
+
+// Staff layout constants (shared with NoteEditor)
+export const SYSTEM_HEIGHT = 180;
+export const SYSTEM_TOP_MARGIN = 60;
 
 // Theme colors (light mode for kids)
 export const THEME = {

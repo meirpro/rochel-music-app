@@ -19,6 +19,7 @@ import {
   LegacyComposition,
   EditorNote,
   RepeatMarker,
+  TimeSignatureChange,
 } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
 import {
@@ -58,6 +59,7 @@ interface EditorSettings {
   instrument: InstrumentType;
   pianoUseColors: boolean;
   pianoShowBlackKeys: boolean;
+  staffLines: number; // 2-5, default 3 - number of horizontal lines per staff
 }
 
 interface EditorUI {
@@ -86,6 +88,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   instrument: "piano",
   pianoUseColors: true,
   pianoShowBlackKeys: false,
+  staffLines: 3, // Default: 3 horizontal lines per staff
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -126,6 +129,32 @@ export default function Home() {
     "default-dayenu",
     SSR_SAFE,
   );
+
+  // Get time signature changes for current song (stored per-song, not in editor settings)
+  const timeSignatureChanges: TimeSignatureChange[] =
+    currentSongId && savedSongs[currentSongId]?.settings?.timeSignatureChanges
+      ? savedSongs[currentSongId].settings.timeSignatureChanges
+      : [];
+
+  // Handler to update time signature changes for current song
+  const handleTimeSignatureChangesChange = useCallback(
+    (changes: TimeSignatureChange[]) => {
+      if (!currentSongId || !savedSongs[currentSongId]) return;
+      setSavedSongs({
+        ...savedSongs,
+        [currentSongId]: {
+          ...savedSongs[currentSongId],
+          settings: {
+            ...savedSongs[currentSongId].settings,
+            timeSignatureChanges: changes,
+          },
+          updatedAt: Date.now(),
+        },
+      });
+    },
+    [currentSongId, savedSongs, setSavedSongs],
+  );
+
   const [measuresPerRow, setMeasuresPerRow] = useLocalStorage<number>(
     "rochel-measures-per-row",
     4, // Default: 4 measures per row (overridden by viewport on first load)
@@ -384,6 +413,9 @@ export default function Home() {
         settings: {
           tempo: settings.tempo,
           timeSignature: settings.timeSignature,
+          // Preserve existing time signature changes from the current song
+          timeSignatureChanges:
+            savedSongs[songId]?.settings?.timeSignatureChanges,
         },
         createdAt: savedSongs[songId]?.createdAt || Date.now(),
         updatedAt: Date.now(),
@@ -709,6 +741,12 @@ export default function Home() {
                 activeNoteId={playback.activeNoteId}
                 svgRef={svgRef}
                 readOnly={isMobile}
+                staffLines={settings.staffLines ?? 3}
+                timeSignatureChanges={timeSignatureChanges}
+                onTimeSignatureChangesChange={handleTimeSignatureChangesChange}
+                onTimeSignatureClick={() =>
+                  setUI({ ...ui, showSettings: true })
+                }
               />
             </div>
           </div>
@@ -806,6 +844,10 @@ export default function Home() {
         allowChords={settings.allowChords}
         onAllowChordsChange={(allow) =>
           setSettings({ ...settings, allowChords: allow })
+        }
+        staffLines={settings.staffLines ?? 3}
+        onStaffLinesChange={(count) =>
+          setSettings({ ...settings, staffLines: count })
         }
       />
 
