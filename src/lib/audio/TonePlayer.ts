@@ -2,6 +2,15 @@ import * as Tone from "tone";
 import { startKeepAlive, handleVisibilityKeepAlive } from "./keepAlive";
 
 /**
+ * Audio timing configuration for stable playback
+ * lookAhead provides buffer time for note scheduling (prevents pops/clicks)
+ * 50ms balances latency vs stability - lower causes pops, higher adds delay
+ */
+export const AUDIO_CONFIG = {
+  LOOK_AHEAD: 0.05,
+} as const;
+
+/**
  * Configure Tone.js context for low latency
  * - latencyHint: "interactive" prioritizes low latency over sustained playback
  * - lookAhead: reduced from default 0.1s to 0.01s for faster response
@@ -18,12 +27,12 @@ function ensureLowLatencyContext(): void {
     Tone.setContext(
       new Tone.Context({
         latencyHint: "interactive",
-        lookAhead: 0.01, // 10ms instead of default 100ms
+        lookAhead: AUDIO_CONFIG.LOOK_AHEAD,
       }),
     );
   } else {
     // Context already running, just reduce lookAhead
-    Tone.getContext().lookAhead = 0.01;
+    Tone.getContext().lookAhead = AUDIO_CONFIG.LOOK_AHEAD;
   }
   contextConfigured = true;
 }

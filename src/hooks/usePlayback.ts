@@ -537,7 +537,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     setPlayheadX(LEFT_MARGIN);
     setPlayheadSystem(0);
 
-    // Start Transport and RAF animation together
+    // Start Transport immediately - the increased lookAhead handles scheduling buffer
+    // (We tested "+0.1" delay but it caused silence issues)
     transport.start();
     rafRef.current = requestAnimationFrame(animatePlayhead);
   }, [
