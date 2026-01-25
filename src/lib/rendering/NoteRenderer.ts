@@ -109,18 +109,42 @@ function drawStandardNote(
     }
     ctx.stroke();
 
-    // Draw flag for eighth notes
+    // Draw flags for eighth and sixteenth notes
     if (note.duration <= 0.5) {
       ctx.fillStyle = THEME.ink;
       ctx.font = `${glyphSize}px ${MUSIC_FONT}, serif`;
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
+
+      // Sixteenth notes (0.25) get 16th flag, eighth notes (0.5) get 8th flag
+      const isSixteenth = note.duration <= 0.25;
       if (stemUp) {
-        ctx.fillText(SMUFL_GLYPHS.flag8thUp, note.x + 6, note.y - 34);
+        ctx.fillText(
+          isSixteenth ? SMUFL_GLYPHS.flag16thUp : SMUFL_GLYPHS.flag8thUp,
+          note.x + 6,
+          note.y - 34,
+        );
       } else {
-        ctx.fillText(SMUFL_GLYPHS.flag8thDown, note.x - 8, note.y + 36);
+        ctx.fillText(
+          isSixteenth ? SMUFL_GLYPHS.flag16thDown : SMUFL_GLYPHS.flag8thDown,
+          note.x - 8,
+          note.y + 36,
+        );
       }
     }
+  }
+
+  // Draw augmentation dot for dotted notes (0.75, 1.5, 3)
+  const isDotted =
+    note.duration === 0.75 || note.duration === 1.5 || note.duration === 3;
+  if (isDotted) {
+    ctx.fillStyle = THEME.ink;
+    ctx.beginPath();
+    // Position dot to the right of the notehead, vertically centered
+    // If note is on a line, offset dot to sit in a space
+    const dotY = note.staffPosition % 2 === 0 ? note.y - 4 : note.y;
+    ctx.arc(note.x + 14, dotY, 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.textAlign = "left";
