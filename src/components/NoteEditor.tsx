@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { Pitch, LyricSyllable } from "@/lib/types";
+import { Pitch, LyricSyllable, TimeSignatureChange } from "@/lib/types";
 import { getNoteColor, pitchToMidi } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
@@ -22,6 +22,17 @@ export const TIME_SIG_DENOMINATORS = [2, 4, 8, 16] as const;
 // Helper to convert TimeSignature to string key
 function getTimeSigKey(ts: TimeSignature): string {
   return `${ts.numerator}/${ts.denominator}`;
+}
+
+// Helper to get display label for a pitch (e.g., "B♭" for "Bb4", "F♯" for "F#4")
+function getNoteLabel(pitch: Pitch): string {
+  if (pitch === "REST") return "";
+  const match = pitch.match(/^([A-G])(#|b)?/);
+  if (!match) return pitch[0];
+  const [, note, accidental] = match;
+  if (accidental === "#") return `${note}♯`;
+  if (accidental === "b") return `${note}♭`;
+  return note;
 }
 
 // Time signature configuration
@@ -152,6 +163,7 @@ export type NoteTool =
   | "delete"
   | "repeat"
   | "lyrics"
+  | "timesig"
   | null;
 
 interface NoteEditorProps {
@@ -181,6 +193,11 @@ interface NoteEditorProps {
   onPlaybackBlock?: () => void;
   measuresPerRow?: number;
   readOnly?: boolean;
+  staffLines?: number; // 2-5, controls number of horizontal staff lines (default 3)
+  // Time signature changes
+  timeSignatureChanges?: TimeSignatureChange[];
+  onTimeSignatureChangesChange?: (changes: TimeSignatureChange[]) => void;
+  onTimeSignatureClick?: () => void; // Called when initial time sig is clicked
 }
 
 // Constants - adjusted for better fit
@@ -275,6 +292,51 @@ function getPitchFromY(y: number, system: number): Pitch {
   return POSITION_TO_PITCH[clamped];
 }
 
+// Parse pitch into components: "C#4" -> { note: "C", accidental: "#", octave: 4 }
+function parsePitch(pitch: Pitch): {
+  note: string;
+  accidental: "#" | "b" | null;
+  octave: number;
+} | null {
+  if (pitch === "REST") return null;
+  const match = pitch.match(/^([A-G])(#|b)?(\d)$/);
+  if (!match) return null;
+  const [, note, accidental, octaveStr] = match;
+  return {
+    note,
+    accidental: (accidental as "#" | "b") || null,
+    octave: parseInt(octaveStr, 10),
+  };
+}
+
+// Build pitch from components: { note: "C", accidental: "#", octave: 4 } -> "C#4"
+function buildPitch(
+  note: string,
+  accidental: "#" | "b" | null,
+  octave: number,
+): Pitch {
+  const pitchStr = `${note}${accidental || ""}${octave}`;
+  return pitchStr as Pitch;
+}
+
+// Change octave with clamping to valid range (C3 min, C6 max)
+function changeOctave(pitch: Pitch, direction: "up" | "down"): Pitch {
+  const parsed = parsePitch(pitch);
+  if (!parsed) return pitch;
+
+  const newOctave = direction === "up" ? parsed.octave + 1 : parsed.octave - 1;
+
+  // Clamp to valid range: C3 to C6
+  // C6 is the max, but only natural C6 is valid (no C#6 or higher)
+  if (newOctave < 3) return pitch;
+  if (newOctave > 6) return pitch;
+  if (newOctave === 6 && (parsed.note !== "C" || parsed.accidental !== null)) {
+    return pitch; // Only C6 is valid in octave 6
+  }
+
+  return buildPitch(parsed.note, parsed.accidental, newOctave);
+}
+
 function getYFromPitch(pitch: Pitch, system: number): number {
   // Use lookup table if available, otherwise compute dynamically
   const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
@@ -344,14 +406,88 @@ function getDurationFromTool(tool: NoteTool): number {
   }
 }
 
-// Function to group eighth notes for beaming
+// Menu note icon SVG for context menu (matches actual note rendering)
+function MenuNoteIcon({
+  duration,
+  color = "#6b7280",
+}: {
+  duration: number;
+  color?: string;
+}) {
+  // Determine note characteristics based on duration
+  const isWhole = duration === 4;
+  const isHalf = duration === 2 || duration === 3;
+  const isHollow = isWhole || isHalf;
+  const hasStem = !isWhole;
+  const hasFlag = duration === 0.5 || duration === 0.75;
+  const hasDoubleFlag = duration === 0.25;
+  const hasDot = duration === 0.75 || duration === 1.5 || duration === 3;
+
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      className="inline-block flex-shrink-0"
+    >
+      {/* Note head */}
+      <ellipse
+        cx={isWhole ? 12 : 10}
+        cy="16"
+        rx="5"
+        ry="3.5"
+        fill={isHollow ? "transparent" : color}
+        stroke={color}
+        strokeWidth={isHollow ? 1.5 : 1}
+        transform={`rotate(-15 ${isWhole ? 12 : 10} 16)`}
+      />
+      {/* Stem */}
+      {hasStem && (
+        <line x1="14" y1="15" x2="14" y2="4" stroke={color} strokeWidth={1.5} />
+      )}
+      {/* Single flag for eighth notes */}
+      {hasFlag && (
+        <path
+          d="M 14 4 Q 19 7 17 12"
+          stroke={color}
+          strokeWidth={1.5}
+          fill="none"
+        />
+      )}
+      {/* Double flag for sixteenth notes */}
+      {hasDoubleFlag && (
+        <>
+          <path
+            d="M 14 4 Q 19 6 17 10"
+            stroke={color}
+            strokeWidth={1.5}
+            fill="none"
+          />
+          <path
+            d="M 14 7 Q 19 9 17 13"
+            stroke={color}
+            strokeWidth={1.5}
+            fill="none"
+          />
+        </>
+      )}
+      {/* Dot for dotted notes */}
+      {hasDot && <circle cx="18" cy="16" r="1.5" fill={color} />}
+    </svg>
+  );
+}
+
+// Function to group beamable notes (sixteenths, eighths, dotted eighths)
 function groupEighthNotes(
   allNotes: EditorNote[],
   timeSignature: TimeSignature,
 ): BeamGroup[] {
   const config =
     TIME_SIG_CONFIG[getTimeSigKey(timeSignature)] || TIME_SIG_CONFIG["4/4"];
-  const eighthNotes = allNotes.filter((n) => n.duration === 0.5);
+  // Include sixteenths (0.25), eighths (0.5), and dotted eighths (0.75) for beaming
+  const beamableNotes = allNotes.filter(
+    (n) => n.duration === 0.25 || n.duration === 0.5 || n.duration === 0.75,
+  );
 
   // Sort all notes by system, then by beat position (for checking notes in between)
   const allSorted = [...allNotes].sort((a, b) => {
@@ -359,8 +495,8 @@ function groupEighthNotes(
     return a.beat - b.beat;
   });
 
-  // Sort eighth notes by system, then by beat position
-  const sorted = [...eighthNotes].sort((a, b) => {
+  // Sort beamable notes by system, then by beat position
+  const sorted = [...beamableNotes].sort((a, b) => {
     if (a.system !== b.system) return a.system - b.system;
     return a.beat - b.beat;
   });
@@ -487,6 +623,10 @@ export function NoteEditor({
   onPlaybackBlock,
   measuresPerRow,
   readOnly = false,
+  staffLines = 3,
+  timeSignatureChanges = [],
+  onTimeSignatureChangesChange,
+  onTimeSignatureClick,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -551,20 +691,47 @@ export function NoteEditor({
     system: number;
     measure: number;
   } | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    noteId: string;
+  const [contextMenu, setContextMenu] = useState<
+    | {
+        type: "note";
+        noteId: string;
+        x: number;
+        y: number;
+      }
+    | {
+        type: "empty";
+        x: number;
+        y: number;
+        beat: number;
+        system: number;
+        pitch: Pitch;
+      }
+    | null
+  >(null);
+  const justDraggedRef = useRef(false);
+  const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
+  // Hovered bar line for time signature ghost preview
+  const [hoveredTimeSigBar, setHoveredTimeSigBar] = useState<{
+    systemIndex: number;
+    measureIndex: number;
+  } | null>(null);
+  // Time signature change picker state
+  const [timeSigPicker, setTimeSigPicker] = useState<{
+    measureNumber: number;
     x: number;
     y: number;
   } | null>(null);
-  const justDraggedRef = useRef(false);
-  const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
 
-  // Clear repeat placement state when tool changes away from repeat
+  // Clear tool-specific state when tool changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedTool !== "repeat") {
       setRepeatStart(null);
       setHoveredRepeatMeasure(null);
+    }
+    if (selectedTool !== "timesig") {
+      setTimeSigPicker(null);
+      setHoveredTimeSigBar(null);
     }
     // Intentional cleanup effect when tool changes
   }, [selectedTool]);
@@ -605,8 +772,8 @@ export function NoteEditor({
       if (readOnly) return;
 
       // Calculate menu position to prevent off-screen overflow
-      const menuWidth = 120; // min-w-[120px]
-      const menuHeight = 260; // approximate height based on items
+      const menuWidth = 180; // Wider for new sections
+      const menuHeight = 520; // Taller: 8 durations + accidentals + notes + octave + delete
       const padding = 8; // padding from edges
 
       let x = e.clientX;
@@ -632,14 +799,14 @@ export function NoteEditor({
         y = padding;
       }
 
-      setContextMenu({ noteId, x, y });
+      setContextMenu({ type: "note", noteId, x, y });
     },
     [readOnly],
   );
 
   const handleChangeDuration = useCallback(
     (duration: number) => {
-      if (!contextMenu) return;
+      if (!contextMenu || contextMenu.type !== "note") return;
       if (isPlaying) {
         onPlaybackBlock?.();
         setContextMenu(null);
@@ -656,7 +823,7 @@ export function NoteEditor({
   );
 
   const handleDeleteFromMenu = useCallback(() => {
-    if (!contextMenu) return;
+    if (!contextMenu || contextMenu.type !== "note") return;
     if (isPlaying) {
       onPlaybackBlock?.();
       setContextMenu(null);
@@ -665,6 +832,232 @@ export function NoteEditor({
     onNotesChange(notes.filter((n) => n.id !== contextMenu.noteId));
     setContextMenu(null);
   }, [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock]);
+
+  // Handler for changing note accidental (sharp, flat, natural)
+  const handleChangeAccidental = useCallback(
+    (accidental: "#" | "b" | null) => {
+      if (!contextMenu || contextMenu.type !== "note") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const note = notes.find((n) => n.id === contextMenu.noteId);
+      if (!note) return;
+
+      const parsed = parsePitch(note.pitch);
+      if (!parsed) return;
+
+      // Build new pitch with the selected accidental
+      const newPitch = buildPitch(parsed.note, accidental, parsed.octave);
+
+      onNotesChange(
+        notes.map((n) =>
+          n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
+        ),
+      );
+      setContextMenu(null);
+    },
+    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+  );
+
+  // Handler for changing note letter (C-B) while keeping octave and accidental
+  const handleChangePitchLetter = useCallback(
+    (newLetter: string) => {
+      if (!contextMenu || contextMenu.type !== "note") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const note = notes.find((n) => n.id === contextMenu.noteId);
+      if (!note) return;
+
+      const parsed = parsePitch(note.pitch);
+      if (!parsed) return;
+
+      // Keep the same accidental and octave, change the note letter
+      // But handle edge cases: C6 can't have accidentals
+      let newAccidental = parsed.accidental;
+      if (parsed.octave === 6 && newLetter !== "C") {
+        // Can't go above C6, so clamp to B5
+        const newPitch = buildPitch(newLetter, newAccidental, 5);
+        onNotesChange(
+          notes.map((n) =>
+            n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
+          ),
+        );
+      } else {
+        // If we're at C6 with an accidental attempting to change letter, drop accidental
+        if (parsed.octave === 6 && newAccidental !== null) {
+          newAccidental = null;
+        }
+        const newPitch = buildPitch(newLetter, newAccidental, parsed.octave);
+        onNotesChange(
+          notes.map((n) =>
+            n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
+          ),
+        );
+      }
+      setContextMenu(null);
+    },
+    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+  );
+
+  // Handler for changing octave up/down
+  const handleChangeOctave = useCallback(
+    (direction: "up" | "down") => {
+      if (!contextMenu || contextMenu.type !== "note") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const note = notes.find((n) => n.id === contextMenu.noteId);
+      if (!note) return;
+
+      const newPitch = changeOctave(note.pitch, direction);
+      if (newPitch === note.pitch) {
+        // Octave change was blocked (at boundary)
+        setContextMenu(null);
+        return;
+      }
+
+      onNotesChange(
+        notes.map((n) =>
+          n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
+        ),
+      );
+      setContextMenu(null);
+    },
+    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+  );
+
+  // Handler for adding a note from empty space context menu
+  const handleAddNoteFromMenu = useCallback(
+    (duration: number) => {
+      if (!contextMenu || contextMenu.type !== "empty") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      // Check for collision at this position
+      const existingNote = notes.find(
+        (n) =>
+          Math.abs(n.beat - contextMenu.beat) < 0.25 &&
+          n.system === contextMenu.system &&
+          (allowChords ? n.pitch === contextMenu.pitch : true),
+      );
+      if (existingNote) {
+        onDuplicateNote?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const newNote: EditorNote = {
+        id: String(Date.now()),
+        pitch: contextMenu.pitch,
+        duration,
+        beat: contextMenu.beat,
+        system: contextMenu.system,
+      };
+
+      onNotesChange([...notes, newNote]);
+      playNoteSound(contextMenu.pitch, duration);
+      setContextMenu(null);
+    },
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      allowChords,
+      onDuplicateNote,
+      playNoteSound,
+    ],
+  );
+
+  // Handler for empty space right-click
+  const handleEmptyContextMenu = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      e.preventDefault();
+
+      // Block context menu in read-only mode
+      if (readOnly) return;
+
+      // Block during playback
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        return;
+      }
+
+      const { x, y } = getCoords(e);
+      const system = getSystemFromY(y, systemCount);
+      const staffCenterY = getStaffCenterY(system);
+
+      // Check if click is within valid staff bounds (include some margin)
+      if (x < LEFT_MARGIN - 10 || x > staffRight + 10) return;
+      if (y < staffCenterY - LINE_SPACING * 2 - 20) return;
+      if (y > staffCenterY + LINE_SPACING * 2 + 20) return;
+
+      // Check if clicking on an existing note (let note handler take over)
+      const pitch = getPitchFromY(y, system);
+      const snappedX = snapX(x, staffRight);
+      const beat = getBeatFromX(snappedX);
+
+      const clickedNote = notes.find(
+        (n) =>
+          Math.abs(n.beat - beat) < 0.25 &&
+          n.system === system &&
+          n.pitch === pitch,
+      );
+      if (clickedNote) {
+        // A note exists here - don't show empty menu
+        return;
+      }
+
+      // Calculate menu position
+      const menuWidth = 180;
+      const menuHeight = 340; // Shorter: only 8 duration options
+      const padding = 8;
+
+      let menuX = e.clientX;
+      let menuY = e.clientY;
+
+      if (menuX + menuWidth + padding > window.innerWidth) {
+        menuX = window.innerWidth - menuWidth - padding;
+      }
+      if (menuY + menuHeight + padding > window.innerHeight) {
+        menuY = window.innerHeight - menuHeight - padding;
+      }
+      if (menuX < padding) menuX = padding;
+      if (menuY < padding) menuY = padding;
+
+      setContextMenu({
+        type: "empty",
+        x: menuX,
+        y: menuY,
+        beat,
+        system,
+        pitch,
+      });
+    },
+    [
+      readOnly,
+      isPlaying,
+      onPlaybackBlock,
+      getCoords,
+      systemCount,
+      staffRight,
+      notes,
+    ],
+  );
 
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -836,6 +1229,37 @@ export function NoteEditor({
       }
 
       if (selectedTool === "delete") return;
+
+      // Handle time signature tool - click on bar lines to insert changes
+      if (selectedTool === "timesig") {
+        // Calculate beat position within the current system
+        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
+        // Find closest bar line (measure boundary)
+        const measureContainingClick = Math.round(
+          beatInSystem / layout.beatsPerMeasure,
+        );
+        // Calculate absolute measure number
+        const absoluteMeasure =
+          system * measuresPerSystem + measureContainingClick;
+
+        // Don't allow time sig change at measure 0 (that's the initial time sig)
+        if (absoluteMeasure <= 0) {
+          toast.error("Use the settings to change the initial time signature");
+          return;
+        }
+
+        // Open the time signature picker
+        const barLineX =
+          LEFT_MARGIN +
+          measureContainingClick * layout.beatsPerMeasure * BEAT_WIDTH;
+        const staffCenterYForPicker = getStaffCenterY(system);
+        setTimeSigPicker({
+          measureNumber: absoluteMeasure,
+          x: barLineX,
+          y: staffCenterYForPicker,
+        });
+        return;
+      }
 
       // Handle lyrics tool - detect clicks in the lyrics area
       if (selectedTool === "lyrics") {
@@ -1348,7 +1772,7 @@ export function NoteEditor({
               fontWeight="bold"
               style={{ pointerEvents: "none" }}
             >
-              {note.pitch[0]}
+              {getNoteLabel(note.pitch)}
             </text>
           )}
         </g>
@@ -1443,7 +1867,9 @@ export function NoteEditor({
           />
         )}
         {/* Dot for dotted notes - positioned to the right, in a space (not on a line) */}
-        {type === "dotted-quarter" && (
+        {(note.duration === 0.75 ||
+          note.duration === 1.5 ||
+          note.duration === 3) && (
           <circle
             cx={x + 20}
             cy={y - LINE_SPACING / 4} // Offset up slightly to sit in a space
@@ -1463,7 +1889,7 @@ export function NoteEditor({
             fontFamily="system-ui, sans-serif"
             style={{ pointerEvents: "none" }}
           >
-            {note.pitch[0]}
+            {getNoteLabel(note.pitch)}
           </text>
         )}
       </g>
@@ -1517,7 +1943,7 @@ export function NoteEditor({
               y={staffCenterY - LINE_SPACING - 20}
               width={BEAT_WIDTH}
               height={LINE_SPACING * 2 + 40}
-              fill={isShaded ? "#f8fafc" : "#f1f5f9"}
+              fill={isShaded ? "#e2e8f0" : "#f8fafc"}
             />
           );
         })}
@@ -1544,31 +1970,21 @@ export function NoteEditor({
             );
           })}
 
-        {/* Staff lines */}
-        <line
-          x1={STAFF_LEFT}
-          y1={staffCenterY - LINE_SPACING}
-          x2={staffRight}
-          y2={staffCenterY - LINE_SPACING}
-          stroke="#4a5568"
-          strokeWidth={2}
-        />
-        <line
-          x1={STAFF_LEFT}
-          y1={staffCenterY}
-          x2={staffRight}
-          y2={staffCenterY}
-          stroke="#4a5568"
-          strokeWidth={2}
-        />
-        <line
-          x1={STAFF_LEFT}
-          y1={staffCenterY + LINE_SPACING}
-          x2={staffRight}
-          y2={staffCenterY + LINE_SPACING}
-          stroke="#4a5568"
-          strokeWidth={2}
-        />
+        {/* Staff lines - configurable count (2-5 lines) */}
+        {Array.from({ length: staffLines }, (_, i) => {
+          const offset = (i - (staffLines - 1) / 2) * LINE_SPACING;
+          return (
+            <line
+              key={`staff-line-${i}`}
+              x1={STAFF_LEFT}
+              y1={staffCenterY + offset}
+              x2={staffRight}
+              y2={staffCenterY + offset}
+              stroke="#4a5568"
+              strokeWidth={2}
+            />
+          );
+        })}
 
         {/* Bar lines - dynamic based on time signature */}
         {Array.from(
@@ -1596,6 +2012,19 @@ export function NoteEditor({
           const isRepeatStart = !!startMarker;
           const isRepeatEnd = !!endMarker;
 
+          // Check if this bar line already has a time signature change
+          const absoluteMeasure =
+            systemIndex * measuresPerSystem + measureIndex;
+          const hasTimeSigChange = timeSignatureChanges.some(
+            (c) => c.measureNumber === absoluteMeasure,
+          );
+          // Check if this is the hovered bar for time sig preview
+          const isTimeSigHovered =
+            selectedTool === "timesig" &&
+            hoveredTimeSigBar?.systemIndex === systemIndex &&
+            hoveredTimeSigBar?.measureIndex === measureIndex &&
+            !hasTimeSigChange;
+
           return (
             <g key={`bar-${systemIndex}-${beat}`}>
               <line
@@ -1606,6 +2035,67 @@ export function NoteEditor({
                 stroke={isEdge ? "#334155" : "#94a3b8"}
                 strokeWidth={isEdge ? 4 : 2}
               />
+
+              {/* Time signature tool hover zone - ONLY at system start (measureIndex === 0) */}
+              {selectedTool === "timesig" &&
+                !hasTimeSigChange &&
+                measureIndex === 0 && (
+                  <rect
+                    x={barX - 10}
+                    y={staffCenterY - LINE_SPACING - 15}
+                    width={40}
+                    height={LINE_SPACING * 2 + 30}
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={() =>
+                      setHoveredTimeSigBar({ systemIndex, measureIndex })
+                    }
+                    onMouseLeave={() => setHoveredTimeSigBar(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTimeSigPicker({
+                        measureNumber: absoluteMeasure,
+                        x: barX,
+                        y: staffCenterY,
+                      });
+                    }}
+                  />
+                )}
+
+              {/* Ghost time signature preview on hover - only at system start */}
+              {isTimeSigHovered && measureIndex === 0 && (
+                <g opacity={0.5} style={{ pointerEvents: "none" }}>
+                  <rect
+                    x={barX + 5}
+                    y={staffCenterY - LINE_SPACING - 5}
+                    width={25}
+                    height={LINE_SPACING * 2 + 10}
+                    fill="#e0f2fe"
+                    rx={3}
+                  />
+                  <text
+                    x={barX + 17}
+                    y={staffCenterY - LINE_SPACING / 2 + 5}
+                    fontSize={14}
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#0891b2"
+                  >
+                    ?
+                  </text>
+                  <text
+                    x={barX + 17}
+                    y={staffCenterY + LINE_SPACING / 2 + 5}
+                    fontSize={14}
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#0891b2"
+                  >
+                    ?
+                  </text>
+                </g>
+              )}
+
               {isRepeatStart && startMarker && (
                 <g
                   style={{
@@ -1618,7 +2108,12 @@ export function NoteEditor({
                             ? "grab"
                             : "default",
                   }}
-                  onMouseEnter={() => setHoveredMarker(startMarker.id)}
+                  onMouseEnter={() => {
+                    // Only show hover effect when move tool or delete tool is active
+                    if (allowMove || selectedTool === "delete") {
+                      setHoveredMarker(startMarker.id);
+                    }
+                  }}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
@@ -1759,7 +2254,12 @@ export function NoteEditor({
                             ? "grab"
                             : "default",
                   }}
-                  onMouseEnter={() => setHoveredMarker(endMarker.id)}
+                  onMouseEnter={() => {
+                    // Only show hover effect when move tool or delete tool is active
+                    if (allowMove || selectedTool === "delete") {
+                      setHoveredMarker(endMarker.id);
+                    }
+                  }}
                   onMouseLeave={() => setHoveredMarker(null)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
@@ -1892,6 +2392,78 @@ export function NoteEditor({
           );
         })}
 
+        {/* Time signature change markers */}
+        {timeSignatureChanges.map((change) => {
+          // Calculate which system this change is on
+          const changeSystem = Math.floor(
+            change.measureNumber / measuresPerSystem,
+          );
+          if (changeSystem !== systemIndex) return null;
+
+          // Calculate x position for this measure's bar line
+          const measureInSystem = change.measureNumber % measuresPerSystem;
+          const barX =
+            LEFT_MARGIN + measureInSystem * layout.beatsPerMeasure * BEAT_WIDTH;
+
+          return (
+            <g
+              key={change.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                // Open picker when clicked with delete tool or timesig tool
+                if (selectedTool === "delete" && onTimeSignatureChangesChange) {
+                  onTimeSignatureChangesChange(
+                    timeSignatureChanges.filter((c) => c.id !== change.id),
+                  );
+                } else if (selectedTool === "timesig") {
+                  setTimeSigPicker({
+                    measureNumber: change.measureNumber,
+                    x: barX,
+                    y: staffCenterY,
+                  });
+                }
+              }}
+              style={{
+                cursor:
+                  selectedTool === "delete" || selectedTool === "timesig"
+                    ? "pointer"
+                    : "default",
+              }}
+            >
+              {/* Background highlight */}
+              <rect
+                x={barX + 5}
+                y={staffCenterY - LINE_SPACING - 5}
+                width={25}
+                height={LINE_SPACING * 2 + 10}
+                fill="#e0f2fe"
+                rx={3}
+              />
+              {/* Time signature numbers */}
+              <text
+                x={barX + 17}
+                y={staffCenterY - LINE_SPACING / 2 + 5}
+                fontSize={14}
+                fontWeight="bold"
+                textAnchor="middle"
+                fill="#0891b2"
+              >
+                {change.timeSignature.numerator}
+              </text>
+              <text
+                x={barX + 17}
+                y={staffCenterY + LINE_SPACING / 2 + 5}
+                fontSize={14}
+                fontWeight="bold"
+                textAnchor="middle"
+                fill="#0891b2"
+              >
+                {change.timeSignature.denominator}
+              </text>
+            </g>
+          );
+        })}
+
         {/* Interactive repeat placement highlighting */}
         {repeatStart &&
           selectedTool === "repeat" &&
@@ -1974,9 +2546,28 @@ export function NoteEditor({
           𝄞
         </text>
 
-        {/* Time signature (only on first system) */}
+        {/* Time signature (only on first system) - clickable to open settings */}
         {isFirstSystem && (
-          <>
+          <g
+            onClick={(e) => {
+              if (!readOnly && onTimeSignatureClick) {
+                e.stopPropagation();
+                onTimeSignatureClick();
+              }
+            }}
+            style={{
+              cursor: readOnly ? "default" : "pointer",
+            }}
+            className={!readOnly ? "hover:opacity-80 transition-opacity" : ""}
+          >
+            {/* Invisible hit area for better click target */}
+            <rect
+              x={70}
+              y={staffCenterY - LINE_SPACING}
+              width={30}
+              height={LINE_SPACING * 2}
+              fill="transparent"
+            />
             <text
               x={85}
               y={staffCenterY - LINE_SPACING / 2 + 6}
@@ -1997,7 +2588,7 @@ export function NoteEditor({
             >
               {timeSignature.denominator}
             </text>
-          </>
+          </g>
         )}
 
         {/* Beat numbers */}
@@ -2036,7 +2627,7 @@ export function NoteEditor({
         width={svgWidth}
         height={svgHeight}
         onClick={handleClick}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={handleEmptyContextMenu}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -2047,7 +2638,7 @@ export function NoteEditor({
               ? "default"
               : selectedTool === "delete"
                 ? "not-allowed"
-                : selectedTool === "repeat"
+                : selectedTool === "repeat" || selectedTool === "timesig"
                   ? "pointer"
                   : draggedNote
                     ? "grabbing"
@@ -2228,6 +2819,83 @@ export function NoteEditor({
             return firstY + t * (lastY - firstY);
           };
 
+          // Calculate secondary beams for 16th notes
+          // A 16th note needs a secondary beam; we draw partial beams (stubs) or full beams
+          const secondaryBeams: Array<{
+            startX: number;
+            endX: number;
+            startY: number;
+            endY: number;
+            color: string;
+          }> = [];
+
+          const secondaryBeamOffset = stemDirection === "up" ? 8 : -8;
+
+          for (let i = 0; i < groupNotes.length; i++) {
+            const note = groupNotes[i];
+            if (note.duration === 0.25) {
+              // 16th note - needs secondary beam
+              const prevIs16th = i > 0 && groupNotes[i - 1].duration === 0.25;
+              const nextIs16th =
+                i < groupNotes.length - 1 &&
+                groupNotes[i + 1].duration === 0.25;
+
+              if (nextIs16th && !prevIs16th) {
+                // Start of a run of 16ths - will be drawn when we hit the end
+              } else if (prevIs16th) {
+                // Continuation or end of 16th run - draw beam from prev to current
+                const startX = stemXs[i - 1];
+                const endX = stemXs[i];
+                const startY = getBeamYAtX(startX) + secondaryBeamOffset;
+                const endY = getBeamYAtX(endX) + secondaryBeamOffset;
+                // Use gradient if colors differ
+                const beamCol =
+                  colors[i - 1] === colors[i]
+                    ? colors[i]
+                    : `url(#beam-gradient-${groupIndex})`;
+                secondaryBeams.push({
+                  startX,
+                  endX,
+                  startY,
+                  endY,
+                  color: beamCol,
+                });
+              } else {
+                // Isolated 16th (adjacent to 8th notes) - draw a stub beam
+                const stubLength = 12;
+                const stemX = stemXs[i];
+                const beamY = getBeamYAtX(stemX) + secondaryBeamOffset;
+                // Determine stub direction: point toward the center of the group
+                const isFirst = i === 0;
+                const isLast = i === groupNotes.length - 1;
+                let stubStartX: number, stubEndX: number;
+                if (isFirst) {
+                  // First note: stub extends right
+                  stubStartX = stemX;
+                  stubEndX = stemX + stubLength;
+                } else if (isLast) {
+                  // Last note: stub extends left
+                  stubStartX = stemX - stubLength;
+                  stubEndX = stemX;
+                } else {
+                  // Middle note: stub extends toward next note
+                  stubStartX = stemX;
+                  stubEndX = stemX + stubLength;
+                }
+                const stubStartY =
+                  getBeamYAtX(stubStartX) + secondaryBeamOffset;
+                const stubEndY = getBeamYAtX(stubEndX) + secondaryBeamOffset;
+                secondaryBeams.push({
+                  startX: stubStartX,
+                  endX: stubEndX,
+                  startY: stubStartY,
+                  endY: stubEndY,
+                  color: colors[i],
+                });
+              }
+            }
+          }
+
           return (
             <g key={`beam-group-${groupIndex}`}>
               {/* Draw stems from each note to the beam */}
@@ -2247,7 +2915,7 @@ export function NoteEditor({
                   />
                 );
               })}
-              {/* The beam itself */}
+              {/* Primary beam */}
               <polygon
                 points={`
                   ${firstX},${firstY}
@@ -2263,6 +2931,40 @@ export function NoteEditor({
                 `}
                 fill={beamColor}
               />
+              {/* Secondary beams for 16th notes */}
+              {secondaryBeams.map((sb, sbIndex) => (
+                <polygon
+                  key={`secondary-beam-${groupIndex}-${sbIndex}`}
+                  points={`
+                    ${sb.startX},${sb.startY}
+                    ${sb.endX},${sb.endY}
+                    ${sb.endX},${
+                      sb.endY +
+                      (stemDirection === "up" ? beamThickness : -beamThickness)
+                    }
+                    ${sb.startX},${
+                      sb.startY +
+                      (stemDirection === "up" ? beamThickness : -beamThickness)
+                    }
+                  `}
+                  fill={sb.color}
+                />
+              ))}
+              {/* Dots for dotted notes within beam group */}
+              {groupNotes.map((note, i) => {
+                if (note.duration !== 0.75) return null;
+                const noteX = getXFromBeat(note.beat);
+                const noteY = getYFromPitch(note.pitch, note.system);
+                return (
+                  <circle
+                    key={`beam-dot-${groupIndex}-${i}`}
+                    cx={noteX + 20}
+                    cy={noteY - LINE_SPACING / 4}
+                    r={4}
+                    fill={colors[i]}
+                  />
+                );
+              })}
             </g>
           );
         })}
@@ -2523,48 +3225,311 @@ export function NoteEditor({
         )}
       </svg>
 
-      {/* Context menu for changing note duration */}
-      {contextMenu && (
+      {/* Time signature picker popup */}
+      {timeSigPicker && (
         <div
-          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px]"
+          className="absolute bg-white rounded-lg shadow-lg border border-cyan-200 p-3 z-50"
+          style={{
+            left: timeSigPicker.x - 60,
+            top: timeSigPicker.y + LINE_SPACING * 2 + 20,
+          }}
+        >
+          <div className="text-xs font-semibold text-cyan-600 mb-2">
+            Time Signature at M{timeSigPicker.measureNumber + 1}
+          </div>
+          <div className="flex gap-2 items-center">
+            <select
+              className="border rounded px-2 py-1 text-sm w-14"
+              defaultValue={timeSignature.numerator}
+              id="timesig-numerator"
+            >
+              {TIME_SIG_NUMERATORS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <span className="text-gray-500">/</span>
+            <select
+              className="border rounded px-2 py-1 text-sm w-14"
+              defaultValue={timeSignature.denominator}
+              id="timesig-denominator"
+            >
+              {TIME_SIG_DENOMINATORS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              className="flex-1 px-3 py-1 text-sm bg-cyan-500 text-white rounded hover:bg-cyan-600"
+              onClick={() => {
+                const numEl = document.getElementById(
+                  "timesig-numerator",
+                ) as HTMLSelectElement;
+                const denEl = document.getElementById(
+                  "timesig-denominator",
+                ) as HTMLSelectElement;
+                if (numEl && denEl && onTimeSignatureChangesChange) {
+                  const newTimeSig = {
+                    numerator: parseInt(numEl.value, 10),
+                    denominator: parseInt(denEl.value, 10),
+                  };
+                  // Check if there's already a change at this measure
+                  const existingIndex = timeSignatureChanges.findIndex(
+                    (c) => c.measureNumber === timeSigPicker.measureNumber,
+                  );
+                  if (existingIndex >= 0) {
+                    // Update existing
+                    const updated = [...timeSignatureChanges];
+                    updated[existingIndex] = {
+                      ...updated[existingIndex],
+                      timeSignature: newTimeSig,
+                    };
+                    onTimeSignatureChangesChange(updated);
+                  } else {
+                    // Add new
+                    onTimeSignatureChangesChange([
+                      ...timeSignatureChanges,
+                      {
+                        id: `ts-change-${Date.now()}`,
+                        measureNumber: timeSigPicker.measureNumber,
+                        timeSignature: newTimeSig,
+                      },
+                    ]);
+                  }
+                }
+                setTimeSigPicker(null);
+              }}
+            >
+              Set
+            </button>
+            <button
+              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
+              onClick={() => setTimeSigPicker(null)}
+            >
+              Cancel
+            </button>
+            {/* Delete button if there's an existing change at this measure */}
+            {timeSignatureChanges.some(
+              (c) => c.measureNumber === timeSigPicker.measureNumber,
+            ) && (
+              <button
+                className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200"
+                onClick={() => {
+                  if (onTimeSignatureChangesChange) {
+                    onTimeSignatureChangesChange(
+                      timeSignatureChanges.filter(
+                        (c) => c.measureNumber !== timeSigPicker.measureNumber,
+                      ),
+                    );
+                  }
+                  setTimeSigPicker(null);
+                }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Context menu for note editing or adding notes */}
+      {contextMenu && contextMenu.type === "note" && (
+        <div
+          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
+          {/* Duration section */}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Duration
+          </div>
+          <button
+            onClick={() => handleChangeDuration(0.25)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={0.25} /> Sixteenth
+          </button>
           <button
             onClick={() => handleChangeDuration(0.5)}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            <span className="text-gray-500">♪</span> Eighth
+            <MenuNoteIcon duration={0.5} /> Eighth
+          </button>
+          <button
+            onClick={() => handleChangeDuration(0.75)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={0.75} /> Dotted Eighth
           </button>
           <button
             onClick={() => handleChangeDuration(1)}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            <span className="text-gray-500">♩</span> Quarter
+            <MenuNoteIcon duration={1} /> Quarter
           </button>
           <button
             onClick={() => handleChangeDuration(1.5)}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            <span className="text-gray-500">♩.</span> Dotted
+            <MenuNoteIcon duration={1.5} /> Dotted Quarter
           </button>
           <button
             onClick={() => handleChangeDuration(2)}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            <span className="text-gray-500">𝅗𝅥</span> Half
+            <MenuNoteIcon duration={2} /> Half
+          </button>
+          <button
+            onClick={() => handleChangeDuration(3)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={3} /> Dotted Half
           </button>
           <button
             onClick={() => handleChangeDuration(4)}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            <span className="text-gray-500">𝅝</span> Whole
+            <MenuNoteIcon duration={4} /> Whole
           </button>
+
+          {/* Accidental section */}
+          <div className="border-t border-gray-200 my-1" />
+          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Accidental
+          </div>
+          <div className="px-2 py-1 flex gap-1">
+            <button
+              onClick={() => handleChangeAccidental(null)}
+              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+              title="Natural"
+            >
+              ♮
+            </button>
+            <button
+              onClick={() => handleChangeAccidental("#")}
+              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+              title="Sharp"
+            >
+              ♯
+            </button>
+            <button
+              onClick={() => handleChangeAccidental("b")}
+              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+              title="Flat"
+            >
+              ♭
+            </button>
+          </div>
+
+          {/* Change Note section */}
+          <div className="border-t border-gray-200 my-1" />
+          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Change Note
+          </div>
+          <div className="px-2 py-1 flex gap-0.5">
+            {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
+              <button
+                key={letter}
+                onClick={() => handleChangePitchLetter(letter)}
+                className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+
+          {/* Octave section */}
+          <div className="border-t border-gray-200 my-1" />
+          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Octave
+          </div>
+          <div className="px-2 py-1 flex gap-1">
+            <button
+              onClick={() => handleChangeOctave("up")}
+              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+              title="Octave Up"
+            >
+              <span>▲</span> Up
+            </button>
+            <button
+              onClick={() => handleChangeOctave("down")}
+              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+              title="Octave Down"
+            >
+              <span>▼</span> Down
+            </button>
+          </div>
+
+          {/* Delete section */}
           <div className="border-t border-gray-200 my-1" />
           <button
             onClick={handleDeleteFromMenu}
             className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
           >
             <span>🗑</span> Delete
+          </button>
+        </div>
+      )}
+
+      {/* Context menu for adding notes on empty space */}
+      {contextMenu && contextMenu.type === "empty" && (
+        <div
+          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Add Note ({contextMenu.pitch})
+          </div>
+          <button
+            onClick={() => handleAddNoteFromMenu(0.25)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={0.25} /> Sixteenth
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(0.5)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={0.5} /> Eighth
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(0.75)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={0.75} /> Dotted Eighth
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(1)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={1} /> Quarter
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(1.5)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={1.5} /> Dotted Quarter
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(2)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={2} /> Half
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(3)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={3} /> Dotted Half
+          </button>
+          <button
+            onClick={() => handleAddNoteFromMenu(4)}
+            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={4} /> Whole
           </button>
         </div>
       )}

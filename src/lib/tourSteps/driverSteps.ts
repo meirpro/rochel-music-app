@@ -26,6 +26,7 @@ export const TOUR_ELEMENT_IDS = {
   deleteTool: "tour-delete-tool",
   repeatTool: "tour-repeat-tool",
   lyricsTool: "tour-lyrics-tool",
+  timesigTool: "tour-timesig-tool",
   moveToggle: "tour-move-toggle",
 
   // Staff/Canvas

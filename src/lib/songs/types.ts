@@ -1,5 +1,10 @@
 // Song data types for individual song files
-import { EditorNote, RepeatMarker, LyricSyllable } from "../types";
+import {
+  EditorNote,
+  RepeatMarker,
+  LyricSyllable,
+  TimeSignatureChange,
+} from "../types";
 
 export interface SongData {
   id: string;
@@ -12,5 +17,6 @@ export interface SongData {
   settings: {
     tempo: number;
     timeSignature: { numerator: number; denominator: number };
+    timeSignatureChanges?: TimeSignatureChange[]; // Mid-song time signature changes
   };
 }

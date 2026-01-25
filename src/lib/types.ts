@@ -195,6 +195,13 @@ export interface LyricSyllable {
   absoluteBeat: number; // Beat position (0, 0.5, 1, 1.5, 2...)
 }
 
+// Mid-song time signature change
+export interface TimeSignatureChange {
+  id: string;
+  measureNumber: number; // 0-indexed measure where change takes effect
+  timeSignature: TimeSignature;
+}
+
 // Lyrics container for a composition
 export type Lyrics = LyricSyllable[];
 
@@ -215,6 +222,7 @@ export interface SavedSong {
   settings: {
     tempo: number;
     timeSignature: TimeSignature;
+    timeSignatureChanges?: TimeSignatureChange[]; // Mid-song time signature changes
   };
 }
 
