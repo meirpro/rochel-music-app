@@ -127,6 +127,82 @@ function getLayoutConfig(
   };
 }
 
+// Layout config for a single system (extends base layout with system-specific info)
+interface SystemLayout {
+  systemIndex: number;
+  startMeasure: number; // First measure number in this system
+  timeSignature: TimeSignature;
+  beatsPerMeasure: number;
+  beamGroups: number[];
+  measuresPerSystem: number;
+  shadeGroups: number[];
+  beatsPerSystem: number;
+  staffRight: number;
+  svgWidth: number;
+}
+
+// Calculate per-system layouts based on time signature changes
+function calculateSystemLayouts(
+  systemCount: number,
+  initialTimeSig: TimeSignature,
+  timeSignatureChanges: TimeSignatureChange[],
+  measuresPerRow?: number,
+): SystemLayout[] {
+  const layouts: SystemLayout[] = [];
+  let currentTimeSig = initialTimeSig;
+  let currentMeasure = 0;
+
+  // Sort changes by measure number
+  const sortedChanges = [...timeSignatureChanges].sort(
+    (a, b) => a.measureNumber - b.measureNumber,
+  );
+
+  for (let sysIdx = 0; sysIdx < systemCount; sysIdx++) {
+    // Check if there's a time sig change at this system's start measure
+    const change = sortedChanges.find(
+      (c) => c.measureNumber === currentMeasure,
+    );
+    if (change) {
+      currentTimeSig = change.timeSignature;
+    }
+
+    const baseLayout = getLayoutConfig(currentTimeSig, measuresPerRow);
+
+    layouts.push({
+      systemIndex: sysIdx,
+      startMeasure: currentMeasure,
+      timeSignature: currentTimeSig,
+      ...baseLayout,
+    });
+
+    currentMeasure += baseLayout.measuresPerSystem;
+  }
+
+  return layouts;
+}
+
+// Get layout for a specific system (or default if not found)
+function getLayoutForSystem(
+  systemLayouts: SystemLayout[],
+  systemIndex: number,
+): SystemLayout {
+  return (
+    systemLayouts[systemIndex] ||
+    systemLayouts[0] || {
+      systemIndex: 0,
+      startMeasure: 0,
+      timeSignature: { numerator: 4, denominator: 4 },
+      beatsPerMeasure: 4,
+      beamGroups: [2, 2],
+      measuresPerSystem: 2,
+      shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1],
+      beatsPerSystem: 8,
+      staffRight: LEFT_MARGIN + 8 * BEAT_WIDTH,
+      svgWidth: LEFT_MARGIN + 8 * BEAT_WIDTH + 60,
+    }
+  );
+}
+
 // Editor-specific note type
 export interface EditorNote {
   id: string;
