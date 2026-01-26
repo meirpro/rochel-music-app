@@ -192,6 +192,7 @@ interface RepeatMarkerForLayout {
 // noteSpacing: 1.0-2.0 (100%-200%) controls overall system width
 function calculateSystemLayouts(
   systemCount: number,
+  totalMeasures: number, // Total measures in the composition
   initialTimeSig: TimeSignature,
   timeSignatureChanges: TimeSignatureChange[],
   measuresPerRow: number,
@@ -263,7 +264,13 @@ function calculateSystemLayouts(
     let totalDecorationWidth = 0;
     let xOffset = 0;
 
-    for (let m = 0; m < measuresPerRow; m++) {
+    // Only iterate through measures that actually exist
+    const measuresInThisSystem = Math.min(
+      measuresPerRow,
+      totalMeasures - startMeasure,
+    );
+
+    for (let m = 0; m < measuresInThisSystem; m++) {
       const measureIndex = startMeasure + m;
       const timeSig = getTimeSigAtMeasure(measureIndex);
       const config =
@@ -535,6 +542,7 @@ interface NoteEditorProps {
   playheadSystem?: number;
   activeNoteId?: string | null;
   systemCount: number;
+  totalMeasures: number; // Actual total measures in composition
   onSystemCountChange: (count: number) => void;
   onDuplicateNote?: () => void;
   svgRef?: React.RefObject<SVGSVGElement | null>;
@@ -710,19 +718,50 @@ function snapX(
   x: number,
   staffRight: number,
   beatWidth: number = BEAT_WIDTH,
+  sysLayout?: SystemLayout,
 ): number {
-  // Snap to half-beat positions, centered in beat columns
-  const offset = getNoteOffset(beatWidth);
-  const xWithoutOffset = x - offset;
+  const noteOffset = getNoteOffset(beatWidth);
+
+  // If we have a system layout, use measure xOffsets for proper snapping
+  if (sysLayout) {
+    const xWithoutOffset = x - noteOffset;
+
+    // Find which measure this X falls into
+    for (const measure of sysLayout.measures) {
+      const measureStartX = LEFT_MARGIN + measure.xOffset;
+      const measureEndX = measureStartX + measure.beatsInMeasure * beatWidth;
+
+      if (
+        xWithoutOffset >= measureStartX - 10 &&
+        xWithoutOffset < measureEndX + 10
+      ) {
+        // X is in this measure - snap within it
+        const xInMeasure = xWithoutOffset - measureStartX;
+        const snappedBeatInMeasure =
+          Math.round(xInMeasure / (beatWidth / 2)) * (beatWidth / 2);
+        // Clamp to measure bounds
+        const clampedBeatX = Math.max(
+          0,
+          Math.min(
+            (measure.beatsInMeasure - 0.5) * beatWidth,
+            snappedBeatInMeasure,
+          ),
+        );
+        return measureStartX + clampedBeatX + noteOffset;
+      }
+    }
+  }
+
+  // Fallback: simple calculation without xOffset
+  const xWithoutOffset = x - noteOffset;
   const snapped =
     Math.round((xWithoutOffset - LEFT_MARGIN) / (beatWidth / 2)) *
       (beatWidth / 2) +
     LEFT_MARGIN +
-    offset;
-  // Clamp to valid range - allow up to the last beat position
-  // Use beatWidth/3 as margin instead of fixed 20px to work with variable beat widths
+    noteOffset;
+  // Clamp to valid range
   const maxX = staffRight - beatWidth / 3;
-  return Math.max(LEFT_MARGIN + offset, Math.min(maxX, snapped));
+  return Math.max(LEFT_MARGIN + noteOffset, Math.min(maxX, snapped));
 }
 
 // Get measure from X position
@@ -979,6 +1018,7 @@ export function NoteEditor({
   playheadSystem = 0,
   activeNoteId = null,
   systemCount,
+  totalMeasures,
   onSystemCountChange,
   onDuplicateNote,
   svgRef: externalSvgRef,
@@ -1014,6 +1054,7 @@ export function NoteEditor({
     () =>
       calculateSystemLayouts(
         systemCount,
+        totalMeasures,
         timeSignature,
         timeSignatureChanges || [],
         measuresPerRow ?? 4, // Default to 4 measures per row
@@ -1026,6 +1067,7 @@ export function NoteEditor({
       ),
     [
       systemCount,
+      totalMeasures,
       timeSignature,
       timeSignatureChanges,
       measuresPerRow,
@@ -1420,7 +1462,12 @@ export function NoteEditor({
 
       // Check if clicking on an existing note (let note handler take over)
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, sysStaffRightForCtx, sysBeatWidthForCtx);
+      const snappedX = snapX(
+        x,
+        sysStaffRightForCtx,
+        sysBeatWidthForCtx,
+        sysLayoutForCtx,
+      );
       const beat = getBeatFromXInSystem(
         sysLayoutForCtx,
         snappedX,
@@ -1747,7 +1794,12 @@ export function NoteEditor({
       const sysStaffRightForNote = sysLayoutForNote.staffRight;
 
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, sysStaffRightForNote, sysBeatWidthForNote);
+      const snappedX = snapX(
+        x,
+        sysStaffRightForNote,
+        sysBeatWidthForNote,
+        sysLayoutForNote,
+      );
       const beat = getBeatFromXInSystem(
         sysLayoutForNote,
         snappedX,
@@ -1960,7 +2012,12 @@ export function NoteEditor({
       const sysLayoutForDrag = getLayoutForSystem(systemLayouts, system);
       const sysBeatWidthForDrag = sysLayoutForDrag.beatWidth;
       const sysStaffRightForDrag = sysLayoutForDrag.staffRight;
-      const snappedX = snapX(x, sysStaffRightForDrag, sysBeatWidthForDrag);
+      const snappedX = snapX(
+        x,
+        sysStaffRightForDrag,
+        sysBeatWidthForDrag,
+        sysLayoutForDrag,
+      );
       const beat = getBeatFromXInSystem(
         sysLayoutForDrag,
         snappedX,
@@ -2598,28 +2655,17 @@ export function NoteEditor({
                 strokeWidth={isEdge ? 4 : 2}
               />
 
-              {/* Time signature display - shown at measures where time sig changes or continues */}
+              {/* Time signature display - shown at measures where time sig changes */}
               {measure?.showTimeSig && (
                 <g>
-                  {/* Background for better readability */}
-                  <rect
-                    x={barX + 3}
-                    y={staffCenterY + visualCenterOffset - LINE_SPACING - 2}
-                    width={TIME_SIG_DISPLAY_WIDTH - 6}
-                    height={LINE_SPACING * 2 + 4}
-                    fill="white"
-                    opacity={0.8}
-                    rx={2}
-                  />
-                  {/* Numerator */}
+                  {/* Numerator - styled to match initial time signature */}
                   <text
                     x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
-                    y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 4}
-                    fontSize={16}
+                    y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 6}
+                    fontSize={20}
                     fontWeight="bold"
                     textAnchor="middle"
-                    fill="#1e293b"
-                    fontFamily="serif"
+                    fill="#334155"
                   >
                     {measure.timeSignature.numerator}
                   </text>
@@ -2627,11 +2673,10 @@ export function NoteEditor({
                   <text
                     x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
                     y={staffCenterY + visualCenterOffset + LINE_SPACING / 2 + 6}
-                    fontSize={16}
+                    fontSize={20}
                     fontWeight="bold"
                     textAnchor="middle"
-                    fill="#1e293b"
-                    fontFamily="serif"
+                    fill="#334155"
                   >
                     {measure.timeSignature.denominator}
                   </text>

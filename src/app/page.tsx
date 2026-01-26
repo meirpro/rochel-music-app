@@ -443,6 +443,9 @@ export default function Home() {
   // showToast: false on initial page load, true when user manually selects a song
   const handleLoadSong = useCallback(
     (song: SavedSong, showToast = true, preserveTempo = false) => {
+      // Stop any currently playing song before switching
+      playback.handleStop();
+
       // Migrate if needed
       const migratedSong = migrateSavedSong(song);
 
@@ -487,6 +490,7 @@ export default function Home() {
       setUI,
       setSavedSongs,
       setTotalMeasures,
+      playback.handleStop,
     ],
   );
 
@@ -730,6 +734,7 @@ export default function Home() {
                 timeSignature={settings.timeSignature}
                 measuresPerRow={measuresPerRow}
                 systemCount={systemCount}
+                totalMeasures={totalMeasures}
                 onSystemCountChange={(count) => {
                   // System count is now calculated dynamically from layout
                   // This callback is kept for compatibility but does nothing
