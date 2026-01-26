@@ -8,6 +8,20 @@ import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 import { InlineLyricInput } from "./InlineLyricInput";
+import {
+  MIN_BEAT_WIDTH,
+  BASE_BEAT_WIDTH,
+  LEFT_MARGIN,
+  STAFF_LEFT,
+  RIGHT_MARGIN,
+  LINE_SPACING,
+  SYSTEM_HEIGHT,
+  SYSTEM_TOP_MARGIN,
+  TIME_SIG_DISPLAY_WIDTH,
+  REPEAT_MARKER_WIDTH,
+  getNoteOffset,
+  getStaffCenterY,
+} from "@/lib/layoutUtils";
 
 // Time signature type
 export interface TimeSignature {
@@ -108,74 +122,237 @@ const TIME_SIG_CONFIG: Record<
 };
 
 // Helper to get layout values based on time signature
+// Used for backward compatibility and default layout calculations
 function getLayoutConfig(
   timeSignature: TimeSignature,
   measuresPerRow?: number,
+  noteSpacing: number = 1.0,
 ) {
   const key = getTimeSigKey(timeSignature);
   const config = TIME_SIG_CONFIG[key] || TIME_SIG_CONFIG["4/4"]; // Fallback to 4/4
   const effectiveMeasuresPerRow = measuresPerRow ?? config.measuresPerSystem;
   const beatsPerSystem = config.beatsPerMeasure * effectiveMeasuresPerRow;
-  const staffRight = LEFT_MARGIN + beatsPerSystem * BEAT_WIDTH;
-  const svgWidth = staffRight + 60;
+  // Use noteSpacing to calculate beat width (this is a reference layout)
+  const effectiveBeatWidth = BASE_BEAT_WIDTH * noteSpacing;
+  const beatWidth = Math.max(MIN_BEAT_WIDTH, effectiveBeatWidth);
+  const staffRight = LEFT_MARGIN + beatsPerSystem * beatWidth;
+  const svgWidth = staffRight + RIGHT_MARGIN;
   return {
     ...config,
     measuresPerSystem: effectiveMeasuresPerRow,
     beatsPerSystem,
+    beatWidth,
     staffRight,
     svgWidth,
   };
 }
 
-// Layout config for a single system (extends base layout with system-specific info)
+// Info about a single measure within a system
+interface MeasureInfo {
+  measureIndex: number; // Absolute measure number (0-indexed)
+  timeSignature: TimeSignature;
+  beatsInMeasure: number;
+  beamGroups: number[];
+  shadeGroups: number[];
+  startBeatInSystem: number; // Beat offset within this system (cumulative)
+  // Decoration tracking
+  showTimeSig: boolean; // Show time signature at this measure
+  hasRepeatStart: boolean;
+  hasRepeatEnd: boolean;
+  prefixWidth: number; // Extra width before beats (time sig + repeat start)
+  suffixWidth: number; // Extra width after beats (repeat end)
+  xOffset: number; // X offset from LEFT_MARGIN for this measure's content
+}
+
+// Layout for a single system - fixed width, variable beat spacing
 interface SystemLayout {
   systemIndex: number;
-  startMeasure: number; // First measure number in this system
-  timeSignature: TimeSignature;
-  beatsPerMeasure: number;
-  beamGroups: number[];
+  measures: MeasureInfo[]; // All measures on this system with their time sigs
+  startMeasure: number; // First absolute measure number
+  startBeat: number; // First absolute beat (for beat labels)
+  totalBeats: number; // Total beats in this system
+  totalDecorationWidth: number; // Total width used by decorations (time sigs, repeats)
+  beatWidth: number; // Width per beat (calculated to fit fixed system width)
   measuresPerSystem: number;
-  shadeGroups: number[];
-  beatsPerSystem: number;
-  staffRight: number;
+  staffRight: number; // Fixed width (same for all systems)
   svgWidth: number;
 }
 
-// Calculate per-system layouts based on time signature changes
+// Uniform system width - all systems same width, variable beat spacing
+// Constants imported from @/lib/layoutUtils
+
+// Repeat marker info for layout calculation
+interface RepeatMarkerForLayout {
+  measureNumber: number;
+  type: "start" | "end";
+}
+
+// Calculate per-system layouts with uniform width but variable beat spacing
+// Includes dynamic space for time signatures and repeat markers
+// noteSpacing: 1.0-2.0 (100%-200%) controls overall system width
 function calculateSystemLayouts(
   systemCount: number,
   initialTimeSig: TimeSignature,
   timeSignatureChanges: TimeSignatureChange[],
-  measuresPerRow?: number,
+  measuresPerRow: number,
+  noteSpacing: number = 1.0,
+  repeatMarkers: RepeatMarkerForLayout[] = [],
 ): SystemLayout[] {
-  const layouts: SystemLayout[] = [];
-  let currentTimeSig = initialTimeSig;
-  let currentMeasure = 0;
-
-  // Sort changes by measure number
+  // Sort changes by measure number for quick lookup
   const sortedChanges = [...timeSignatureChanges].sort(
     (a, b) => a.measureNumber - b.measureNumber,
   );
 
+  // Create sets for quick repeat marker lookup
+  const repeatStartMeasures = new Set(
+    repeatMarkers.filter((m) => m.type === "start").map((m) => m.measureNumber),
+  );
+  const repeatEndMeasures = new Set(
+    repeatMarkers.filter((m) => m.type === "end").map((m) => m.measureNumber),
+  );
+
+  // Helper to get time signature at a given measure
+  const getTimeSigAtMeasure = (measureNum: number): TimeSignature => {
+    let timeSig = initialTimeSig;
+    for (const change of sortedChanges) {
+      if (change.measureNumber <= measureNum) {
+        timeSig = change.timeSignature;
+      } else {
+        break;
+      }
+    }
+    return timeSig;
+  };
+
+  // Helper to check if time sig should be displayed at a measure
+  const shouldShowTimeSig = (
+    measureNum: number,
+    isFirstInRow: boolean,
+  ): boolean => {
+    // Don't show at measure 0 - it's already shown in the left margin with treble clef
+    if (measureNum === 0) return false;
+    // Show if there's a time sig change at this measure
+    if (sortedChanges.some((c) => c.measureNumber === measureNum)) return true;
+    // Show at start of each row if time sig is different from default
+    if (isFirstInRow) {
+      const currentSig = getTimeSigAtMeasure(measureNum);
+      const prevSig = getTimeSigAtMeasure(measureNum - 1);
+      // Show if continuing a different time sig from initial
+      return (
+        currentSig.numerator !== initialTimeSig.numerator ||
+        currentSig.denominator !== initialTimeSig.denominator ||
+        prevSig.numerator !== currentSig.numerator ||
+        prevSig.denominator !== currentSig.denominator
+      );
+    }
+    return false;
+  };
+
+  // PASS 1: Calculate total beats and decoration widths for each system
+  const systemData: {
+    measures: MeasureInfo[];
+    totalBeats: number;
+    totalDecorationWidth: number;
+  }[] = [];
+  let maxEffectiveWidth = 0; // beats * baseWidth + decorations
+
   for (let sysIdx = 0; sysIdx < systemCount; sysIdx++) {
-    // Check if there's a time sig change at this system's start measure
-    const change = sortedChanges.find(
-      (c) => c.measureNumber === currentMeasure,
-    );
-    if (change) {
-      currentTimeSig = change.timeSignature;
+    const startMeasure = sysIdx * measuresPerRow;
+    const measures: MeasureInfo[] = [];
+    let totalBeats = 0;
+    let totalDecorationWidth = 0;
+    let xOffset = 0;
+
+    for (let m = 0; m < measuresPerRow; m++) {
+      const measureIndex = startMeasure + m;
+      const timeSig = getTimeSigAtMeasure(measureIndex);
+      const config =
+        TIME_SIG_CONFIG[getTimeSigKey(timeSig)] || TIME_SIG_CONFIG["4/4"];
+
+      const isFirstInRow = m === 0;
+      const showTimeSig = shouldShowTimeSig(measureIndex, isFirstInRow);
+      const hasRepeatStart = repeatStartMeasures.has(measureIndex);
+      const hasRepeatEnd = repeatEndMeasures.has(measureIndex);
+
+      // Calculate prefix and suffix widths
+      let prefixWidth = 0;
+      if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+      if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
+
+      let suffixWidth = 0;
+      if (hasRepeatEnd) suffixWidth += REPEAT_MARKER_WIDTH;
+
+      measures.push({
+        measureIndex,
+        timeSignature: timeSig,
+        beatsInMeasure: config.beatsPerMeasure,
+        beamGroups: config.beamGroups,
+        shadeGroups:
+          config.shadeGroups || Array(config.beatsPerMeasure).fill(1),
+        startBeatInSystem: totalBeats,
+        showTimeSig,
+        hasRepeatStart,
+        hasRepeatEnd,
+        prefixWidth,
+        suffixWidth,
+        xOffset, // Will be recalculated in pass 2
+      });
+
+      totalBeats += config.beatsPerMeasure;
+      totalDecorationWidth += prefixWidth + suffixWidth;
+      xOffset += prefixWidth + suffixWidth; // Placeholder, recalculated later
     }
 
-    const baseLayout = getLayoutConfig(currentTimeSig, measuresPerRow);
+    systemData.push({ measures, totalBeats, totalDecorationWidth });
+
+    // Effective width = beats at base width + decorations
+    const effectiveBeatWidth = BASE_BEAT_WIDTH * noteSpacing;
+    const systemEffectiveWidth =
+      totalBeats * Math.max(MIN_BEAT_WIDTH, effectiveBeatWidth) +
+      totalDecorationWidth;
+    maxEffectiveWidth = Math.max(maxEffectiveWidth, systemEffectiveWidth);
+  }
+
+  // Calculate uniform system content width (excluding LEFT_MARGIN and RIGHT_MARGIN)
+  const uniformContentWidth = maxEffectiveWidth;
+  const staffRight = LEFT_MARGIN + uniformContentWidth;
+  const svgWidth = staffRight + RIGHT_MARGIN;
+
+  // PASS 2: Build layouts with uniform width and calculate x offsets
+  const layouts: SystemLayout[] = [];
+  let currentAbsoluteBeat = 0;
+
+  for (let sysIdx = 0; sysIdx < systemCount; sysIdx++) {
+    const { measures, totalBeats, totalDecorationWidth } = systemData[sysIdx];
+
+    // Beat width fills remaining space after decorations
+    const availableForBeats = uniformContentWidth - totalDecorationWidth;
+    const beatWidth = availableForBeats / totalBeats;
+
+    // Recalculate x offsets for each measure
+    let currentX = 0;
+    for (const measure of measures) {
+      measure.xOffset = currentX + measure.prefixWidth;
+      currentX =
+        measure.xOffset +
+        measure.beatsInMeasure * beatWidth +
+        measure.suffixWidth;
+    }
 
     layouts.push({
       systemIndex: sysIdx,
-      startMeasure: currentMeasure,
-      timeSignature: currentTimeSig,
-      ...baseLayout,
+      measures,
+      startMeasure: sysIdx * measuresPerRow,
+      startBeat: currentAbsoluteBeat,
+      totalBeats,
+      totalDecorationWidth,
+      beatWidth,
+      measuresPerSystem: measuresPerRow,
+      staffRight,
+      svgWidth,
     });
 
-    currentMeasure += baseLayout.measuresPerSystem;
+    currentAbsoluteBeat += totalBeats;
   }
 
   return layouts;
@@ -186,21 +363,120 @@ function getLayoutForSystem(
   systemLayouts: SystemLayout[],
   systemIndex: number,
 ): SystemLayout {
+  // Default fallback values for 8 beats at base width
+  const defaultTotalBeats = 8;
+  const defaultStaffRight = LEFT_MARGIN + defaultTotalBeats * BASE_BEAT_WIDTH;
+  const defaultSvgWidth = defaultStaffRight + RIGHT_MARGIN;
+
   return (
     systemLayouts[systemIndex] ||
     systemLayouts[0] || {
       systemIndex: 0,
+      measures: [
+        {
+          measureIndex: 0,
+          timeSignature: { numerator: 4, denominator: 4 },
+          beatsInMeasure: 4,
+          beamGroups: [2, 2],
+          shadeGroups: [1, 1, 1, 1],
+          startBeatInSystem: 0,
+        },
+      ],
       startMeasure: 0,
-      timeSignature: { numerator: 4, denominator: 4 },
-      beatsPerMeasure: 4,
-      beamGroups: [2, 2],
+      startBeat: 0,
+      totalBeats: defaultTotalBeats,
+      beatWidth: BASE_BEAT_WIDTH,
       measuresPerSystem: 2,
-      shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1],
-      beatsPerSystem: 8,
-      staffRight: LEFT_MARGIN + 8 * BEAT_WIDTH,
-      svgWidth: LEFT_MARGIN + 8 * BEAT_WIDTH + 60,
+      staffRight: defaultStaffRight,
+      svgWidth: defaultSvgWidth,
     }
   );
+}
+
+// Find which system contains a given absolute beat and return the beat within that system
+function getSystemForAbsoluteBeat(
+  systemLayouts: SystemLayout[],
+  absoluteBeat: number,
+): { systemIndex: number; beatInSystem: number } | null {
+  for (let i = systemLayouts.length - 1; i >= 0; i--) {
+    const layout = systemLayouts[i];
+    if (absoluteBeat >= layout.startBeat) {
+      return {
+        systemIndex: i,
+        beatInSystem: absoluteBeat - layout.startBeat,
+      };
+    }
+  }
+  // Default to first system if no match (shouldn't happen in practice)
+  return systemLayouts.length > 0
+    ? { systemIndex: 0, beatInSystem: absoluteBeat }
+    : null;
+}
+
+// Get the measure info at a given beat position within a system
+function getMeasureAtBeat(
+  sysLayout: SystemLayout,
+  beatInSystem: number,
+): MeasureInfo | null {
+  for (let i = sysLayout.measures.length - 1; i >= 0; i--) {
+    const measure = sysLayout.measures[i];
+    if (beatInSystem >= measure.startBeatInSystem) {
+      return measure;
+    }
+  }
+  return sysLayout.measures[0] || null;
+}
+
+// Calculate X position for a beat within a system (using variable beat width)
+// Now accounts for dynamic decoration widths (time sig, repeat markers)
+function getBeatXInSystem(
+  sysLayout: SystemLayout,
+  beatInSystem: number,
+): number {
+  // Find which measure this beat belongs to
+  const measure = getMeasureAtBeat(sysLayout, beatInSystem);
+  if (!measure) {
+    // Fallback to old calculation if no measure found
+    return LEFT_MARGIN + beatInSystem * sysLayout.beatWidth;
+  }
+
+  // Calculate beat position relative to measure start
+  const beatInMeasure = beatInSystem - measure.startBeatInSystem;
+
+  // Use measure's xOffset (accounts for all decorations before this measure)
+  return LEFT_MARGIN + measure.xOffset + beatInMeasure * sysLayout.beatWidth;
+}
+
+// Convert X coordinate to beat position within a system (accounts for decorations)
+function getBeatFromXInSystem(
+  sysLayout: SystemLayout,
+  x: number,
+  noteOffset: number,
+): number {
+  // Remove note offset for calculation
+  const xWithoutOffset = x - noteOffset;
+
+  // Find which measure this X falls into
+  for (const measure of sysLayout.measures) {
+    const measureStartX = LEFT_MARGIN + measure.xOffset;
+    const measureEndX =
+      measureStartX + measure.beatsInMeasure * sysLayout.beatWidth;
+
+    if (
+      xWithoutOffset >= measureStartX - 5 &&
+      xWithoutOffset < measureEndX + 5
+    ) {
+      // X is in this measure
+      const xInMeasure = xWithoutOffset - measureStartX;
+      const beatInMeasure = xInMeasure / sysLayout.beatWidth;
+      const rawBeat = measure.startBeatInSystem + beatInMeasure;
+      return Math.round(rawBeat * 2) / 2; // Snap to half-beats
+    }
+  }
+
+  // Fallback: use simple calculation
+  const rawBeat = (xWithoutOffset - LEFT_MARGIN) / sysLayout.beatWidth;
+  return Math.round(rawBeat * 2) / 2;
 }
 
 // Editor-specific note type
@@ -270,21 +546,16 @@ interface NoteEditorProps {
   measuresPerRow?: number;
   readOnly?: boolean;
   staffLines?: number; // 2-5, controls number of horizontal staff lines (default 3)
+  noteSpacing?: number; // 1.0-2.0 (100%-200%) - beat width multiplier (default 1.0)
   // Time signature changes
   timeSignatureChanges?: TimeSignatureChange[];
   onTimeSignatureChangesChange?: (changes: TimeSignatureChange[]) => void;
   onTimeSignatureClick?: () => void; // Called when initial time sig is clicked
 }
 
-// Constants - adjusted for better fit
-const SYSTEM_HEIGHT = 180;
-const SYSTEM_TOP_MARGIN = 60;
-const STAFF_CENTER_OFFSET = 80;
-const LINE_SPACING = 32;
-const BEAT_WIDTH = 60; // Slightly wider for cleaner look
-const LEFT_MARGIN = 100;
-const NOTE_OFFSET = 15; // Center notes within beat columns (60px width, 2 eighths = 30px each)
-const STAFF_LEFT = 40;
+// Layout constants imported from @/lib/layoutUtils
+// BEAT_WIDTH alias for backward compatibility
+const BEAT_WIDTH = BASE_BEAT_WIDTH;
 // Note: STAFF_RIGHT, BEATS_PER_SYSTEM, MEASURES_PER_SYSTEM, SVG_WIDTH are now dynamic
 // based on time signature - use getLayoutConfig(timeSignature)
 
@@ -351,9 +622,7 @@ const POSITION_TO_PITCH: Pitch[] = [
   "C5",
 ];
 
-function getStaffCenterY(system: number): number {
-  return SYSTEM_TOP_MARGIN + system * SYSTEM_HEIGHT + STAFF_CENTER_OFFSET;
-}
+// getStaffCenterY imported from @/lib/layoutUtils
 
 function getSystemFromY(y: number, systemCount: number): number {
   const system = Math.floor((y - SYSTEM_TOP_MARGIN) / SYSTEM_HEIGHT);
@@ -426,34 +695,44 @@ function getYFromPitch(pitch: Pitch, system: number): number {
 }
 
 // Convert beat position to X coordinate (for rendering)
-function getXFromBeat(beat: number): number {
-  return LEFT_MARGIN + beat * BEAT_WIDTH + NOTE_OFFSET;
+// Notes are centered in their beat column
+function getXFromBeat(beat: number, beatWidth: number = BEAT_WIDTH): number {
+  return LEFT_MARGIN + beat * beatWidth + getNoteOffset(beatWidth);
 }
 
 // Convert X coordinate to beat position (for placement)
-function getBeatFromX(x: number): number {
-  const rawBeat = (x - LEFT_MARGIN - NOTE_OFFSET) / BEAT_WIDTH;
+function getBeatFromX(x: number, beatWidth: number = BEAT_WIDTH): number {
+  const rawBeat = (x - LEFT_MARGIN - getNoteOffset(beatWidth)) / beatWidth;
   return Math.round(rawBeat * 2) / 2; // Snap to half-beats
 }
 
-function snapX(x: number, staffRight: number): number {
-  // Snap to half-beat positions, offset from bar lines
-  const xWithoutOffset = x - NOTE_OFFSET;
+function snapX(
+  x: number,
+  staffRight: number,
+  beatWidth: number = BEAT_WIDTH,
+): number {
+  // Snap to half-beat positions, centered in beat columns
+  const offset = getNoteOffset(beatWidth);
+  const xWithoutOffset = x - offset;
   const snapped =
-    Math.round((xWithoutOffset - LEFT_MARGIN) / (BEAT_WIDTH / 2)) *
-      (BEAT_WIDTH / 2) +
+    Math.round((xWithoutOffset - LEFT_MARGIN) / (beatWidth / 2)) *
+      (beatWidth / 2) +
     LEFT_MARGIN +
-    NOTE_OFFSET;
-  // Clamp to valid range (notes are offset so they don't overlap bar lines)
-  return Math.max(
-    LEFT_MARGIN + NOTE_OFFSET,
-    Math.min(staffRight - 20, snapped),
-  );
+    offset;
+  // Clamp to valid range - allow up to the last beat position
+  // Use beatWidth/3 as margin instead of fixed 20px to work with variable beat widths
+  const maxX = staffRight - beatWidth / 3;
+  return Math.max(LEFT_MARGIN + offset, Math.min(maxX, snapped));
 }
 
 // Get measure from X position
-function getMeasureFromX(x: number, beatsPerMeasure: number): number {
-  const beatsFromLeft = (x - LEFT_MARGIN) / BEAT_WIDTH;
+// beatWidth parameter allows for variable beat widths per system
+function getMeasureFromX(
+  x: number,
+  beatsPerMeasure: number,
+  beatWidth: number = BEAT_WIDTH,
+): number {
+  const beatsFromLeft = (x - LEFT_MARGIN) / beatWidth;
   // Use Math.round instead of Math.floor so clicks near bar lines
   // are assigned to the nearest measure (more intuitive)
   return Math.round(beatsFromLeft / beatsPerMeasure);
@@ -554,12 +833,11 @@ function MenuNoteIcon({
 }
 
 // Function to group beamable notes (sixteenths, eighths, dotted eighths)
+// Now uses per-system layouts for variable time signatures
 function groupEighthNotes(
   allNotes: EditorNote[],
-  timeSignature: TimeSignature,
+  systemLayouts: SystemLayout[],
 ): BeamGroup[] {
-  const config =
-    TIME_SIG_CONFIG[getTimeSigKey(timeSignature)] || TIME_SIG_CONFIG["4/4"];
   // Include sixteenths (0.25), eighths (0.5), and dotted eighths (0.75) for beaming
   const beamableNotes = allNotes.filter(
     (n) => n.duration === 0.25 || n.duration === 0.5 || n.duration === 0.75,
@@ -597,8 +875,20 @@ function groupEighthNotes(
   let currentBeatGroup = -1;
 
   for (const note of sorted) {
-    // Calculate which beat group this note belongs to
-    const measureBeat = note.beat % config.beatsPerMeasure;
+    // Get per-system layout and find the measure containing this note
+    const sysLayout = getLayoutForSystem(systemLayouts, note.system);
+    const measureInfo = getMeasureAtBeat(sysLayout, note.beat);
+    if (!measureInfo) continue;
+
+    // Use the measure's time signature config
+    const config = {
+      beatsPerMeasure: measureInfo.beatsInMeasure,
+      beamGroups: measureInfo.beamGroups,
+    };
+
+    // Calculate which beat within the measure this note is on
+    const beatInMeasure = note.beat - measureInfo.startBeatInSystem;
+    const measureBeat = beatInMeasure % config.beatsPerMeasure;
 
     // Find which beam group this beat belongs to
     let beatGroup = 0;
@@ -612,8 +902,8 @@ function groupEighthNotes(
     }
 
     // Calculate absolute beat group (including system and measure)
-    const measure = Math.floor(note.beat / config.beatsPerMeasure);
-    const absoluteBeatGroup = note.system * 1000 + measure * 100 + beatGroup;
+    const absoluteBeatGroup =
+      note.system * 1000 + measureInfo.measureIndex * 100 + beatGroup;
 
     // Check if this note should join the current group
     if (currentGroup.length === 0) {
@@ -700,6 +990,7 @@ export function NoteEditor({
   measuresPerRow,
   readOnly = false,
   staffLines = 3,
+  noteSpacing = 1.0,
   timeSignatureChanges = [],
   onTimeSignatureChangesChange,
   onTimeSignatureClick,
@@ -711,23 +1002,63 @@ export function NoteEditor({
   const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
 
   // Get dynamic layout based on time signature and measures per row
-  const layout = useMemo(
-    () => getLayoutConfig(timeSignature, measuresPerRow),
-    [timeSignature, measuresPerRow],
+  // For backward compatibility, also compute a "default" layout from initial time sig
+  const defaultLayout = useMemo(
+    () => getLayoutConfig(timeSignature, measuresPerRow, noteSpacing),
+    [timeSignature, measuresPerRow, noteSpacing],
   );
+
+  // Calculate per-system layouts based on time signature changes and note spacing
+  // Includes dynamic space for time signatures and repeat markers
+  const systemLayouts = useMemo(
+    () =>
+      calculateSystemLayouts(
+        systemCount,
+        timeSignature,
+        timeSignatureChanges || [],
+        measuresPerRow ?? 4, // Default to 4 measures per row
+        noteSpacing, // Beat width multiplier (1.0-2.0)
+        // Convert RepeatMarker (system + measure) to absolute measure number
+        repeatMarkers.map((m) => ({
+          measureNumber: m.system * (measuresPerRow ?? 4) + m.measure,
+          type: m.type,
+        })),
+      ),
+    [
+      systemCount,
+      timeSignature,
+      timeSignatureChanges,
+      measuresPerRow,
+      noteSpacing,
+      repeatMarkers,
+    ],
+  );
+
+  // Get max SVG width (widest system determines canvas width)
+  const maxSvgWidth = useMemo(
+    () =>
+      Math.max(...systemLayouts.map((l) => l.svgWidth), defaultLayout.svgWidth),
+    [systemLayouts, defaultLayout.svgWidth],
+  );
+
+  // Keep these for backward compatibility with code that uses single layout
+  // (will be gradually replaced with per-system lookups)
   const {
     beatsPerSystem,
     beatsPerMeasure,
     staffRight,
-    svgWidth,
+    svgWidth: _svgWidth,
     measuresPerSystem,
     shadeGroups,
-  } = layout;
+  } = defaultLayout;
 
-  // Group eighth notes for beaming
+  // Use maxSvgWidth for the actual canvas
+  const svgWidth = maxSvgWidth;
+
+  // Group eighth notes for beaming (uses per-system layouts for variable time signatures)
   const beamGroups = useMemo(
-    () => groupEighthNotes(notes, timeSignature),
-    [notes, timeSignature],
+    () => groupEighthNotes(notes, systemLayouts),
+    [notes, systemLayouts],
   );
 
   // Get set of note IDs that are part of beam groups (for skipping individual flags)
@@ -1077,15 +1408,24 @@ export function NoteEditor({
       const system = getSystemFromY(y, systemCount);
       const staffCenterY = getStaffCenterY(system);
 
+      // Get system-specific layout for proper bounds and snapping
+      const sysLayoutForCtx = getLayoutForSystem(systemLayouts, system);
+      const sysBeatWidthForCtx = sysLayoutForCtx.beatWidth;
+      const sysStaffRightForCtx = sysLayoutForCtx.staffRight;
+
       // Check if click is within valid staff bounds (include some margin)
-      if (x < LEFT_MARGIN - 10 || x > staffRight + 10) return;
+      if (x < LEFT_MARGIN - 10 || x > sysStaffRightForCtx + 10) return;
       if (y < staffCenterY - LINE_SPACING * 2 - 20) return;
       if (y > staffCenterY + LINE_SPACING * 2 + 20) return;
 
       // Check if clicking on an existing note (let note handler take over)
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight);
-      const beat = getBeatFromX(snappedX);
+      const snappedX = snapX(x, sysStaffRightForCtx, sysBeatWidthForCtx);
+      const beat = getBeatFromXInSystem(
+        sysLayoutForCtx,
+        snappedX,
+        getNoteOffset(sysBeatWidthForCtx),
+      );
 
       const clickedNote = notes.find(
         (n) =>
@@ -1132,6 +1472,7 @@ export function NoteEditor({
       systemCount,
       staffRight,
       notes,
+      systemLayouts,
     ],
   );
 
@@ -1161,7 +1502,11 @@ export function NoteEditor({
       const system = getSystemFromY(y, systemCount);
       const staffCenterY = getStaffCenterY(system);
 
-      if (x < LEFT_MARGIN - 20 || x > staffRight + 20) return;
+      // Get system-specific layout for proper bounds check
+      const sysLayoutForBounds = getLayoutForSystem(systemLayouts, system);
+      const sysStaffRight = sysLayoutForBounds.staffRight;
+
+      if (x < LEFT_MARGIN - 20 || x > sysStaffRight + 20) return;
       if (y < staffCenterY - LINE_SPACING * 2 - 30) return;
       if (y > staffCenterY + LINE_SPACING * 2 + 30) return;
 
@@ -1178,14 +1523,18 @@ export function NoteEditor({
 
       // Handle repeat tool - allows multiple repeat sections
       if (selectedTool === "repeat") {
-        // Calculate beat position within the current system
-        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
+        // Get this system's layout for variable beat width
+        const sysLayout = getLayoutForSystem(systemLayouts, system);
+        const sysBeatWidth = sysLayout.beatWidth;
 
-        // IMPORTANT: Use Math.floor (same as hover) to identify containing measure
-        // This ensures clicks are placed in the measure the user is clicking on
-        const measureContainingClick = Math.floor(
-          beatInSystem / layout.beatsPerMeasure,
-        );
+        // Calculate beat position within the current system using variable beat width
+        const beatInSystem = (x - LEFT_MARGIN) / sysBeatWidth;
+
+        // Find which measure this beat falls in (using per-measure info)
+        const measureInfo = getMeasureAtBeat(sysLayout, beatInSystem);
+        const measureContainingClick = measureInfo
+          ? sysLayout.measures.indexOf(measureInfo)
+          : Math.floor(beatInSystem / defaultLayout.beatsPerMeasure);
         const clampedMeasure = Math.max(
           0,
           Math.min(measuresPerSystem - 1, measureContainingClick),
@@ -1308,15 +1657,30 @@ export function NoteEditor({
 
       // Handle time signature tool - click on bar lines to insert changes
       if (selectedTool === "timesig") {
-        // Calculate beat position within the current system
-        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
-        // Find closest bar line (measure boundary)
-        const measureContainingClick = Math.round(
-          beatInSystem / layout.beatsPerMeasure,
-        );
+        // Get this system's layout for variable beat width
+        const sysLayout = getLayoutForSystem(systemLayouts, system);
+        const sysBeatWidth = sysLayout.beatWidth;
+
+        // Calculate beat position within the current system using variable beat width
+        const beatInSystem = (x - LEFT_MARGIN) / sysBeatWidth;
+
+        // Find which measure boundary is closest to the click
+        let closestBarLineIndex = 0;
+        let closestDistance = Infinity;
+        for (let i = 0; i <= sysLayout.measures.length; i++) {
+          const barBeat =
+            i < sysLayout.measures.length
+              ? sysLayout.measures[i].startBeatInSystem
+              : sysLayout.totalBeats;
+          const distance = Math.abs(beatInSystem - barBeat);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestBarLineIndex = i;
+          }
+        }
+
         // Calculate absolute measure number
-        const absoluteMeasure =
-          system * measuresPerSystem + measureContainingClick;
+        const absoluteMeasure = sysLayout.startMeasure + closestBarLineIndex;
 
         // Don't allow time sig change at measure 0 (that's the initial time sig)
         if (absoluteMeasure <= 0) {
@@ -1324,10 +1688,12 @@ export function NoteEditor({
           return;
         }
 
-        // Open the time signature picker
-        const barLineX =
-          LEFT_MARGIN +
-          measureContainingClick * layout.beatsPerMeasure * BEAT_WIDTH;
+        // Open the time signature picker at the bar line position
+        const barLineBeat =
+          closestBarLineIndex < sysLayout.measures.length
+            ? sysLayout.measures[closestBarLineIndex].startBeatInSystem
+            : sysLayout.totalBeats;
+        const barLineX = LEFT_MARGIN + barLineBeat * sysBeatWidth;
         const staffCenterYForPicker = getStaffCenterY(system);
         setTimeSigPicker({
           measureNumber: absoluteMeasure,
@@ -1344,17 +1710,22 @@ export function NoteEditor({
 
         // Check if click is in the lyrics area
         if (y >= lyricsZoneTop && y <= lyricsZoneBottom) {
-          // Calculate the beat position from click
-          const beatInSystem = (x - LEFT_MARGIN - NOTE_OFFSET) / BEAT_WIDTH;
+          // Get this system's layout for variable beat width
+          const sysLayout = getLayoutForSystem(systemLayouts, system);
+          const sysBeatWidth = sysLayout.beatWidth;
+
+          // Calculate the beat position from click using variable beat width
+          const beatInSystem =
+            (x - LEFT_MARGIN - getNoteOffset(sysBeatWidth)) / sysBeatWidth;
           // Snap to nearest half-beat
           const snappedBeatInSystem = Math.round(beatInSystem * 2) / 2;
           // Clamp to valid range
           const clampedBeatInSystem = Math.max(
             0,
-            Math.min(beatsPerSystem - 1, snappedBeatInSystem),
+            Math.min(sysLayout.totalBeats - 1, snappedBeatInSystem),
           );
           // Calculate absolute beat
-          const absoluteBeat = system * beatsPerSystem + clampedBeatInSystem;
+          const absoluteBeat = sysLayout.startBeat + clampedBeatInSystem;
 
           // Find existing lyric at this beat
           const existingLyric = lyrics.find(
@@ -1370,9 +1741,18 @@ export function NoteEditor({
         return;
       }
 
+      // Get this system's layout for variable beat width for note placement
+      const sysLayoutForNote = getLayoutForSystem(systemLayouts, system);
+      const sysBeatWidthForNote = sysLayoutForNote.beatWidth;
+      const sysStaffRightForNote = sysLayoutForNote.staffRight;
+
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight);
-      const beat = getBeatFromX(snappedX);
+      const snappedX = snapX(x, sysStaffRightForNote, sysBeatWidthForNote);
+      const beat = getBeatFromXInSystem(
+        sysLayoutForNote,
+        snappedX,
+        getNoteOffset(sysBeatWidthForNote),
+      );
 
       // Check for collision
       // If allowChords: only block exact same position (beat + pitch)
@@ -1423,13 +1803,14 @@ export function NoteEditor({
       tutorialActive,
       reportAction,
       staffRight,
-      layout.beatsPerMeasure,
+      defaultLayout.beatsPerMeasure,
       onDuplicateNote,
       isPlaying,
       onPlaybackBlock,
       readOnly,
       beatsPerSystem,
       lyrics,
+      systemLayouts,
     ],
   );
 
@@ -1474,20 +1855,25 @@ export function NoteEditor({
       // Handle repeat placement hover preview (show even before first click)
       if (selectedTool === "repeat" && !draggedMarker) {
         const system = getSystemFromY(y, systemCount);
-        // Calculate beat position within the current system
-        const beatInSystem = (x - LEFT_MARGIN) / BEAT_WIDTH;
 
-        // IMPORTANT: Use Math.floor to find which measure CONTAINS this beat
-        // - Math.round would snap to nearest bar line, causing clicks in first half
-        //   of measure to round backward, second half to round forward
-        // - Math.floor always identifies the measure containing the click point
-        // - Example: clicking anywhere in measure 0 (beats 0-3.99) correctly identifies as measure 0
-        const measureContainingBeat = Math.floor(
-          beatInSystem / layout.beatsPerMeasure,
-        );
+        // Get this system's layout for variable beat width
+        const sysLayoutForHover = getLayoutForSystem(systemLayouts, system);
+        const sysBeatWidthForHover = sysLayoutForHover.beatWidth;
+
+        // Calculate beat position within the current system using variable beat width
+        const beatInSystem = (x - LEFT_MARGIN) / sysBeatWidthForHover;
+
+        // Find which measure this beat falls in (using per-measure info)
+        const measureInfo = getMeasureAtBeat(sysLayoutForHover, beatInSystem);
+        const measureContainingBeat = measureInfo
+          ? sysLayoutForHover.measures.indexOf(measureInfo)
+          : 0;
         const clampedMeasure = Math.max(
           0,
-          Math.min(measuresPerSystem - 1, measureContainingBeat),
+          Math.min(
+            sysLayoutForHover.measuresPerSystem - 1,
+            measureContainingBeat,
+          ),
         );
 
         // Only show hover if within staff bounds
@@ -1503,7 +1889,7 @@ export function NoteEditor({
       // Handle marker dragging - allows cross-system repeats
       if (draggedMarker) {
         const system = getSystemFromY(y, systemCount);
-        const measure = getMeasureFromX(x, layout.beatsPerMeasure);
+        const measure = getMeasureFromX(x, defaultLayout.beatsPerMeasure);
         const clampedMeasure = Math.max(
           0,
           Math.min(measuresPerSystem, measure),
@@ -1569,8 +1955,17 @@ export function NoteEditor({
       if (!draggedNote) return;
       const system = getSystemFromY(y, systemCount);
       const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(x, staffRight);
-      const beat = getBeatFromX(snappedX);
+
+      // Get system-specific layout for proper snapping
+      const sysLayoutForDrag = getLayoutForSystem(systemLayouts, system);
+      const sysBeatWidthForDrag = sysLayoutForDrag.beatWidth;
+      const sysStaffRightForDrag = sysLayoutForDrag.staffRight;
+      const snappedX = snapX(x, sysStaffRightForDrag, sysBeatWidthForDrag);
+      const beat = getBeatFromXInSystem(
+        sysLayoutForDrag,
+        snappedX,
+        getNoteOffset(sysBeatWidthForDrag),
+      );
 
       // Check if another note exists at this position (excluding the dragged note)
       const collision = notes.find(
@@ -1598,10 +1993,11 @@ export function NoteEditor({
       onRepeatMarkersChange,
       measuresPerSystem,
       staffRight,
-      layout.beatsPerMeasure,
+      defaultLayout.beatsPerMeasure,
       selectedTool,
       repeatStart,
       hoveredRepeatMeasure,
+      systemLayouts,
     ],
   );
 
@@ -1680,11 +2076,20 @@ export function NoteEditor({
     if (!editingLyric || !svgRef.current) return null;
 
     const { absoluteBeat } = editingLyric;
-    const system = Math.floor(absoluteBeat / beatsPerSystem);
-    const beatInSystem = absoluteBeat % beatsPerSystem;
+
+    // Use proper system lookup for variable beat widths
+    const lyricPosition = getSystemForAbsoluteBeat(systemLayouts, absoluteBeat);
+    if (!lyricPosition) return null;
+
+    const system = lyricPosition.systemIndex;
+    const beatInSystem = lyricPosition.beatInSystem;
+    const sysLayout = getLayoutForSystem(systemLayouts, system);
+    const sysBeatWidth = sysLayout.beatWidth;
 
     const svgRect = svgRef.current.getBoundingClientRect();
-    const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
+    // Use getBeatXInSystem to account for decoration offsets
+    const x =
+      getBeatXInSystem(sysLayout, beatInSystem) + getNoteOffset(sysBeatWidth);
     const staffCenterY = getStaffCenterY(system);
     const y = staffCenterY + LINE_SPACING + 55;
 
@@ -1692,7 +2097,7 @@ export function NoteEditor({
       x: svgRect.left + x,
       y: svgRect.top + y,
     };
-  }, [editingLyric, beatsPerSystem]);
+  }, [editingLyric, systemLayouts]);
 
   const getNoteType = (duration: number): string => {
     if (duration >= 4) return "whole";
@@ -1710,12 +2115,18 @@ export function NoteEditor({
     const adjustedDuration = note.duration - 0.5;
     if (adjustedDuration <= 0) return null;
 
-    const x = getXFromBeat(note.beat);
+    // Get system's beat width for variable widths
+    const sysLayout = getLayoutForSystem(systemLayouts, note.system);
+    const sysBeatWidth = sysLayout.beatWidth;
+
+    // Use getBeatXInSystem to account for decoration widths
+    const x =
+      getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysBeatWidth);
     const y = getYFromPitch(note.pitch, note.system);
     const color = getNoteColor(note.pitch);
 
     // Extension shows adjusted duration (shortened by 1/8 beat)
-    const extensionWidth = adjustedDuration * BEAT_WIDTH;
+    const extensionWidth = adjustedDuration * sysBeatWidth;
 
     return (
       <rect
@@ -1733,8 +2144,14 @@ export function NoteEditor({
   };
 
   const renderNote = (note: EditorNote) => {
+    // Get system's beat width for variable widths
+    const sysLayout = getLayoutForSystem(systemLayouts, note.system);
+    const sysBeatWidth = sysLayout.beatWidth;
+
     // Calculate x and y from beat and pitch
-    const x = getXFromBeat(note.beat);
+    // Use getBeatXInSystem to account for decoration widths (time sig, repeat markers)
+    const x =
+      getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysBeatWidth);
     const y = getYFromPitch(note.pitch, note.system);
 
     const color = getNoteColor(note.pitch);
@@ -1973,8 +2390,37 @@ export function NoteEditor({
   };
 
   const renderSystem = (systemIndex: number) => {
-    const staffCenterY = getStaffCenterY(systemIndex);
     const isFirstSystem = systemIndex === 0;
+
+    // Dynamic staff extents based on staffLines setting
+    // 3 lines: 0 to +64, 4 lines: -32 to +64, 5 lines: -64 to +64
+    // Bottom is always at +64 (line 5), top extends upward as lines are added
+    const staffTopOffset =
+      staffLines === 5
+        ? -2 * LINE_SPACING
+        : staffLines === 4
+          ? -1 * LINE_SPACING
+          : 0;
+    const staffBottomOffset = 2 * LINE_SPACING; // Always +64 (line 5)
+
+    // Calculate visual center offset to keep staff visually centered
+    // Visual center = (top + bottom) / 2
+    // 3 lines: (0 + 64) / 2 = 32, 4 lines: (-32 + 64) / 2 = 16, 5 lines: 0
+    const visualCenterOffset = (staffTopOffset + staffBottomOffset) / 2;
+
+    // Adjust staffCenterY so the staff is visually centered in its row
+    const staffCenterY = getStaffCenterY(systemIndex) - visualCenterOffset;
+
+    // Padding around staff for backgrounds and bar lines
+    const staffPadding = 20;
+
+    // Get per-system layout (variable beat width, fixed system width)
+    const sysLayout = getLayoutForSystem(systemLayouts, systemIndex);
+    const sysTotalBeats = sysLayout.totalBeats;
+    const sysBeatWidth = sysLayout.beatWidth;
+    const sysMeasures = sysLayout.measures;
+    const sysMeasuresPerSystem = sysLayout.measuresPerSystem;
+    const sysStaffRight = sysLayout.staffRight;
 
     // Get markers on this system
     const markersOnSystem = repeatMarkers.filter(
@@ -1998,46 +2444,47 @@ export function NoteEditor({
 
     return (
       <g key={`system-${systemIndex}`}>
-        {/* Beat shading - based on time signature groupings */}
-        {Array.from({ length: beatsPerSystem }, (_, beatIndex) => {
-          const beatX = LEFT_MARGIN + beatIndex * BEAT_WIDTH;
-          // Calculate which shade group this beat belongs to
-          let groupIndex = 0;
-          let beatCount = 0;
-          for (let i = 0; i < shadeGroups.length; i++) {
-            beatCount += shadeGroups[i];
-            if (beatIndex < beatCount) {
-              groupIndex = i;
-              break;
-            }
-          }
-          const isShaded = groupIndex % 2 === 1;
-          return (
-            <rect
-              key={`shade-${systemIndex}-${beatIndex}`}
-              x={beatX}
-              y={staffCenterY - LINE_SPACING - 20}
-              width={BEAT_WIDTH}
-              height={LINE_SPACING * 2 + 40}
-              fill={isShaded ? "#e2e8f0" : "#f8fafc"}
-            />
+        {/* Beat shading - simple alternating pattern across entire system */}
+        {sysMeasures.flatMap((measure) => {
+          return Array.from(
+            { length: measure.beatsInMeasure },
+            (_, beatInMeasure) => {
+              const beatInSystem = measure.startBeatInSystem + beatInMeasure;
+              // Use measure.xOffset to account for decoration spacing
+              const beatX =
+                LEFT_MARGIN + measure.xOffset + beatInMeasure * sysBeatWidth;
+              // Simple alternating pattern: white-gray-white-gray based on beat position
+              const isShaded = beatInSystem % 2 === 1;
+              return (
+                <rect
+                  key={`shade-${systemIndex}-${beatInSystem}`}
+                  x={beatX}
+                  y={staffCenterY + staffTopOffset - staffPadding}
+                  width={sysBeatWidth}
+                  height={staffBottomOffset - staffTopOffset + staffPadding * 2}
+                  fill={isShaded ? "#e2e8f0" : "#f8fafc"}
+                />
+              );
+            },
           );
         })}
 
         {/* Grid lines showing valid note positions */}
         {showGrid &&
-          Array.from({ length: beatsPerSystem * 2 }, (_, i) => {
+          Array.from({ length: sysTotalBeats * 2 }, (_, i) => {
             const beatPosition = i * 0.5;
-            // Grid lines are offset from bar lines, so all positions are valid
-            const gridX = LEFT_MARGIN + beatPosition * BEAT_WIDTH + NOTE_OFFSET;
+            // Grid lines are centered in beat columns, using getBeatXInSystem for decoration offsets
+            const gridX =
+              getBeatXInSystem(sysLayout, beatPosition) +
+              getNoteOffset(sysBeatWidth);
             const isFullBeat = beatPosition % 1 === 0;
             return (
               <line
                 key={`grid-${systemIndex}-${i}`}
                 x1={gridX}
-                y1={staffCenterY - LINE_SPACING - 15}
+                y1={staffCenterY + staffTopOffset - 15}
                 x2={gridX}
-                y2={staffCenterY + LINE_SPACING + 15}
+                y2={staffCenterY + staffBottomOffset + 15}
                 stroke="#10b981"
                 strokeWidth={isFullBeat ? 1.5 : 1}
                 strokeDasharray="4 3"
@@ -2046,33 +2493,72 @@ export function NoteEditor({
             );
           })}
 
-        {/* Staff lines - configurable count (2-5 lines) */}
-        {Array.from({ length: staffLines }, (_, i) => {
-          const offset = (i - (staffLines - 1) / 2) * LINE_SPACING;
-          return (
+        {/* Staff lines - configurable count (3-5 lines) */}
+        {/* Lines are at fixed positions based on a 5-line standard staff */}
+        {/* staffLines=3: lines 2,3,4 (-32,0,+32), staffLines=4: add line 5 (+64), staffLines=5: add line 1 (-64) */}
+        {(() => {
+          // Standard 5-line staff positions (fixed, never move)
+          const allLineOffsets = [
+            -2 * LINE_SPACING, // Line 1: top (-64)
+            -1 * LINE_SPACING, // Line 2 (-32)
+            0, // Line 3: middle (0)
+            1 * LINE_SPACING, // Line 4 (+32)
+            2 * LINE_SPACING, // Line 5: bottom (+64)
+          ];
+
+          // Which lines to show based on staffLines setting (indices into allLineOffsets)
+          // 3 lines = lines 3,4,5 (bottom 3), 4 lines = add line 2 above, 5 lines = add line 1 above
+          // All additions extend upward only
+          let linesToShow: number[];
+          switch (staffLines) {
+            case 3:
+              linesToShow = [2, 3, 4]; // Lines 3, 4, 5 (bottom 3) - DEFAULT
+              break;
+            case 4:
+              linesToShow = [1, 2, 3, 4]; // Lines 2-5 (add one above)
+              break;
+            case 5:
+            default:
+              linesToShow = [0, 1, 2, 3, 4]; // All 5 lines (add another above)
+              break;
+          }
+
+          return linesToShow.map((lineIndex) => (
             <line
-              key={`staff-line-${i}`}
+              key={`staff-line-${lineIndex}`}
               x1={STAFF_LEFT}
-              y1={staffCenterY + offset}
-              x2={staffRight}
-              y2={staffCenterY + offset}
+              y1={staffCenterY + allLineOffsets[lineIndex]}
+              x2={sysStaffRight}
+              y2={staffCenterY + allLineOffsets[lineIndex]}
               stroke="#4a5568"
               strokeWidth={2}
             />
-          );
-        })}
+          ));
+        })()}
 
-        {/* Bar lines - dynamic based on time signature */}
-        {Array.from(
-          { length: measuresPerSystem + 1 },
-          (_, i) => i * layout.beatsPerMeasure,
-        ).map((beat) => {
-          const barX = LEFT_MARGIN + beat * BEAT_WIDTH;
-          const measureIndex = beat / layout.beatsPerMeasure;
-          const isEdge = beat === 0 || beat === beatsPerSystem;
+        {/* Bar lines - at measure boundaries (variable widths per measure) */}
+        {[...sysMeasures, null].map((measure, measureIndex) => {
+          // Bar line at start of each measure, plus one at the end
+          const isLastBarLine = measure === null;
+
+          // Calculate bar line X position using xOffset (accounts for decorations)
+          let barX: number;
+          if (isLastBarLine) {
+            // Last bar line: after all content of the last measure
+            const lastMeasure = sysMeasures[sysMeasures.length - 1];
+            barX =
+              LEFT_MARGIN +
+              lastMeasure.xOffset +
+              lastMeasure.beatsInMeasure * sysBeatWidth +
+              lastMeasure.suffixWidth;
+          } else {
+            // Bar line at start of measure (before any prefix decorations)
+            barX = LEFT_MARGIN + measure.xOffset - measure.prefixWidth;
+          }
+
+          const isEdge = measureIndex === 0 || isLastBarLine;
 
           // Handle repeat markers at bar lines
-          const isLastBarLine = beat === beatsPerSystem;
           let startMarker, endMarker;
 
           if (isLastBarLine) {
@@ -2089,8 +2575,8 @@ export function NoteEditor({
           const isRepeatEnd = !!endMarker;
 
           // Check if this bar line already has a time signature change
-          const absoluteMeasure =
-            systemIndex * measuresPerSystem + measureIndex;
+          // Use the system's startMeasure + measureIndex for accurate absolute measure
+          const absoluteMeasure = sysLayout.startMeasure + measureIndex;
           const hasTimeSigChange = timeSignatureChanges.some(
             (c) => c.measureNumber === absoluteMeasure,
           );
@@ -2102,25 +2588,65 @@ export function NoteEditor({
             !hasTimeSigChange;
 
           return (
-            <g key={`bar-${systemIndex}-${beat}`}>
+            <g key={`bar-${systemIndex}-${measureIndex}`}>
               <line
                 x1={barX}
-                y1={staffCenterY - LINE_SPACING - 8}
+                y1={staffCenterY + staffTopOffset - 8}
                 x2={barX}
-                y2={staffCenterY + LINE_SPACING + 8}
-                stroke={isEdge ? "#334155" : "#94a3b8"}
+                y2={staffCenterY + staffBottomOffset + 8}
+                stroke={isEdge ? "#1e293b" : "#475569"}
                 strokeWidth={isEdge ? 4 : 2}
               />
 
-              {/* Time signature tool hover zone - ONLY at system start (measureIndex === 0) */}
+              {/* Time signature display - shown at measures where time sig changes or continues */}
+              {measure?.showTimeSig && (
+                <g>
+                  {/* Background for better readability */}
+                  <rect
+                    x={barX + 3}
+                    y={staffCenterY + visualCenterOffset - LINE_SPACING - 2}
+                    width={TIME_SIG_DISPLAY_WIDTH - 6}
+                    height={LINE_SPACING * 2 + 4}
+                    fill="white"
+                    opacity={0.8}
+                    rx={2}
+                  />
+                  {/* Numerator */}
+                  <text
+                    x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
+                    y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 4}
+                    fontSize={16}
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#1e293b"
+                    fontFamily="serif"
+                  >
+                    {measure.timeSignature.numerator}
+                  </text>
+                  {/* Denominator */}
+                  <text
+                    x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
+                    y={staffCenterY + visualCenterOffset + LINE_SPACING / 2 + 6}
+                    fontSize={16}
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#1e293b"
+                    fontFamily="serif"
+                  >
+                    {measure.timeSignature.denominator}
+                  </text>
+                </g>
+              )}
+
+              {/* Time signature tool hover zone - at any bar line (not last) */}
               {selectedTool === "timesig" &&
                 !hasTimeSigChange &&
-                measureIndex === 0 && (
+                !isLastBarLine && (
                   <rect
                     x={barX - 10}
-                    y={staffCenterY - LINE_SPACING - 15}
+                    y={staffCenterY + staffTopOffset - 15}
                     width={40}
-                    height={LINE_SPACING * 2 + 30}
+                    height={staffBottomOffset - staffTopOffset + 30}
                     fill="transparent"
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() =>
@@ -2138,12 +2664,12 @@ export function NoteEditor({
                   />
                 )}
 
-              {/* Ghost time signature preview on hover - only at system start */}
-              {isTimeSigHovered && measureIndex === 0 && (
+              {/* Ghost time signature preview on hover - at any bar line (not last) */}
+              {isTimeSigHovered && !isLastBarLine && (
                 <g opacity={0.5} style={{ pointerEvents: "none" }}>
                   <rect
                     x={barX + 5}
-                    y={staffCenterY - LINE_SPACING - 5}
+                    y={staffCenterY + visualCenterOffset - LINE_SPACING - 5}
                     width={25}
                     height={LINE_SPACING * 2 + 10}
                     fill="#e0f2fe"
@@ -2151,7 +2677,7 @@ export function NoteEditor({
                   />
                   <text
                     x={barX + 17}
-                    y={staffCenterY - LINE_SPACING / 2 + 5}
+                    y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 5}
                     fontSize={14}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -2161,7 +2687,7 @@ export function NoteEditor({
                   </text>
                   <text
                     x={barX + 17}
-                    y={staffCenterY + LINE_SPACING / 2 + 5}
+                    y={staffCenterY + visualCenterOffset + LINE_SPACING / 2 + 5}
                     fontSize={14}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -2218,9 +2744,9 @@ export function NoteEditor({
                   {/* Larger invisible hit box for easier interaction */}
                   <rect
                     x={barX - 5}
-                    y={staffCenterY - LINE_SPACING - 15}
+                    y={staffCenterY + staffTopOffset - 15}
                     width={35}
-                    height={LINE_SPACING * 2 + 30}
+                    height={staffBottomOffset - staffTopOffset + 30}
                     fill="transparent"
                     stroke={
                       hoveredMarker === startMarker.id
@@ -2239,9 +2765,9 @@ export function NoteEditor({
                   {hoveredMarker === startMarker.id && (
                     <rect
                       x={barX - 5}
-                      y={staffCenterY - LINE_SPACING - 15}
+                      y={staffCenterY + staffTopOffset - 15}
                       width={35}
-                      height={LINE_SPACING * 2 + 30}
+                      height={staffBottomOffset - staffTopOffset + 30}
                       fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
                       opacity={0.5}
                       rx={4}
@@ -2250,9 +2776,9 @@ export function NoteEditor({
                   )}
                   <line
                     x1={barX + 6}
-                    y1={staffCenterY - LINE_SPACING - 8}
+                    y1={staffCenterY + staffTopOffset - 8}
                     x2={barX + 6}
-                    y2={staffCenterY + LINE_SPACING + 8}
+                    y2={staffCenterY + staffBottomOffset + 8}
                     stroke={
                       hoveredMarker === startMarker.id
                         ? selectedTool === "delete"
@@ -2265,7 +2791,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX + 18}
-                    cy={staffCenterY - LINE_SPACING / 2}
+                    cy={staffCenterY + visualCenterOffset - LINE_SPACING / 2}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === startMarker.id
@@ -2278,7 +2804,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX + 18}
-                    cy={staffCenterY + LINE_SPACING / 2}
+                    cy={staffCenterY + visualCenterOffset + LINE_SPACING / 2}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === startMarker.id
@@ -2364,9 +2890,9 @@ export function NoteEditor({
                   {/* Larger invisible hit box for easier interaction */}
                   <rect
                     x={barX - 30}
-                    y={staffCenterY - LINE_SPACING - 15}
+                    y={staffCenterY + staffTopOffset - 15}
                     width={35}
-                    height={LINE_SPACING * 2 + 30}
+                    height={staffBottomOffset - staffTopOffset + 30}
                     fill="transparent"
                     stroke={
                       hoveredMarker === endMarker.id
@@ -2385,9 +2911,9 @@ export function NoteEditor({
                   {hoveredMarker === endMarker.id && (
                     <rect
                       x={barX - 30}
-                      y={staffCenterY - LINE_SPACING - 15}
+                      y={staffCenterY + staffTopOffset - 15}
                       width={35}
-                      height={LINE_SPACING * 2 + 30}
+                      height={staffBottomOffset - staffTopOffset + 30}
                       fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
                       opacity={0.5}
                       rx={4}
@@ -2396,9 +2922,9 @@ export function NoteEditor({
                   )}
                   <line
                     x1={barX - 6}
-                    y1={staffCenterY - LINE_SPACING - 8}
+                    y1={staffCenterY + staffTopOffset - 8}
                     x2={barX - 6}
-                    y2={staffCenterY + LINE_SPACING + 8}
+                    y2={staffCenterY + staffBottomOffset + 8}
                     stroke={
                       hoveredMarker === endMarker.id
                         ? selectedTool === "delete"
@@ -2411,7 +2937,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX - 18}
-                    cy={staffCenterY - LINE_SPACING / 2}
+                    cy={staffCenterY + visualCenterOffset - LINE_SPACING / 2}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === endMarker.id
@@ -2424,7 +2950,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX - 18}
-                    cy={staffCenterY + LINE_SPACING / 2}
+                    cy={staffCenterY + visualCenterOffset + LINE_SPACING / 2}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === endMarker.id
@@ -2470,16 +2996,12 @@ export function NoteEditor({
 
         {/* Time signature change markers */}
         {timeSignatureChanges.map((change) => {
-          // Calculate which system this change is on
-          const changeSystem = Math.floor(
-            change.measureNumber / measuresPerSystem,
-          );
-          if (changeSystem !== systemIndex) return null;
+          // Time sig changes are constrained to system start (measureIndex === 0)
+          // Check if this change belongs to the current system
+          if (change.measureNumber !== sysLayout.startMeasure) return null;
 
-          // Calculate x position for this measure's bar line
-          const measureInSystem = change.measureNumber % measuresPerSystem;
-          const barX =
-            LEFT_MARGIN + measureInSystem * layout.beatsPerMeasure * BEAT_WIDTH;
+          // measureInSystem is always 0 since changes only at system start
+          const barX = LEFT_MARGIN;
 
           return (
             <g
@@ -2550,10 +3072,13 @@ export function NoteEditor({
             const endSystem = hoveredRepeatMeasure?.system ?? startSystem;
             const endMeasure = hoveredRepeatMeasure?.measure ?? startMeasure;
 
+            // Get layouts for the involved systems to calculate absolute measures
+            const startLayout = getLayoutForSystem(systemLayouts, startSystem);
+            const endLayout = getLayoutForSystem(systemLayouts, endSystem);
+
             // Calculate absolute measure numbers for comparison
-            const startAbsolute =
-              startSystem * measuresPerSystem + startMeasure;
-            const endAbsolute = endSystem * measuresPerSystem + endMeasure;
+            const startAbsolute = startLayout.startMeasure + startMeasure;
+            const endAbsolute = endLayout.startMeasure + endMeasure;
 
             // Ensure start comes before end
             const [minAbsolute, maxAbsolute] =
@@ -2562,20 +3087,21 @@ export function NoteEditor({
                 : [endAbsolute, startAbsolute];
 
             // Calculate which measures on this system should be highlighted
-            const systemStartMeasure = systemIndex * measuresPerSystem;
-            const systemEndMeasure = systemStartMeasure + measuresPerSystem - 1;
+            const systemStartMeasure = sysLayout.startMeasure;
+            const systemEndMeasure =
+              systemStartMeasure + sysMeasuresPerSystem - 1;
 
             const highlightStart = Math.max(
               0,
               minAbsolute - systemStartMeasure,
             );
             const highlightEnd = Math.min(
-              measuresPerSystem - 1,
+              sysMeasuresPerSystem - 1,
               maxAbsolute - systemStartMeasure,
             );
 
             // Only render if this system has measures to highlight
-            if (highlightStart > measuresPerSystem - 1 || highlightEnd < 0) {
+            if (highlightStart > sysMeasuresPerSystem - 1 || highlightEnd < 0) {
               return null;
             }
 
@@ -2595,26 +3121,35 @@ export function NoteEditor({
 
             return (
               <g>
-                {measures.map((m) => (
-                  <rect
-                    key={`highlight-${m}`}
-                    x={LEFT_MARGIN + m * layout.beatsPerMeasure * BEAT_WIDTH}
-                    y={staffCenterY - LINE_SPACING - 15}
-                    width={layout.beatsPerMeasure * BEAT_WIDTH}
-                    height={LINE_SPACING * 2 + 30}
-                    fill="#8b5cf6"
-                    opacity={0.15}
-                    rx={4}
-                  />
-                ))}
+                {measures.map((m) => {
+                  // Get measure info to calculate position
+                  const measureInfo = sysMeasures[m];
+                  if (!measureInfo) return null;
+                  const measureX =
+                    LEFT_MARGIN + measureInfo.startBeatInSystem * sysBeatWidth;
+                  const measureWidth =
+                    measureInfo.beatsInMeasure * sysBeatWidth;
+                  return (
+                    <rect
+                      key={`highlight-${m}`}
+                      x={measureX}
+                      y={staffCenterY - LINE_SPACING - 15}
+                      width={measureWidth}
+                      height={LINE_SPACING * 2 + 30}
+                      fill="#8b5cf6"
+                      opacity={0.15}
+                      rx={4}
+                    />
+                  );
+                })}
               </g>
             );
           })()}
 
-        {/* Treble clef */}
+        {/* Treble clef - centered on visible staff */}
         <text
           x={55}
-          y={staffCenterY + 15}
+          y={staffCenterY + visualCenterOffset + 15}
           fontSize={50}
           fill="#334155"
           style={{ pointerEvents: "none" }}
@@ -2639,14 +3174,14 @@ export function NoteEditor({
             {/* Invisible hit area for better click target */}
             <rect
               x={70}
-              y={staffCenterY - LINE_SPACING}
+              y={staffCenterY + staffTopOffset}
               width={30}
-              height={LINE_SPACING * 2}
+              height={staffBottomOffset - staffTopOffset}
               fill="transparent"
             />
             <text
               x={85}
-              y={staffCenterY - LINE_SPACING / 2 + 6}
+              y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 6}
               fontSize={20}
               fontWeight="bold"
               textAnchor="middle"
@@ -2656,7 +3191,7 @@ export function NoteEditor({
             </text>
             <text
               x={85}
-              y={staffCenterY + LINE_SPACING / 2 + 6}
+              y={staffCenterY + visualCenterOffset + LINE_SPACING / 2 + 6}
               fontSize={20}
               fontWeight="bold"
               textAnchor="middle"
@@ -2667,17 +3202,20 @@ export function NoteEditor({
           </g>
         )}
 
-        {/* Beat numbers */}
-        {Array.from({ length: beatsPerSystem }, (_, i) => i + 1).map((beat) => (
+        {/* Beat numbers - positioned below the staff */}
+        {Array.from({ length: sysTotalBeats }, (_, i) => i).map((beatIndex) => (
           <text
-            key={`beat-${systemIndex}-${beat}`}
-            x={LEFT_MARGIN + (beat - 0.5) * BEAT_WIDTH}
-            y={staffCenterY + LINE_SPACING + 35}
+            key={`beat-${systemIndex}-${beatIndex}`}
+            x={
+              getBeatXInSystem(sysLayout, beatIndex) +
+              getNoteOffset(sysBeatWidth)
+            }
+            y={staffCenterY + staffBottomOffset + 25}
             fontSize={11}
             textAnchor="middle"
             fill="#64748b"
           >
-            {systemIndex * beatsPerSystem + beat}
+            {sysLayout.startBeat + beatIndex + 1}
           </text>
         ))}
 
@@ -2763,12 +3301,18 @@ export function NoteEditor({
           Array.from({ length: systemCount }, (_, systemIndex) => {
             const staffCenterY = getStaffCenterY(systemIndex);
             const lyricsZoneY = staffCenterY + LINE_SPACING + 40;
+            const lyricsZoneLayout = getLayoutForSystem(
+              systemLayouts,
+              systemIndex,
+            );
+            // Fixed system width: staffRight - LEFT_MARGIN
+            const lyricsZoneWidth = lyricsZoneLayout.staffRight - LEFT_MARGIN;
             return (
               <rect
                 key={`lyrics-zone-${systemIndex}`}
                 x={LEFT_MARGIN}
                 y={lyricsZoneY}
-                width={beatsPerSystem * BEAT_WIDTH}
+                width={lyricsZoneWidth}
                 height={30}
                 fill="#fef3c7"
                 opacity={0.5}
@@ -2780,8 +3324,14 @@ export function NoteEditor({
 
         {/* Lyrics below each system */}
         {lyrics.map((lyric) => {
-          const system = Math.floor(lyric.absoluteBeat / beatsPerSystem);
-          if (system >= systemCount) return null;
+          // Use helper to find system for this absolute beat (handles variable time signatures)
+          const lyricPosition = getSystemForAbsoluteBeat(
+            systemLayouts,
+            lyric.absoluteBeat,
+          );
+          if (!lyricPosition || lyricPosition.systemIndex >= systemCount)
+            return null;
+          const system = lyricPosition.systemIndex;
 
           // Skip rendering if this lyric is being edited inline
           if (
@@ -2791,8 +3341,15 @@ export function NoteEditor({
             return null;
           }
 
-          const beatInSystem = lyric.absoluteBeat % beatsPerSystem;
-          const x = LEFT_MARGIN + beatInSystem * BEAT_WIDTH + NOTE_OFFSET;
+          // Get system's beat width for variable widths
+          const lyricSysLayout = getLayoutForSystem(systemLayouts, system);
+          const lyricBeatWidth = lyricSysLayout.beatWidth;
+
+          const beatInSystem = lyricPosition.beatInSystem;
+          const x =
+            LEFT_MARGIN +
+            beatInSystem * lyricBeatWidth +
+            getNoteOffset(lyricBeatWidth);
           const staffCenterY = getStaffCenterY(system);
           const lyricsY = staffCenterY + LINE_SPACING + 55;
 
@@ -2879,9 +3436,13 @@ export function NoteEditor({
               ? `url(#beam-gradient-${groupIndex})`
               : colors[0];
 
-          // Calculate stem X positions
+          // Calculate stem X positions using system-specific beat width
+          // Use getBeatXInSystem to account for decoration widths
           const stemXs = groupNotes.map((note) => {
-            const noteX = getXFromBeat(note.beat);
+            const sysLayout = getLayoutForSystem(systemLayouts, note.system);
+            const noteX =
+              getBeatXInSystem(sysLayout, note.beat) +
+              getNoteOffset(sysLayout.beatWidth);
             return stemDirection === "up" ? noteX + 13 : noteX - 13;
           });
 
@@ -3029,7 +3590,14 @@ export function NoteEditor({
               {/* Dots for dotted notes within beam group */}
               {groupNotes.map((note, i) => {
                 if (note.duration !== 0.75) return null;
-                const noteX = getXFromBeat(note.beat);
+                const dotSysLayout = getLayoutForSystem(
+                  systemLayouts,
+                  note.system,
+                );
+                // Use getBeatXInSystem to account for decoration widths
+                const noteX =
+                  getBeatXInSystem(dotSysLayout, note.beat) +
+                  getNoteOffset(dotSysLayout.beatWidth);
                 const noteY = getYFromPitch(note.pitch, note.system);
                 return (
                   <circle
@@ -3057,17 +3625,26 @@ export function NoteEditor({
             const hoverStaffCenterY = getStaffCenterY(
               hoveredRepeatMeasure.system,
             );
+            // Get measure position from system layout for variable beat widths
+            const hoverSysLayout = getLayoutForSystem(
+              systemLayouts,
+              hoveredRepeatMeasure.system,
+            );
+            const hoverMeasureInfo =
+              hoverSysLayout.measures[hoveredRepeatMeasure.measure];
+            if (!hoverMeasureInfo) return null;
+            const hoverMeasureX =
+              LEFT_MARGIN +
+              hoverMeasureInfo.startBeatInSystem * hoverSysLayout.beatWidth;
+            const hoverMeasureWidth =
+              hoverMeasureInfo.beatsInMeasure * hoverSysLayout.beatWidth;
+            const hoverMeasureCenterX = hoverMeasureX + hoverMeasureWidth / 2;
             return (
               <g>
                 <rect
-                  x={
-                    LEFT_MARGIN +
-                    hoveredRepeatMeasure.measure *
-                      layout.beatsPerMeasure *
-                      BEAT_WIDTH
-                  }
+                  x={hoverMeasureX}
                   y={hoverStaffCenterY - LINE_SPACING - 15}
-                  width={layout.beatsPerMeasure * BEAT_WIDTH}
+                  width={hoverMeasureWidth}
                   height={LINE_SPACING * 2 + 30}
                   fill="#8b5cf6"
                   opacity={0.15}
@@ -3075,14 +3652,7 @@ export function NoteEditor({
                 />
                 {/* Instructional text */}
                 <rect
-                  x={
-                    LEFT_MARGIN +
-                    hoveredRepeatMeasure.measure *
-                      layout.beatsPerMeasure *
-                      BEAT_WIDTH +
-                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2 -
-                    60
-                  }
+                  x={hoverMeasureCenterX - 60}
                   y={hoverStaffCenterY - LINE_SPACING - 32}
                   width={120}
                   height={24}
@@ -3092,13 +3662,7 @@ export function NoteEditor({
                   rx={6}
                 />
                 <text
-                  x={
-                    LEFT_MARGIN +
-                    hoveredRepeatMeasure.measure *
-                      layout.beatsPerMeasure *
-                      BEAT_WIDTH +
-                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2
-                  }
+                  x={hoverMeasureCenterX}
                   y={hoverStaffCenterY - LINE_SPACING - 16}
                   fontSize={12}
                   fontWeight="600"
@@ -3147,14 +3711,26 @@ export function NoteEditor({
                 : "Click to set END"
               : "Click to set END";
 
+            // Get measure position from system layout for variable beat widths
+            const textSysLayout = getLayoutForSystem(
+              systemLayouts,
+              showTextSystem,
+            );
+            const textMeasureInfo = textSysLayout.measures[showTextMeasure];
+            if (!textMeasureInfo) return null;
+            const textMeasureX =
+              LEFT_MARGIN +
+              textMeasureInfo.startBeatInSystem * textSysLayout.beatWidth;
+            const textMeasureWidth =
+              textMeasureInfo.beatsInMeasure * textSysLayout.beatWidth;
+            const textMeasureCenterX = textMeasureX + textMeasureWidth / 2;
+
             return (
               <g>
                 {/* Background rectangle for text visibility */}
                 <rect
                   x={
-                    LEFT_MARGIN +
-                    showTextMeasure * layout.beatsPerMeasure * BEAT_WIDTH +
-                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2 -
+                    textMeasureCenterX -
                     (textToShow === "Click to set END" ? 55 : 60)
                   }
                   y={staffCenterY - LINE_SPACING - 32}
@@ -3168,11 +3744,7 @@ export function NoteEditor({
                 />
                 {/* Text on top */}
                 <text
-                  x={
-                    LEFT_MARGIN +
-                    showTextMeasure * layout.beatsPerMeasure * BEAT_WIDTH +
-                    (layout.beatsPerMeasure * BEAT_WIDTH) / 2
-                  }
+                  x={textMeasureCenterX}
                   y={staffCenterY - LINE_SPACING - 16}
                   fontSize={12}
                   fontWeight="600"
@@ -3225,25 +3797,40 @@ export function NoteEditor({
         {draggedMarker && markerDragPosition && (
           <g style={{ pointerEvents: "none" }}>
             {/* Target measure highlight - end markers highlight the measure BEFORE the bar line */}
-            <rect
-              x={
+            {(() => {
+              const dragSysLayout = getLayoutForSystem(
+                systemLayouts,
+                markerDragPosition.targetSystem,
+              );
+              const highlightMeasureIndex = Math.max(
+                0,
+                markerDragPosition.targetMeasure -
+                  (draggedMarker.type === "end" ? 1 : 0),
+              );
+              const dragMeasureInfo =
+                dragSysLayout.measures[highlightMeasureIndex];
+              if (!dragMeasureInfo) return null;
+              const dragMeasureX =
                 LEFT_MARGIN +
-                (markerDragPosition.targetMeasure -
-                  (draggedMarker.type === "end" ? 1 : 0)) *
-                  layout.beatsPerMeasure *
-                  BEAT_WIDTH
-              }
-              y={
-                getStaffCenterY(markerDragPosition.targetSystem) -
-                LINE_SPACING -
-                15
-              }
-              width={layout.beatsPerMeasure * BEAT_WIDTH}
-              height={LINE_SPACING * 2 + 30}
-              fill="#a855f7"
-              opacity={0.2}
-              rx={4}
-            />
+                dragMeasureInfo.startBeatInSystem * dragSysLayout.beatWidth;
+              const dragMeasureWidth =
+                dragMeasureInfo.beatsInMeasure * dragSysLayout.beatWidth;
+              return (
+                <rect
+                  x={dragMeasureX}
+                  y={
+                    getStaffCenterY(markerDragPosition.targetSystem) -
+                    LINE_SPACING -
+                    15
+                  }
+                  width={dragMeasureWidth}
+                  height={LINE_SPACING * 2 + 30}
+                  fill="#a855f7"
+                  opacity={0.2}
+                  rx={4}
+                />
+              );
+            })()}
             {/* Floating marker preview following mouse */}
             <g
               transform={`translate(${markerDragPosition.x - 15}, ${markerDragPosition.y - 40})`}

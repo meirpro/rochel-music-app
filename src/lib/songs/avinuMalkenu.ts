@@ -1,6 +1,6 @@
 // Avinu Malkenu (אבינו מלכנו) - Chabad Nigun
 // Key: Eb major / C minor (3 flats: Bb, Eb, Ab)
-// Time: 3/4 (measures 1-6), changes to 4/4 at measure 7
+// Time: 3/4 throughout (no mid-song time signature changes)
 // Source: Admor HaZaken
 import { SongData } from "./types";
 
@@ -106,12 +106,6 @@ export const avinuMalkenu: SongData = {
   settings: {
     tempo: 72,
     timeSignature: { numerator: 3, denominator: 4 },
-    timeSignatureChanges: [
-      {
-        id: "avinu-ts-change-1",
-        measureNumber: 6, // Measure 7 (0-indexed)
-        timeSignature: { numerator: 4, denominator: 4 },
-      },
-    ],
+    // No mid-song time signature changes - UI only supports changes at system starts
   },
 };

@@ -23,14 +23,23 @@ import {
   Tone,
 } from "@/lib/audio/TonePlayer";
 import { pitchToMidi } from "@/lib/constants";
-import { Pitch, EditorNote, RepeatMarker, TimeSignature } from "@/lib/types";
 import {
-  getLayoutConfig,
+  Pitch,
+  EditorNote,
+  RepeatMarker,
+  TimeSignature,
+  TimeSignatureChange,
+} from "@/lib/types";
+import { getLayoutConfig } from "@/components/NoteEditor";
+import {
   LEFT_MARGIN,
-  BEAT_WIDTH,
   SYSTEM_HEIGHT,
   SYSTEM_TOP_MARGIN,
-} from "@/components/NoteEditor";
+  MIN_BEAT_WIDTH,
+  BASE_BEAT_WIDTH,
+  TIME_SIG_DISPLAY_WIDTH,
+  REPEAT_MARKER_WIDTH,
+} from "@/lib/layoutUtils";
 
 // Playback types
 interface PlaybackNote extends EditorNote {
@@ -52,11 +61,29 @@ interface UsePlaybackOptions {
   };
   tempo: number;
   timeSignature: TimeSignature;
+  timeSignatureChanges?: TimeSignatureChange[];
   measuresPerRow: number;
   totalMeasures: number;
   containerWidth?: number;
   containerHeight?: number;
   onScrollTo?: (scrollLeft: number, scrollTop: number) => void;
+  noteSpacing?: number; // 1.0 to 2.0, default 1.0
+}
+
+// Measure info for playback cursor positioning
+interface PlaybackMeasureInfo {
+  startBeatInSystem: number;
+  beatsInMeasure: number;
+  xOffset: number; // X offset accounting for decorations
+}
+
+// Simplified system layout for playback cursor positioning
+interface PlaybackSystemLayout {
+  startBeat: number; // Absolute beat where this system starts
+  totalBeats: number;
+  beatWidth: number;
+  staffRight: number;
+  measures: PlaybackMeasureInfo[]; // Measure-level info for xOffset
 }
 
 interface UsePlaybackReturn {
@@ -79,11 +106,13 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     composition,
     tempo,
     timeSignature,
+    timeSignatureChanges = [],
     measuresPerRow,
     totalMeasures,
     containerWidth,
     containerHeight,
     onScrollTo,
+    noteSpacing = 1.0,
   } = options;
 
   // Playback state
@@ -135,9 +164,180 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
   // Build playback data (extracted for reuse)
   const buildPlaybackData = useCallback(() => {
     const layout = getLayoutConfig(timeSignature, measuresPerRow);
-    const beatsPerMeasure = layout.beatsPerMeasure;
-    const BEATS_PER_SYSTEM = measuresPerRow * beatsPerMeasure;
-    const totalBeats = totalMeasures * beatsPerMeasure;
+    const defaultBeatsPerMeasure = layout.beatsPerMeasure;
+    const systemCount = Math.ceil(totalMeasures / measuresPerRow);
+
+    // Sort time signature changes for lookup
+    const sortedChanges = [...timeSignatureChanges].sort(
+      (a, b) => a.measureNumber - b.measureNumber,
+    );
+
+    // Helper to get time signature at a given measure
+    const getTimeSigAtMeasure = (measureNum: number) => {
+      let timeSig = timeSignature;
+      for (const change of sortedChanges) {
+        if (change.measureNumber <= measureNum) {
+          timeSig = change.timeSignature;
+        } else {
+          break;
+        }
+      }
+      return timeSig;
+    };
+
+    // Helper to get beats per measure at a given measure
+    const getBeatsAtMeasure = (measureNum: number): number => {
+      return getTimeSigAtMeasure(measureNum).numerator;
+    };
+
+    // Helper to check if time sig should be displayed at a measure
+    // Must match NoteEditor logic exactly for cursor alignment
+    const shouldShowTimeSig = (
+      measureNum: number,
+      isFirstInRow: boolean,
+    ): boolean => {
+      // Don't show at measure 0 - it's already shown in the left margin
+      if (measureNum === 0) return false;
+      if (sortedChanges.some((c) => c.measureNumber === measureNum))
+        return true;
+      if (isFirstInRow) {
+        const currentSig = getTimeSigAtMeasure(measureNum);
+        const prevSig = getTimeSigAtMeasure(measureNum - 1);
+        return (
+          currentSig.numerator !== timeSignature.numerator ||
+          currentSig.denominator !== timeSignature.denominator ||
+          prevSig.numerator !== currentSig.numerator ||
+          prevSig.denominator !== currentSig.denominator
+        );
+      }
+      return false;
+    };
+
+    // Create sets for repeat marker lookup (using absolute measureNumber)
+    const repeatStartMeasures = new Set(
+      composition.repeatMarkers
+        .filter((m) => m.type === "start")
+        .map((m) => m.measureNumber),
+    );
+    const repeatEndMeasures = new Set(
+      composition.repeatMarkers
+        .filter((m) => m.type === "end")
+        .map((m) => m.measureNumber),
+    );
+
+    // Calculate per-system layouts (matching NoteEditor logic with decorations)
+    const systemLayouts: PlaybackSystemLayout[] = [];
+    let maxEffectiveWidth = 0;
+
+    // Pass 1: Calculate total beats and decoration widths for each system
+    interface SystemData {
+      measures: PlaybackMeasureInfo[];
+      totalBeats: number;
+      totalDecorationWidth: number;
+      startBeat: number;
+    }
+    const systemData: SystemData[] = [];
+    let absoluteBeat = 0;
+
+    for (let sysIdx = 0; sysIdx < systemCount; sysIdx++) {
+      const startMeasure = sysIdx * measuresPerRow;
+      const measures: PlaybackMeasureInfo[] = [];
+      let systemTotalBeats = 0;
+      let totalDecorationWidth = 0;
+
+      for (let m = 0; m < measuresPerRow; m++) {
+        const measureNum = startMeasure + m;
+        if (measureNum >= totalMeasures) break;
+
+        const beatsInMeasure = getBeatsAtMeasure(measureNum);
+        const isFirstInRow = m === 0;
+        const showTimeSig = shouldShowTimeSig(measureNum, isFirstInRow);
+        const hasRepeatStart = repeatStartMeasures.has(measureNum);
+        const hasRepeatEnd = repeatEndMeasures.has(measureNum);
+
+        let prefixWidth = 0;
+        if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+        if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
+
+        let suffixWidth = 0;
+        if (hasRepeatEnd) suffixWidth += REPEAT_MARKER_WIDTH;
+
+        measures.push({
+          startBeatInSystem: systemTotalBeats,
+          beatsInMeasure,
+          xOffset: 0, // Will be calculated in pass 2
+        });
+
+        systemTotalBeats += beatsInMeasure;
+        totalDecorationWidth += prefixWidth + suffixWidth;
+      }
+
+      systemData.push({
+        measures,
+        totalBeats: systemTotalBeats,
+        totalDecorationWidth,
+        startBeat: absoluteBeat,
+      });
+
+      const effectiveBeatWidth = BASE_BEAT_WIDTH * noteSpacing;
+      const systemEffectiveWidth =
+        systemTotalBeats * Math.max(MIN_BEAT_WIDTH, effectiveBeatWidth) +
+        totalDecorationWidth;
+      maxEffectiveWidth = Math.max(maxEffectiveWidth, systemEffectiveWidth);
+
+      absoluteBeat += systemTotalBeats;
+    }
+
+    // Calculate uniform width and staffRight
+    const uniformContentWidth = maxEffectiveWidth;
+    const staffRight = LEFT_MARGIN + uniformContentWidth;
+
+    // Pass 2: Build system layouts with per-system beat widths and xOffsets
+    for (let sysIdx = 0; sysIdx < systemCount; sysIdx++) {
+      const data = systemData[sysIdx];
+      const { measures, totalBeats, totalDecorationWidth, startBeat } = data;
+
+      const availableForBeats = uniformContentWidth - totalDecorationWidth;
+      const beatWidth =
+        totalBeats > 0 ? availableForBeats / totalBeats : BASE_BEAT_WIDTH;
+
+      // Calculate xOffsets for each measure
+      let currentX = 0;
+      const startMeasure = sysIdx * measuresPerRow;
+      for (let m = 0; m < measures.length; m++) {
+        const measureNum = startMeasure + m;
+        const isFirstInRow = m === 0;
+        const showTimeSig = shouldShowTimeSig(measureNum, isFirstInRow);
+        const hasRepeatStart = repeatStartMeasures.has(measureNum);
+
+        let prefixWidth = 0;
+        if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+        if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
+
+        measures[m].xOffset = currentX + prefixWidth;
+
+        const hasRepeatEnd = repeatEndMeasures.has(measureNum);
+        let suffixWidth = 0;
+        if (hasRepeatEnd) suffixWidth += REPEAT_MARKER_WIDTH;
+
+        currentX =
+          measures[m].xOffset +
+          measures[m].beatsInMeasure * beatWidth +
+          suffixWidth;
+      }
+
+      systemLayouts.push({
+        startBeat,
+        totalBeats,
+        beatWidth,
+        staffRight,
+        measures,
+      });
+    }
+
+    // Use default for backward compatibility in repeat calculations
+    const totalBeats = absoluteBeat;
+    const beatsPerMeasure = defaultBeatsPerMeasure;
 
     // Sort notes by absoluteBeat for playback
     const sortedNotes = [...composition.notes].sort(
@@ -250,12 +450,49 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     // Build visual timeline segments for playhead
     const timeline: TimelineSegment[] = [];
 
+    // Helper to find which system contains a given absolute beat
+    const getSystemForBeat = (absBeat: number): number => {
+      for (let i = 0; i < systemLayouts.length; i++) {
+        const sys = systemLayouts[i];
+        const nextStart =
+          i < systemLayouts.length - 1
+            ? systemLayouts[i + 1].startBeat
+            : sys.startBeat + sys.totalBeats;
+        if (absBeat >= sys.startBeat && absBeat < nextStart) {
+          return i;
+        }
+      }
+      return systemLayouts.length - 1;
+    };
+
     const absoluteBeatToVisual = (absBeat: number) => {
-      const system = Math.floor(absBeat / BEATS_PER_SYSTEM);
-      const beatInSystem = absBeat % BEATS_PER_SYSTEM;
+      const systemIdx = getSystemForBeat(absBeat);
+      const sys = systemLayouts[systemIdx] || systemLayouts[0];
+      const beatInSystem = absBeat - sys.startBeat;
+
+      // Find the measure containing this beat and use its xOffset
+      let measureXOffset = 0;
+      let beatInMeasure = beatInSystem;
+      for (const measure of sys.measures) {
+        if (
+          beatInSystem >= measure.startBeatInSystem &&
+          beatInSystem < measure.startBeatInSystem + measure.beatsInMeasure
+        ) {
+          measureXOffset = measure.xOffset;
+          beatInMeasure = beatInSystem - measure.startBeatInSystem;
+          break;
+        }
+      }
+
+      // NOTE: Don't add noteOffset here - the cursor tracks continuous time
+      // progression, while noteOffset is for positioning static note elements.
+      // Adding it here made the cursor appear 25% ahead of actual playback.
+
       return {
-        system,
-        x: LEFT_MARGIN + beatInSystem * BEAT_WIDTH,
+        system: systemIdx,
+        x: LEFT_MARGIN + measureXOffset + beatInMeasure * sys.beatWidth,
+        beatWidth: sys.beatWidth,
+        systemEndBeat: sys.startBeat + sys.totalBeats,
       };
     };
 
@@ -269,20 +506,19 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
       while (currentBeat < endAbsBeat) {
         const startVisual = absoluteBeatToVisual(currentBeat);
-        const systemEndBeat = (startVisual.system + 1) * BEATS_PER_SYSTEM;
+        const systemEndBeat = startVisual.systemEndBeat;
         const segmentEndBeat = Math.min(endAbsBeat, systemEndBeat);
         const endVisual = absoluteBeatToVisual(segmentEndBeat);
 
         const duration = segmentEndBeat - currentBeat;
+        const sys = systemLayouts[startVisual.system] || systemLayouts[0];
+
         timeline.push({
           startBeat: currentTimelineBeat,
           endBeat: currentTimelineBeat + duration,
           system: startVisual.system,
           startX: startVisual.x,
-          endX:
-            segmentEndBeat === systemEndBeat
-              ? LEFT_MARGIN + BEATS_PER_SYSTEM * BEAT_WIDTH
-              : endVisual.x,
+          endX: segmentEndBeat === systemEndBeat ? sys.staffRight : endVisual.x,
         });
 
         currentTimelineBeat += duration;
@@ -334,9 +570,16 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       timeline,
       totalPlaybackSeconds,
       totalPlaybackBeats,
-      BEATS_PER_SYSTEM,
     };
-  }, [composition, tempo, timeSignature, measuresPerRow, totalMeasures]);
+  }, [
+    composition,
+    tempo,
+    timeSignature,
+    timeSignatureChanges,
+    measuresPerRow,
+    totalMeasures,
+    noteSpacing,
+  ]);
 
   // Calculate playhead position from current beat
   const getPlayheadPosition = useCallback(

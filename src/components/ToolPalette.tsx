@@ -697,7 +697,7 @@ export function ToolPalette({
           {ACTION_TOOLS.map((tool) => {
             const isMove = tool.id === "move";
             const isActive = isMove ? allowMove : selectedTool === tool.id;
-            const tourId = TOOL_TOUR_IDS[tool.id];
+            const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
 
             return (
               <Tooltip.Root key={tool.id} delayDuration={300}>

@@ -60,6 +60,7 @@ interface EditorSettings {
   pianoUseColors: boolean;
   pianoShowBlackKeys: boolean;
   staffLines: number; // 2-5, default 3 - number of horizontal lines per staff
+  noteSpacing: number; // 1.0-2.0 (100%-200%) - controls beat width multiplier
 }
 
 interface EditorUI {
@@ -89,6 +90,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   pianoUseColors: true,
   pianoShowBlackKeys: false,
   staffLines: 3, // Default: 3 horizontal lines per staff
+  noteSpacing: 1.0, // Default: 100% (compact) - range 1.0-2.0
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -270,11 +272,13 @@ export default function Home() {
     composition: composition as Composition,
     tempo: settings.tempo,
     timeSignature: settings.timeSignature,
+    timeSignatureChanges,
     measuresPerRow,
     totalMeasures,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
     onScrollTo: handleScrollTo,
+    noteSpacing: settings.noteSpacing ?? 1.0,
   });
 
   // Undo/Redo state
@@ -742,6 +746,7 @@ export default function Home() {
                 svgRef={svgRef}
                 readOnly={isMobile}
                 staffLines={settings.staffLines ?? 3}
+                noteSpacing={settings.noteSpacing ?? 1.0}
                 timeSignatureChanges={timeSignatureChanges}
                 onTimeSignatureChangesChange={handleTimeSignatureChangesChange}
                 onTimeSignatureClick={() =>
@@ -848,6 +853,10 @@ export default function Home() {
         staffLines={settings.staffLines ?? 3}
         onStaffLinesChange={(count) =>
           setSettings({ ...settings, staffLines: count })
+        }
+        noteSpacing={settings.noteSpacing ?? 1.0}
+        onNoteSpacingChange={(spacing) =>
+          setSettings({ ...settings, noteSpacing: spacing })
         }
       />
 

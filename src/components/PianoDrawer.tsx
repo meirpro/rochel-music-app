@@ -290,12 +290,19 @@ export function PianoDrawer({
   };
 
   // Check if a key is pressed (keyboard, mouse, or playback)
+  // For playback, compare by MIDI value to handle enharmonic equivalents
+  // (e.g., Bb4 from song should highlight A#4 on piano)
   const isKeyPressed = (pitch: Pitch) => {
-    return (
-      pressedKeys.has(pitch) ||
-      mousePressed === pitch ||
-      currentPlaybackHighlight === pitch
-    );
+    if (pressedKeys.has(pitch) || mousePressed === pitch) {
+      return true;
+    }
+    // For playback highlight, compare by MIDI value (handles Bb vs A# etc.)
+    if (currentPlaybackHighlight) {
+      const keyMidi = pitchToMidi(pitch);
+      const highlightMidi = pitchToMidi(currentPlaybackHighlight);
+      return keyMidi === highlightMidi && keyMidi > 0;
+    }
+    return false;
   };
 
   return (

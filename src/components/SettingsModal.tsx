@@ -35,6 +35,9 @@ interface SettingsModalProps {
 
   staffLines: number;
   onStaffLinesChange: (count: number) => void;
+
+  noteSpacing: number;
+  onNoteSpacingChange: (spacing: number) => void;
 }
 
 export function SettingsModal({
@@ -56,6 +59,8 @@ export function SettingsModal({
   onAllowChordsChange,
   staffLines,
   onStaffLinesChange,
+  noteSpacing,
+  onNoteSpacingChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -228,23 +233,23 @@ export function SettingsModal({
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-4">2</span>
+                <span className="text-xs text-gray-500 w-4">3</span>
                 <input
                   type="range"
-                  min="2"
+                  min="3"
                   max="5"
                   step="1"
                   value={staffLines}
                   onChange={(e) => onStaffLinesChange(Number(e.target.value))}
                   className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
                   style={{
-                    background: `linear-gradient(to right, #60a5fa 0%, #60a5fa ${((staffLines - 2) / 3) * 100}%, #e5e7eb ${((staffLines - 2) / 3) * 100}%, #e5e7eb 100%)`,
+                    background: `linear-gradient(to right, #60a5fa 0%, #60a5fa ${((staffLines - 3) / 2) * 100}%, #e5e7eb ${((staffLines - 3) / 2) * 100}%, #e5e7eb 100%)`,
                   }}
                 />
                 <span className="text-xs text-gray-500 w-4">5</span>
               </div>
               <div className="flex justify-between text-xs text-gray-400 px-5">
-                {[2, 3, 4, 5].map((n) => (
+                {[3, 4, 5].map((n) => (
                   <span
                     key={n}
                     className={n === staffLines ? "text-blue-600" : ""}
@@ -252,6 +257,38 @@ export function SettingsModal({
                     {n === staffLines ? "●" : "○"}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            {/* Note Spacing Slider - controls beat width */}
+            <div className="p-3 bg-white rounded-xl border-2 border-gray-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-medium text-gray-700">
+                  Note Spacing
+                </span>
+                <span className="text-lg font-semibold text-purple-600">
+                  {Math.round(noteSpacing * 100)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-10">100%</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="2"
+                  step="0.1"
+                  value={noteSpacing}
+                  onChange={(e) => onNoteSpacingChange(Number(e.target.value))}
+                  className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #c084fc 0%, #c084fc ${((noteSpacing - 1) / 1) * 100}%, #e5e7eb ${((noteSpacing - 1) / 1) * 100}%, #e5e7eb 100%)`,
+                  }}
+                />
+                <span className="text-xs text-gray-500 w-10">200%</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 px-10">
+                <span>Compact</span>
+                <span>Spacious</span>
               </div>
             </div>
 
