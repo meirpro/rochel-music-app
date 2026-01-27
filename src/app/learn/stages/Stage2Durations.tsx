@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
@@ -40,6 +40,26 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
   const [showComplete, setShowComplete] = useState(false);
   const [playingDuration, setPlayingDuration] = useState<number | null>(null);
 
+  // Refs for scrolling to sections
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+  const step4Ref = useRef<HTMLDivElement>(null);
+
+  // Scroll to newly revealed section when step changes
+  useEffect(() => {
+    const refs = [step1Ref, step2Ref, step3Ref, step4Ref];
+    const targetRef = refs[step];
+    if (targetRef?.current && step > 0) {
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [step]);
+
   const handlePlayDuration = useCallback((beats: number) => {
     const player = getAudioPlayer();
     const midi = pitchToMidi("C4");
@@ -75,50 +95,55 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
       </div>
 
       {/* Step 1: Notes have length */}
-      {step >= 0 && (
-        <ConceptCard title="Notes Have Length" emoji="⏱️">
-          <p className="mb-4">
-            When you sing or play a note, you hold it for a certain amount of
-            time. Some notes are <strong>long</strong>, and some are{" "}
-            <strong>short</strong>.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4 text-center">
-            <div className="text-lg">
-              Think of it like holding your voice:
-              <br />
-              <span className="text-purple-600 font-mono">
-                &quot;Laaaaaaaa&quot;
-              </span>{" "}
-              (long) vs{" "}
-              <span className="text-purple-600 font-mono">&quot;La&quot;</span>{" "}
-              (short)
+      <div ref={step1Ref}>
+        {step >= 0 && (
+          <ConceptCard title="Notes Have Length" emoji="⏱️">
+            <p className="mb-4">
+              When you sing or play a note, you hold it for a certain amount of
+              time. Some notes are <strong>long</strong>, and some are{" "}
+              <strong>short</strong>.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4 text-center">
+              <div className="text-lg">
+                Think of it like holding your voice:
+                <br />
+                <span className="text-purple-600 font-mono">
+                  &quot;Laaaaaaaa&quot;
+                </span>{" "}
+                (long) vs{" "}
+                <span className="text-purple-600 font-mono">
+                  &quot;La&quot;
+                </span>{" "}
+                (short)
+              </div>
             </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            We measure note length in <strong>beats</strong> — like counting
-            along to music.
-          </p>
-        </ConceptCard>
-      )}
+            <p className="text-sm text-gray-600">
+              We measure note length in <strong>beats</strong> — like counting
+              along to music.
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 2: Meet the durations */}
-      {step >= 1 && (
-        <ConceptCard
-          title="Three Basic Durations"
-          emoji="🎶"
-          variant="interactive"
-        >
-          <p className="mb-4">
-            Click each note type to hear how long it lasts!
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-4">
-            {DURATION_INFO.map((duration) => {
-              const isPlaying = playingDuration === duration.beats;
-              return (
-                <button
-                  key={duration.name}
-                  onClick={() => handlePlayDuration(duration.beats)}
-                  className={`
+      <div ref={step2Ref}>
+        {step >= 1 && (
+          <ConceptCard
+            title="Three Basic Durations"
+            emoji="🎶"
+            variant="interactive"
+          >
+            <p className="mb-4">
+              Click each note type to hear how long it lasts!
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-4">
+              {DURATION_INFO.map((duration) => {
+                const isPlaying = playingDuration === duration.beats;
+                return (
+                  <button
+                    key={duration.name}
+                    onClick={() => handlePlayDuration(duration.beats)}
+                    className={`
                     p-4 rounded-xl border-2 transition-all text-center
                     ${
                       isPlaying
@@ -126,103 +151,108 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                         : "border-purple-200 bg-white hover:border-purple-300"
                     }
                   `}
-                >
-                  <div className="text-4xl mb-2">{duration.visual}</div>
-                  <div className="font-bold text-purple-800">
-                    {duration.name}
-                  </div>
-                  <div className="text-lg text-purple-600 font-semibold">
-                    {duration.beats} beat{duration.beats > 1 ? "s" : ""}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {duration.description}
-                  </div>
-                  {isPlaying && (
-                    <div className="mt-2 text-teal-600 text-sm animate-pulse">
-                      Playing...
+                  >
+                    <div className="text-4xl mb-2">{duration.visual}</div>
+                    <div className="font-bold text-purple-800">
+                      {duration.name}
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </ConceptCard>
-      )}
+                    <div className="text-lg text-purple-600 font-semibold">
+                      {duration.beats} beat{duration.beats > 1 ? "s" : ""}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {duration.description}
+                    </div>
+                    {isPlaying && (
+                      <div className="mt-2 text-teal-600 text-sm animate-pulse">
+                        Playing...
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 3: Visual comparison */}
-      {step >= 2 && (
-        <ConceptCard title="Compare the Lengths" emoji="📊">
-          <p className="mb-4">See how the durations relate to each other:</p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-3">
-            {/* Whole note bar */}
-            <div className="flex items-center gap-3">
-              <div className="w-20 text-right text-sm font-medium">
-                Whole (4)
-              </div>
-              <div className="flex-1 h-8 bg-purple-500 rounded flex items-center justify-center text-white text-xs">
-                1 - 2 - 3 - 4
-              </div>
-            </div>
-            {/* Half note bars */}
-            <div className="flex items-center gap-3">
-              <div className="w-20 text-right text-sm font-medium">
-                Half (2)
-              </div>
-              <div className="flex-1 flex gap-1">
-                <div className="flex-1 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs">
-                  1 - 2
+      <div ref={step3Ref}>
+        {step >= 2 && (
+          <ConceptCard title="Compare the Lengths" emoji="📊">
+            <p className="mb-4">See how the durations relate to each other:</p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-3">
+              {/* Whole note bar */}
+              <div className="flex items-center gap-3">
+                <div className="w-20 text-right text-sm font-medium">
+                  Whole (4)
                 </div>
-                <div className="flex-1 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs">
-                  3 - 4
+                <div className="flex-1 h-8 bg-purple-500 rounded flex items-center justify-center text-white text-xs">
+                  1 - 2 - 3 - 4
                 </div>
               </div>
-            </div>
-            {/* Quarter note bars */}
-            <div className="flex items-center gap-3">
-              <div className="w-20 text-right text-sm font-medium">
-                Quarter (1)
-              </div>
-              <div className="flex-1 flex gap-1">
-                {[1, 2, 3, 4].map((beat) => (
-                  <div
-                    key={beat}
-                    className="flex-1 h-8 bg-teal-500 rounded flex items-center justify-center text-white text-xs"
-                  >
-                    {beat}
+              {/* Half note bars */}
+              <div className="flex items-center gap-3">
+                <div className="w-20 text-right text-sm font-medium">
+                  Half (2)
+                </div>
+                <div className="flex-1 flex gap-1">
+                  <div className="flex-1 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs">
+                    1 - 2
                   </div>
-                ))}
+                  <div className="flex-1 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs">
+                    3 - 4
+                  </div>
+                </div>
+              </div>
+              {/* Quarter note bars */}
+              <div className="flex items-center gap-3">
+                <div className="w-20 text-right text-sm font-medium">
+                  Quarter (1)
+                </div>
+                <div className="flex-1 flex gap-1">
+                  {[1, 2, 3, 4].map((beat) => (
+                    <div
+                      key={beat}
+                      className="flex-1 h-8 bg-teal-500 rounded flex items-center justify-center text-white text-xs"
+                    >
+                      {beat}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <p className="text-sm text-gray-600 text-center">
-            1 whole = 2 halves = 4 quarters
-          </p>
-        </ConceptCard>
-      )}
+            <p className="text-sm text-gray-600 text-center">
+              1 whole = 2 halves = 4 quarters
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 4: Tip */}
-      {step >= 3 && (
-        <ConceptCard title="Counting Tip" emoji="💡" variant="tip">
-          <p className="mb-4">
-            When playing music, keep a steady beat in your head (or tap your
-            foot!). Count along:
-          </p>
-          <div className="bg-amber-50 rounded-lg p-4 my-4 text-center">
-            <div className="font-mono text-lg text-amber-800">
-              🦶 tap - tap - tap - tap 🦶
-              <br />
-              <span className="text-sm text-amber-600">
-                (each tap = 1 beat)
-              </span>
+      <div ref={step4Ref}>
+        {step >= 3 && (
+          <ConceptCard title="Counting Tip" emoji="💡" variant="tip">
+            <p className="mb-4">
+              When playing music, keep a steady beat in your head (or tap your
+              foot!). Count along:
+            </p>
+            <div className="bg-amber-50 rounded-lg p-4 my-4 text-center">
+              <div className="font-mono text-lg text-amber-800">
+                🦶 tap - tap - tap - tap 🦶
+                <br />
+                <span className="text-sm text-amber-600">
+                  (each tap = 1 beat)
+                </span>
+              </div>
             </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            <strong>Practice:</strong> Try counting &quot;1, 2, 3, 4&quot; out
-            loud while tapping your foot. This steady pulse is called the{" "}
-            <strong>tempo</strong>!
-          </p>
-        </ConceptCard>
-      )}
+            <p className="text-sm text-gray-600">
+              <strong>Practice:</strong> Try counting &quot;1, 2, 3, 4&quot; out
+              loud while tapping your foot. This steady pulse is called the{" "}
+              <strong>tempo</strong>!
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">

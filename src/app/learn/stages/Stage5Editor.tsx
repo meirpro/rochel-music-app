@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
 
@@ -46,6 +46,25 @@ export function Stage5Editor({ onComplete }: Stage5EditorProps) {
   const [step, setStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
 
+  // Refs for scrolling to sections
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+
+  // Scroll to newly revealed section when step changes
+  useEffect(() => {
+    const refs = [step1Ref, step2Ref, step3Ref];
+    const targetRef = refs[step];
+    if (targetRef?.current && step > 0) {
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [step]);
+
   const handleNextStep = useCallback(() => {
     if (step < 2) {
       setStep(step + 1);
@@ -72,97 +91,103 @@ export function Stage5Editor({ onComplete }: Stage5EditorProps) {
       </div>
 
       {/* Step 1: All features */}
-      {step >= 0 && (
-        <ConceptCard title="Everything You Can Do" emoji="🎹">
-          <p className="mb-4">
-            Now you know the basics! Here&apos;s everything available in the
-            full editor:
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
-            {FEATURE_LIST.map((feature) => (
-              <div
-                key={feature.name}
-                className="p-3 bg-purple-50 rounded-lg text-center"
-              >
-                <div className="text-2xl mb-1">{feature.icon}</div>
-                <div className="font-medium text-purple-800 text-sm">
-                  {feature.name}
+      <div ref={step1Ref}>
+        {step >= 0 && (
+          <ConceptCard title="Everything You Can Do" emoji="🎹">
+            <p className="mb-4">
+              Now you know the basics! Here&apos;s everything available in the
+              full editor:
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
+              {FEATURE_LIST.map((feature) => (
+                <div
+                  key={feature.name}
+                  className="p-3 bg-purple-50 rounded-lg text-center"
+                >
+                  <div className="text-2xl mb-1">{feature.icon}</div>
+                  <div className="font-medium text-purple-800 text-sm">
+                    {feature.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {feature.description}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {feature.description}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ConceptCard>
-      )}
+              ))}
+            </div>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 2: Tips for success */}
-      {step >= 1 && (
-        <ConceptCard title="Tips for Success" emoji="💡" variant="tip">
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <div className="text-xl">1️⃣</div>
-              <div>
-                <strong>Start simple</strong> — Begin with quarter notes and
-                work up to faster rhythms.
+      <div ref={step2Ref}>
+        {step >= 1 && (
+          <ConceptCard title="Tips for Success" emoji="💡" variant="tip">
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="text-xl">1️⃣</div>
+                <div>
+                  <strong>Start simple</strong> — Begin with quarter notes and
+                  work up to faster rhythms.
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="text-xl">2️⃣</div>
+                <div>
+                  <strong>Use playback often</strong> — Hearing your music helps
+                  you catch mistakes.
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="text-xl">3️⃣</div>
+                <div>
+                  <strong>Save your work</strong> — Click the song name to save
+                  before closing.
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="text-xl">4️⃣</div>
+                <div>
+                  <strong>Explore!</strong> — Try all the tools. You can always
+                  undo with Ctrl+Z.
+                </div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="text-xl">2️⃣</div>
-              <div>
-                <strong>Use playback often</strong> — Hearing your music helps
-                you catch mistakes.
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="text-xl">3️⃣</div>
-              <div>
-                <strong>Save your work</strong> — Click the song name to save
-                before closing.
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="text-xl">4️⃣</div>
-              <div>
-                <strong>Explore!</strong> — Try all the tools. You can always
-                undo with Ctrl+Z.
-              </div>
-            </div>
-          </div>
-        </ConceptCard>
-      )}
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 3: Ready to go */}
-      {step >= 2 && (
-        <ConceptCard title="You're Ready!" emoji="🎉" variant="interactive">
-          <p className="mb-4">
-            Congratulations on completing the learning stages! You now
-            understand:
-          </p>
-          <div className="bg-teal-50 rounded-lg p-4 my-4">
-            <ul className="space-y-2 text-teal-800">
-              <li className="flex items-center gap-2">
-                <span className="text-teal-500">✓</span> How to read the staff
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-teal-500">✓</span> Note durations and
-                rhythms
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-teal-500">✓</span> Measures and time
-                signatures
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-teal-500">✓</span> How to use the editor
-              </li>
-            </ul>
-          </div>
-          <p className="text-gray-600 text-center">
-            Click the button below to start creating music!
-          </p>
-        </ConceptCard>
-      )}
+      <div ref={step3Ref}>
+        {step >= 2 && (
+          <ConceptCard title="You're Ready!" emoji="🎉" variant="interactive">
+            <p className="mb-4">
+              Congratulations on completing the learning stages! You now
+              understand:
+            </p>
+            <div className="bg-teal-50 rounded-lg p-4 my-4">
+              <ul className="space-y-2 text-teal-800">
+                <li className="flex items-center gap-2">
+                  <span className="text-teal-500">✓</span> How to read the staff
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-teal-500">✓</span> Note durations and
+                  rhythms
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-teal-500">✓</span> Measures and time
+                  signatures
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-teal-500">✓</span> How to use the editor
+                </li>
+              </ul>
+            </div>
+            <p className="text-gray-600 text-center">
+              Click the button below to start creating music!
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">

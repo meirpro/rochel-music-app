@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
@@ -14,6 +14,26 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
   const [step, setStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
   const [playingPattern, setPlayingPattern] = useState<string | null>(null);
+
+  // Refs for scrolling to sections
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+  const step4Ref = useRef<HTMLDivElement>(null);
+
+  // Scroll to newly revealed section when step changes
+  useEffect(() => {
+    const refs = [step1Ref, step2Ref, step3Ref, step4Ref];
+    const targetRef = refs[step];
+    if (targetRef?.current && step > 0) {
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [step]);
 
   // Play a rhythm pattern
   const playPattern = useCallback(
@@ -59,149 +79,165 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
       </div>
 
       {/* Step 1: Eighth notes */}
-      {step >= 0 && (
-        <ConceptCard title="Eighth Notes" emoji="🎵">
-          <p className="mb-4">
-            An <strong>eighth note</strong> lasts half a beat — twice as fast as
-            a quarter note. You can fit <strong>2 eighth notes</strong> in the
-            time of 1 quarter note.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4 flex justify-around items-center">
-            <div className="text-center">
-              <div className="text-4xl mb-2">♩</div>
-              <div className="text-sm font-medium">Quarter</div>
-              <div className="text-xs text-gray-500">1 beat</div>
+      <div ref={step1Ref}>
+        {step >= 0 && (
+          <ConceptCard title="Eighth Notes" emoji="🎵">
+            <p className="mb-4">
+              An <strong>eighth note</strong> lasts half a beat — twice as fast
+              as a quarter note. You can fit <strong>2 eighth notes</strong> in
+              the time of 1 quarter note.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4 flex justify-around items-center">
+              <div className="text-center">
+                <div className="text-4xl mb-2">♩</div>
+                <div className="text-sm font-medium">Quarter</div>
+                <div className="text-xs text-gray-500">1 beat</div>
+              </div>
+              <div className="text-2xl text-gray-400">=</div>
+              <div className="text-center">
+                <div className="text-4xl mb-2">♫</div>
+                <div className="text-sm font-medium">2 Eighths</div>
+                <div className="text-xs text-gray-500">½ + ½ beat</div>
+              </div>
             </div>
-            <div className="text-2xl text-gray-400">=</div>
-            <div className="text-center">
-              <div className="text-4xl mb-2">♫</div>
-              <div className="text-sm font-medium">2 Eighths</div>
-              <div className="text-xs text-gray-500">½ + ½ beat</div>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            Eighth notes have a <strong>flag</strong> on their stem (or are{" "}
-            <strong>beamed together</strong> in pairs).
-          </p>
-        </ConceptCard>
-      )}
+            <p className="text-sm text-gray-600">
+              Eighth notes have a <strong>flag</strong> on their stem (or are{" "}
+              <strong>beamed together</strong> in pairs).
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 2: Beaming */}
-      {step >= 1 && (
-        <ConceptCard title="Beaming" emoji="🔗">
-          <p className="mb-4">
-            When eighth notes are next to each other, their flags are connected
-            by a <strong>beam</strong>. This makes them easier to read!
-          </p>
-          <div className="bg-purple-50 rounded-lg p-4 my-4 flex justify-around items-center">
-            <div className="text-center">
-              <div className="text-3xl mb-2">♪ ♪</div>
-              <div className="text-sm text-gray-500">Separate flags</div>
+      <div ref={step2Ref}>
+        {step >= 1 && (
+          <ConceptCard title="Beaming" emoji="🔗">
+            <p className="mb-4">
+              When eighth notes are next to each other, their flags are
+              connected by a <strong>beam</strong>. This makes them easier to
+              read!
+            </p>
+            <div className="bg-purple-50 rounded-lg p-4 my-4 flex justify-around items-center">
+              <div className="text-center">
+                <div className="text-3xl mb-2">♪ ♪</div>
+                <div className="text-sm text-gray-500">Separate flags</div>
+              </div>
+              <div className="text-2xl text-gray-400">→</div>
+              <div className="text-center">
+                <div className="text-3xl mb-2">♫</div>
+                <div className="text-sm text-gray-500">Beamed together</div>
+              </div>
             </div>
-            <div className="text-2xl text-gray-400">→</div>
-            <div className="text-center">
-              <div className="text-3xl mb-2">♫</div>
-              <div className="text-sm text-gray-500">Beamed together</div>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            Notes are typically beamed by beat or by groups of beats, making it
-            easier to see the rhythm at a glance.
-          </p>
-        </ConceptCard>
-      )}
+            <p className="text-sm text-gray-600">
+              Notes are typically beamed by beat or by groups of beats, making
+              it easier to see the rhythm at a glance.
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 3: Dotted notes */}
-      {step >= 2 && (
-        <ConceptCard title="Dotted Notes" emoji="•">
-          <p className="mb-4">
-            A <strong>dot</strong> after a note makes it{" "}
-            <strong>1.5 times longer</strong>. It adds half the note&apos;s
-            value.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-3">
-            <div className="flex items-center gap-4">
-              <div className="w-32 text-right font-medium">Dotted half:</div>
-              <div className="flex-1">
-                2 + 1 = <strong>3 beats</strong>
+      <div ref={step3Ref}>
+        {step >= 2 && (
+          <ConceptCard title="Dotted Notes" emoji="•">
+            <p className="mb-4">
+              A <strong>dot</strong> after a note makes it{" "}
+              <strong>1.5 times longer</strong>. It adds half the note&apos;s
+              value.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="w-32 text-right font-medium">Dotted half:</div>
+                <div className="flex-1">
+                  2 + 1 = <strong>3 beats</strong>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-32 text-right font-medium">
+                  Dotted quarter:
+                </div>
+                <div className="flex-1">
+                  1 + ½ = <strong>1.5 beats</strong>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-32 text-right font-medium">
+                  Dotted eighth:
+                </div>
+                <div className="flex-1">
+                  ½ + ¼ = <strong>0.75 beats</strong>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-32 text-right font-medium">Dotted quarter:</div>
-              <div className="flex-1">
-                1 + ½ = <strong>1.5 beats</strong>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-32 text-right font-medium">Dotted eighth:</div>
-              <div className="flex-1">
-                ½ + ¼ = <strong>0.75 beats</strong>
-              </div>
-            </div>
-          </div>
-        </ConceptCard>
-      )}
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 4: Rhythm patterns */}
-      {step >= 3 && (
-        <ConceptCard
-          title="Try Rhythm Patterns"
-          emoji="🎶"
-          variant="interactive"
-        >
-          <p className="mb-4">
-            Click each pattern to hear how different rhythms sound:
-          </p>
-          <div className="space-y-3 my-4">
-            {/* Pattern 1: All quarters */}
-            <button
-              onClick={() => playPattern("quarters", [1, 1, 1, 1])}
-              className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                playingPattern === "quarters"
-                  ? "border-teal-400 bg-teal-50"
-                  : "border-purple-200 hover:border-purple-300"
-              }`}
-            >
-              <div className="font-medium">♩ ♩ ♩ ♩</div>
-              <div className="text-sm text-gray-500">
-                Four quarter notes (1-2-3-4)
-              </div>
-            </button>
+      <div ref={step4Ref}>
+        {step >= 3 && (
+          <ConceptCard
+            title="Try Rhythm Patterns"
+            emoji="🎶"
+            variant="interactive"
+          >
+            <p className="mb-4">
+              Click each pattern to hear how different rhythms sound:
+            </p>
+            <div className="space-y-3 my-4">
+              {/* Pattern 1: All quarters */}
+              <button
+                onClick={() => playPattern("quarters", [1, 1, 1, 1])}
+                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                  playingPattern === "quarters"
+                    ? "border-teal-400 bg-teal-50"
+                    : "border-purple-200 hover:border-purple-300"
+                }`}
+              >
+                <div className="font-medium">♩ ♩ ♩ ♩</div>
+                <div className="text-sm text-gray-500">
+                  Four quarter notes (1-2-3-4)
+                </div>
+              </button>
 
-            {/* Pattern 2: Mixed */}
-            <button
-              onClick={() => playPattern("mixed", [2, 0.5, 0.5, 1])}
-              className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                playingPattern === "mixed"
-                  ? "border-teal-400 bg-teal-50"
-                  : "border-purple-200 hover:border-purple-300"
-              }`}
-            >
-              <div className="font-medium">𝅗𝅥 ♫ ♩</div>
-              <div className="text-sm text-gray-500">
-                Half + two eighths + quarter
-              </div>
-            </button>
+              {/* Pattern 2: Mixed */}
+              <button
+                onClick={() => playPattern("mixed", [2, 0.5, 0.5, 1])}
+                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                  playingPattern === "mixed"
+                    ? "border-teal-400 bg-teal-50"
+                    : "border-purple-200 hover:border-purple-300"
+                }`}
+              >
+                <div className="font-medium">𝅗𝅥 ♫ ♩</div>
+                <div className="text-sm text-gray-500">
+                  Half + two eighths + quarter
+                </div>
+              </button>
 
-            {/* Pattern 3: Eighth notes */}
-            <button
-              onClick={() =>
-                playPattern("eighths", [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
-              }
-              className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                playingPattern === "eighths"
-                  ? "border-teal-400 bg-teal-50"
-                  : "border-purple-200 hover:border-purple-300"
-              }`}
-            >
-              <div className="font-medium">♫ ♫ ♫ ♫</div>
-              <div className="text-sm text-gray-500">
-                Eight eighth notes (1-and-2-and-3-and-4-and)
-              </div>
-            </button>
-          </div>
-        </ConceptCard>
-      )}
+              {/* Pattern 3: Eighth notes */}
+              <button
+                onClick={() =>
+                  playPattern(
+                    "eighths",
+                    [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                  )
+                }
+                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                  playingPattern === "eighths"
+                    ? "border-teal-400 bg-teal-50"
+                    : "border-purple-200 hover:border-purple-300"
+                }`}
+              >
+                <div className="font-medium">♫ ♫ ♫ ♫</div>
+                <div className="text-sm text-gray-500">
+                  Eight eighth notes (1-and-2-and-3-and-4-and)
+                </div>
+              </button>
+            </div>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">
