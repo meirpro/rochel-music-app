@@ -244,87 +244,49 @@ export function NoteSVGFilled({
 
 /**
  * SVG component for two beamed eighth notes
- * Rendering matches NoteEditor.tsx beam rendering:
- * - Stems: strokeWidth=3
- * - Beam: polygon with thickness=6
- * - Noteheads: ellipse rx=13, ry=11, rotate(-20)
+ * Matches NoteEditor.tsx beam rendering style
  */
 export function BeamedEighthsSVG({
-  size = 32,
+  size = 40,
   color = "#7c3aed",
 }: {
   size?: number;
   color?: string;
 }) {
-  // Scale factor (base size 32 maps to viewBox)
-  const scale = size / 32;
-
-  // Main editor uses beamThickness = 6
-  const beamThickness = 6;
-  // Main editor uses stemWidth = 3
-  const stemWidth = 3;
-
-  // Layout positions in viewBox coordinates
-  const beamY = 8;
-  const noteheadY = 44;
-  const leftNoteX = 16;
-  const rightNoteX = 52;
-  // Stems attach to right side of notehead when stems go up
-  const leftStemX = leftNoteX + 9; // notehead rx offset
-  const rightStemX = rightNoteX + 9;
-
   return (
     <svg
-      width={size * 2.2}
-      height={size * 1.8}
-      viewBox="0 0 70 58"
+      width={size * 1.6}
+      height={size * 1.2}
+      viewBox="0 0 64 48"
       className="inline-block align-middle"
     >
-      {/* Left stem - from notehead to beam (like NoteEditor line 3764-3773) */}
-      <line
-        x1={leftStemX}
-        y1={noteheadY}
-        x2={leftStemX}
-        y2={beamY}
-        stroke={color}
-        strokeWidth={stemWidth * scale}
-      />
+      {/* Horizontal beam at top */}
+      <rect x="14" y="4" width="36" height="6" fill={color} rx="1" />
+
+      {/* Left stem */}
+      <line x1="16" y1="7" x2="16" y2="34" stroke={color} strokeWidth="3" />
+
       {/* Right stem */}
-      <line
-        x1={rightStemX}
-        y1={noteheadY}
-        x2={rightStemX}
-        y2={beamY}
-        stroke={color}
-        strokeWidth={stemWidth * scale}
-      />
-      {/* Primary beam - polygon like NoteEditor line 3777-3791 */}
-      <polygon
-        points={`
-          ${leftStemX},${beamY}
-          ${rightStemX},${beamY}
-          ${rightStemX},${beamY + beamThickness}
-          ${leftStemX},${beamY + beamThickness}
-        `}
-        fill={color}
-      />
-      {/* Left notehead - ellipse like NoteEditor line 2554-2562 (rx=13, ry=11) */}
+      <line x1="48" y1="7" x2="48" y2="34" stroke={color} strokeWidth="3" />
+
+      {/* Left notehead */}
       <ellipse
-        cx={leftNoteX}
-        cy={noteheadY}
-        rx={13 * scale}
-        ry={11 * scale}
+        cx="12"
+        cy="36"
+        rx="10"
+        ry="8"
         fill={color}
-        transform={`rotate(-20 ${leftNoteX} ${noteheadY})`}
+        transform="rotate(-20 12 36)"
       />
+
       {/* Right notehead */}
       <ellipse
-        cx={rightNoteX}
-        cy={noteheadY}
-        rx={13 * scale}
-        ry={11 * scale}
+        cx="44"
+        cy="36"
+        rx="10"
+        ry="8"
         fill={color}
-        transform={`rotate(-20 ${rightNoteX} ${noteheadY})`}
+        transform="rotate(-20 44 36)"
       />
     </svg>
   );
