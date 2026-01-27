@@ -156,3 +156,65 @@ export function getDurationName(duration: NoteDuration): string {
       return "Sixteenth";
   }
 }
+
+/**
+ * SVG component for two beamed eighth notes
+ * Used to show beamed pairs in rhythm teaching
+ */
+export function BeamedEighthsSVG({
+  size = 32,
+  color = "#7c3aed",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  const scale = size / 32;
+
+  return (
+    <svg
+      width={size * 1.8}
+      height={size * 1.5}
+      viewBox="0 0 58 48"
+      className="inline-block align-middle"
+    >
+      {/* Left stem */}
+      <line
+        x1={14}
+        y1={28}
+        x2={14}
+        y2={6}
+        stroke={color}
+        strokeWidth={2.5 * scale}
+      />
+      {/* Right stem */}
+      <line
+        x1={44}
+        y1={28}
+        x2={44}
+        y2={6}
+        stroke={color}
+        strokeWidth={2.5 * scale}
+      />
+      {/* Beam connecting the notes */}
+      <rect x={12} y={4} width={34} height={5 * scale} fill={color} />
+      {/* Left notehead */}
+      <ellipse
+        cx={10}
+        cy={32}
+        rx={9}
+        ry={7}
+        fill={color}
+        transform="rotate(-20 10 32)"
+      />
+      {/* Right notehead */}
+      <ellipse
+        cx={40}
+        cy={32}
+        rx={9}
+        ry={7}
+        fill={color}
+        transform="rotate(-20 40 32)"
+      />
+    </svg>
+  );
+}

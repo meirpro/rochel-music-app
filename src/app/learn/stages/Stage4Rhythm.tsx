@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
-import { NoteSVG } from "../components/NoteSVG";
+import { NoteSVG, BeamedEighthsSVG } from "../components/NoteSVG";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { pitchToMidi } from "@/lib/constants";
 
@@ -90,13 +90,17 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
             </p>
             <div className="bg-gray-50 rounded-lg p-4 my-4 flex justify-around items-center">
               <div className="text-center">
-                <div className="text-4xl mb-2">♩</div>
+                <div className="mb-2">
+                  <NoteSVG duration={1} size={40} />
+                </div>
                 <div className="text-sm font-medium">Quarter</div>
                 <div className="text-xs text-gray-500">1 beat</div>
               </div>
               <div className="text-2xl text-gray-400">=</div>
               <div className="text-center">
-                <div className="text-4xl mb-2">♫</div>
+                <div className="mb-2">
+                  <BeamedEighthsSVG size={28} />
+                </div>
                 <div className="text-sm font-medium">2 Eighths</div>
                 <div className="text-xs text-gray-500">½ + ½ beat</div>
               </div>
@@ -120,12 +124,17 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
             </p>
             <div className="bg-purple-50 rounded-lg p-4 my-4 flex justify-around items-center">
               <div className="text-center">
-                <div className="text-3xl mb-2">♪ ♪</div>
+                <div className="mb-2 flex gap-1 justify-center">
+                  <NoteSVG duration={0.5} size={28} />
+                  <NoteSVG duration={0.5} size={28} />
+                </div>
                 <div className="text-sm text-gray-500">Separate flags</div>
               </div>
               <div className="text-2xl text-gray-400">→</div>
               <div className="text-center">
-                <div className="text-3xl mb-2">♫</div>
+                <div className="mb-2">
+                  <BeamedEighthsSVG size={24} />
+                </div>
                 <div className="text-sm text-gray-500">Beamed together</div>
               </div>
             </div>
@@ -207,7 +216,12 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                     : "border-purple-200 hover:border-purple-300"
                 }`}
               >
-                <div className="font-medium">♩ ♩ ♩ ♩</div>
+                <div className="flex gap-1 mb-1">
+                  <NoteSVG duration={1} size={28} />
+                  <NoteSVG duration={1} size={28} />
+                  <NoteSVG duration={1} size={28} />
+                  <NoteSVG duration={1} size={28} />
+                </div>
                 <div className="text-sm text-gray-500">
                   Four quarter notes (1-2-3-4)
                 </div>
@@ -222,7 +236,11 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                     : "border-purple-200 hover:border-purple-300"
                 }`}
               >
-                <div className="font-medium">𝅗𝅥 ♫ ♩</div>
+                <div className="flex gap-1 items-end mb-1">
+                  <NoteSVG duration={2} size={28} />
+                  <BeamedEighthsSVG size={22} />
+                  <NoteSVG duration={1} size={28} />
+                </div>
                 <div className="text-sm text-gray-500">
                   Half + two eighths + quarter
                 </div>
@@ -242,7 +260,12 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                     : "border-purple-200 hover:border-purple-300"
                 }`}
               >
-                <div className="font-medium">♫ ♫ ♫ ♫</div>
+                <div className="flex gap-1 mb-1">
+                  <BeamedEighthsSVG size={22} />
+                  <BeamedEighthsSVG size={22} />
+                  <BeamedEighthsSVG size={22} />
+                  <BeamedEighthsSVG size={22} />
+                </div>
                 <div className="text-sm text-gray-500">
                   Eight eighth notes (1-and-2-and-3-and-4-and)
                 </div>
