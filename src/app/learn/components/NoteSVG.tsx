@@ -60,40 +60,40 @@ export function NoteSVG({
         />
       )}
 
-      {/* Single flag for eighth notes */}
+      {/* Single flag for eighth notes - stroke only like main editor */}
       {hasFlag && (
         <path
-          d="M36 8 Q48 16 46 28 Q43 20 36 17"
-          fill={color}
+          d="M36 8 Q46 18 46 30"
           stroke={color}
-          strokeWidth={1}
+          strokeWidth={3.5 * scale}
+          fill="none"
         />
       )}
 
-      {/* Double flag for sixteenth notes */}
+      {/* Double flag for sixteenth notes - stroke only */}
       {hasDoubleFlag && (
         <>
           <path
-            d="M36 8 Q48 14 46 24 Q43 18 36 15"
-            fill={color}
+            d="M36 8 Q46 16 46 26"
             stroke={color}
-            strokeWidth={1}
+            strokeWidth={3 * scale}
+            fill="none"
           />
           <path
-            d="M36 16 Q48 22 46 32 Q43 26 36 23"
-            fill={color}
+            d="M36 16 Q46 24 46 34"
             stroke={color}
-            strokeWidth={1}
+            strokeWidth={3 * scale}
+            fill="none"
           />
         </>
       )}
 
-      {/* Notehead - ellipse rotated slightly */}
+      {/* Notehead - sized like main editor (rx=13, ry=11) */}
       <ellipse
         cx={24}
         cy={40}
         rx={13}
-        ry={10}
+        ry={11}
         fill={isHollow ? "#ffffff" : color}
         stroke={color}
         strokeWidth={2.5 * scale}
@@ -101,7 +101,7 @@ export function NoteSVG({
       />
 
       {/* Dot for dotted notes */}
-      {hasDot && <circle cx={50} cy={40} r={3.5 * scale} fill={color} />}
+      {hasDot && <circle cx={50} cy={36} r={4 * scale} fill={color} />}
     </svg>
   );
 }
@@ -160,6 +160,7 @@ export function getDurationName(duration: NoteDuration): string {
 /**
  * SVG component for two beamed eighth notes
  * Used to show beamed pairs in rhythm teaching
+ * Matches main editor's beam rendering style
  */
 export function BeamedEighthsSVG({
   size = 32,
@@ -169,6 +170,12 @@ export function BeamedEighthsSVG({
   color?: string;
 }) {
   const scale = size / 32;
+  const beamThickness = 5 * scale;
+
+  // Beam endpoints (horizontal beam)
+  const beamY = 6;
+  const leftStemX = 14;
+  const rightStemX = 44;
 
   return (
     <svg
@@ -177,43 +184,51 @@ export function BeamedEighthsSVG({
       viewBox="0 0 58 48"
       className="inline-block align-middle"
     >
-      {/* Left stem */}
+      {/* Left stem - from notehead to beam */}
       <line
-        x1={14}
-        y1={28}
-        x2={14}
-        y2={6}
+        x1={leftStemX}
+        y1={32}
+        x2={leftStemX}
+        y2={beamY}
         stroke={color}
-        strokeWidth={2.5 * scale}
+        strokeWidth={3 * scale}
       />
-      {/* Right stem */}
+      {/* Right stem - from notehead to beam */}
       <line
-        x1={44}
-        y1={28}
-        x2={44}
-        y2={6}
+        x1={rightStemX}
+        y1={32}
+        x2={rightStemX}
+        y2={beamY}
         stroke={color}
-        strokeWidth={2.5 * scale}
+        strokeWidth={3 * scale}
       />
-      {/* Beam connecting the notes */}
-      <rect x={12} y={4} width={34} height={5 * scale} fill={color} />
-      {/* Left notehead */}
+      {/* Beam - polygon like main editor */}
+      <polygon
+        points={`
+          ${leftStemX - 1},${beamY}
+          ${rightStemX + 1},${beamY}
+          ${rightStemX + 1},${beamY + beamThickness}
+          ${leftStemX - 1},${beamY + beamThickness}
+        `}
+        fill={color}
+      />
+      {/* Left notehead - sized like main editor */}
       <ellipse
         cx={10}
-        cy={32}
+        cy={36}
         rx={9}
-        ry={7}
+        ry={8}
         fill={color}
-        transform="rotate(-20 10 32)"
+        transform="rotate(-20 10 36)"
       />
       {/* Right notehead */}
       <ellipse
         cx={40}
-        cy={32}
+        cy={36}
         rx={9}
-        ry={7}
+        ry={8}
         fill={color}
-        transform="rotate(-20 40 32)"
+        transform="rotate(-20 40 36)"
       />
     </svg>
   );
