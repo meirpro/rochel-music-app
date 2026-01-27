@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
 import { LearnStage, STAGE_INFO } from "../page";
 
 interface StageCompleteProps {
@@ -9,67 +8,15 @@ interface StageCompleteProps {
   isFinalStage?: boolean;
 }
 
-// Pre-generate confetti data to avoid calling Math.random during render
-const CONFETTI_EMOJIS = ["🎉", "🎵", "🎶", "🎊", "🎈"];
-
 export function StageComplete({
   stage,
   onContinue,
   isFinalStage = false,
 }: StageCompleteProps) {
-  // Start with confetti visible, hide after 3 seconds
-  const [showConfetti, setShowConfetti] = useState(true);
-
-  // Generate confetti data once on mount
-  const confettiData = useMemo(() => {
-    return Array.from({ length: 50 }).map((_, i) => ({
-      id: i,
-      left: `${(i * 17 + 13) % 100}%`, // Deterministic spread
-      top: `${(i * 23 + 7) % 100}%`,
-      delay: `${(i % 5) * 0.4}s`,
-      duration: `${1 + (i % 3)}s`,
-      hue: `${(i * 72) % 360}deg`,
-      emoji: CONFETTI_EMOJIS[i % CONFETTI_EMOJIS.length],
-    }));
-  }, []);
-
-  useEffect(() => {
-    // Hide confetti after 3 seconds
-    const timer = setTimeout(() => setShowConfetti(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
   const nextStage = stage < 5 ? ((stage + 1) as LearnStage) : null;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100]">
-      {/* Confetti effect */}
-      {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {confettiData.map((item) => (
-            <div
-              key={item.id}
-              className="absolute animate-bounce"
-              style={{
-                left: item.left,
-                top: item.top,
-                animationDelay: item.delay,
-                animationDuration: item.duration,
-              }}
-            >
-              <span
-                className="text-2xl"
-                style={{
-                  filter: `hue-rotate(${item.hue})`,
-                }}
-              >
-                {item.emoji}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Header with gradient */}
         <div className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 p-6 text-white text-center">
