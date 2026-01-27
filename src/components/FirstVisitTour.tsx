@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTutorial } from "@/hooks/useTutorial";
 import { useDriverTour } from "@/hooks/useDriverTour";
 
 export function FirstVisitTour() {
+  const router = useRouter();
   const { isFirstVisit, markWelcomeSeen, markComplete } = useTutorial();
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -24,6 +26,12 @@ export function FirstVisitTour() {
       return () => clearTimeout(timer);
     }
   }, [isFirstVisit]);
+
+  const handleStartLearning = () => {
+    setShowWelcome(false);
+    markWelcomeSeen();
+    router.push("/learn");
+  };
 
   const handleStartTour = () => {
     setShowWelcome(false);
@@ -53,52 +61,50 @@ export function FirstVisitTour() {
         {/* Content */}
         <div className="p-6">
           <p className="text-gray-700 mb-4">
-            This looks like your first time here. Would you like a quick tour to
-            learn how to use the music editor?
+            This looks like your first time here! How would you like to get
+            started?
           </p>
 
-          <div className="bg-purple-50 rounded-lg p-4 mb-4">
-            <div className="font-medium text-purple-800 mb-2">
-              We&apos;ll show you around:
+          {/* Option 1: Learn from scratch */}
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-3 border-2 border-purple-200">
+            <div className="font-medium text-purple-800 mb-2 flex items-center gap-2">
+              <span>📚</span> Learn Music Basics
             </div>
-            <ul className="text-purple-700 text-sm space-y-1">
-              <li className="flex items-center gap-2">
-                <span className="text-purple-500">📁</span> Song library &
-                saving
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-purple-500">🎼</span> Music settings &
-                tempo
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-purple-500">🎵</span> Note tools & staff
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-purple-500">▶️</span> Playback controls
-              </li>
-            </ul>
-          </div>
-
-          <div className="text-xs text-gray-500 mb-4">
-            Takes about 30 seconds. You can always access tutorials later from
-            the Learn button.
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
+            <p className="text-sm text-gray-600 mb-3">
+              New to reading music? Our 5-stage tutorial teaches you everything
+              from scratch!
+            </p>
             <button
-              onClick={handleSkip}
-              className="flex-1 px-4 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+              onClick={handleStartLearning}
+              className="w-full px-4 py-2.5 text-white bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 rounded-lg transition-colors font-medium shadow-md"
             >
-              Skip for now
+              Start Learning →
             </button>
+          </div>
+
+          {/* Option 2: Quick tour */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-3">
+            <div className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <span>🎯</span> Quick App Tour
+            </div>
+            <p className="text-sm text-gray-500 mb-3">
+              Already know music? Take a 30-second tour of the editor.
+            </p>
             <button
               onClick={handleStartTour}
-              className="flex-1 px-4 py-2.5 text-white bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 rounded-lg transition-colors font-medium shadow-md"
+              className="w-full px-4 py-2 text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors font-medium"
             >
-              Start Tour
+              Quick Tour
             </button>
           </div>
+
+          {/* Skip option */}
+          <button
+            onClick={handleSkip}
+            className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors mt-2"
+          >
+            Skip — I&apos;ll explore on my own
+          </button>
         </div>
       </div>
     </div>

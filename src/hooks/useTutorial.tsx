@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useCallback,
-  createContext,
-  useContext,
-  ReactNode,
-} from "react";
+import React, { useState, useCallback, createContext, useContext } from "react";
 import { useLocalStorage } from "usehooks-ts";
 
 // Prevent SSR hydration mismatch
@@ -20,14 +14,22 @@ export type TutorialModule =
   | "piano-playback"
   | "advanced-features";
 
-// Available tour libraries
-export type TourLibrary = "driver" | "nextstep";
+// Available tour libraries (keeping type for future extensibility)
+export type TourLibrary = "driver";
+
+// Learn page progress
+export interface LearnProgress {
+  currentStage: 1 | 2 | 3 | 4 | 5;
+  completedStages: number[];
+  hasGraduated: boolean; // Completed all stages
+}
 
 // Tutorial completion state
 interface TutorialState {
   completedModules: TutorialModule[];
   hasSeenWelcome: boolean;
   preferredLibrary: TourLibrary;
+  learnProgress: LearnProgress;
 }
 
 // Tutorial context value
@@ -37,6 +39,7 @@ interface TutorialContextValue {
   hasSeenWelcome: boolean;
   activeTour: TutorialModule | null;
   activeLibrary: TourLibrary;
+  learnProgress: LearnProgress | null;
 
   // Actions
   startTour: (module: TutorialModule) => void;
@@ -46,8 +49,13 @@ interface TutorialContextValue {
   resetAllTutorials: () => void;
   setPreferredLibrary: (library: TourLibrary) => void;
 
+  // Learn page actions
+  advanceLearnStage: (stage: 1 | 2 | 3 | 4 | 5) => void;
+  completeLearn: () => void;
+
   // Computed
   isFirstVisit: boolean;
+  hasGraduated: boolean;
   getModuleProgress: () => {
     total: number;
     completed: number;
@@ -55,10 +63,17 @@ interface TutorialContextValue {
   };
 }
 
+const DEFAULT_LEARN_PROGRESS: LearnProgress = {
+  currentStage: 1,
+  completedStages: [],
+  hasGraduated: false,
+};
+
 const DEFAULT_STATE: TutorialState = {
   completedModules: [],
   hasSeenWelcome: false,
   preferredLibrary: "driver",
+  learnProgress: DEFAULT_LEARN_PROGRESS,
 };
 
 const ALL_MODULES: TutorialModule[] = [
@@ -157,18 +172,63 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     return { total, completed, percentage };
   }, [state.completedModules]);
 
+  // Advance to a new learn stage (and mark previous as complete)
+  const advanceLearnStage = useCallback(
+    (stage: 1 | 2 | 3 | 4 | 5) => {
+      const currentProgress = state.learnProgress || DEFAULT_LEARN_PROGRESS;
+      const previousStage = currentProgress.currentStage;
+
+      // Mark the previous stage as completed if advancing
+      const newCompletedStages = currentProgress.completedStages.includes(
+        previousStage,
+      )
+        ? currentProgress.completedStages
+        : [...currentProgress.completedStages, previousStage];
+
+      setState({
+        ...state,
+        learnProgress: {
+          ...currentProgress,
+          currentStage: stage,
+          completedStages: newCompletedStages,
+        },
+      });
+    },
+    [state, setState],
+  );
+
+  // Complete learning (graduated)
+  const completeLearn = useCallback(() => {
+    const currentProgress = state.learnProgress || DEFAULT_LEARN_PROGRESS;
+    setState({
+      ...state,
+      learnProgress: {
+        ...currentProgress,
+        completedStages: [1, 2, 3, 4, 5],
+        hasGraduated: true,
+      },
+    });
+  }, [state, setState]);
+
+  // Check if user has graduated from learn mode
+  const hasGraduated = state.learnProgress?.hasGraduated ?? false;
+
   const value: TutorialContextValue = {
     completedModules: state.completedModules,
     hasSeenWelcome: state.hasSeenWelcome,
     activeTour,
     activeLibrary: state.preferredLibrary,
+    learnProgress: state.learnProgress,
     startTour,
     endTour,
     markComplete,
     markWelcomeSeen,
     resetAllTutorials,
     setPreferredLibrary,
+    advanceLearnStage,
+    completeLearn,
     isFirstVisit,
+    hasGraduated,
     getModuleProgress,
   };
 

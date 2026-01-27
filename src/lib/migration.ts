@@ -22,7 +22,7 @@ export function isLegacyComposition(
   // Check if notes have the old 'system' and 'beat' fields
   if (composition.notes.length === 0) return false;
 
-  const firstNote = composition.notes[0] as any;
+  const firstNote = composition.notes[0] as LegacyEditorNote | EditorNote;
   return (
     "system" in firstNote &&
     "beat" in firstNote &&
@@ -60,7 +60,8 @@ export function migrateLegacyNote(
  */
 export function migrateLegacyRepeatMarker(
   legacyMarker: LegacyRepeatMarker,
-  timeSignature: TimeSignature,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _timeSignature: TimeSignature,
 ): RepeatMarker {
   const MEASURES_PER_SYSTEM = 2; // Default from old system
   // Calculate absolute measure number from system and measure within system
@@ -205,7 +206,10 @@ export function calculateSystemCount(
   // Find max absolute beat
   let maxBeat = 0;
   for (const note of composition.notes) {
-    const absoluteBeat = getAbsoluteBeat(note as any, beatsPerSystem);
+    const absoluteBeat = getAbsoluteBeat(
+      note as LegacyEditorNote | EditorNote,
+      beatsPerSystem,
+    );
     const notEnd = absoluteBeat + note.duration;
     if (notEnd > maxBeat) {
       maxBeat = notEnd;

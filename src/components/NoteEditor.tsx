@@ -683,6 +683,16 @@ interface NoteEditorProps {
   timeSignatureChanges?: TimeSignatureChange[];
   onTimeSignatureChangesChange?: (changes: TimeSignatureChange[]) => void;
   onTimeSignatureClick?: () => void; // Called when initial time sig is clicked
+
+  // Learn mode props for progressive music theory tutorial
+  learnMode?: boolean; // Enables learn-specific behaviors (simplified UI, interaction callbacks)
+  maxVisibleMeasures?: number; // Limit visible measures for focused learning (overrides totalMeasures for display)
+  highlightPitchLine?: string; // Highlight a staff line/space for a pitch (e.g., "C4", "G4")
+  highlightBeatRange?: [number, number]; // Highlight beat range [startBeat, endBeat] with colored overlay
+  onNoteInteraction?: (
+    note: EditorNote,
+    action: "click" | "place" | "delete",
+  ) => void; // Callback for note interactions in learn mode
 }
 
 // Layout constants imported from @/lib/layoutUtils
@@ -1201,6 +1211,12 @@ export function NoteEditor({
   timeSignatureChanges = [],
   onTimeSignatureChangesChange,
   onTimeSignatureClick,
+  // Learn mode props
+  learnMode = false,
+  maxVisibleMeasures,
+  highlightPitchLine,
+  highlightBeatRange,
+  onNoteInteraction,
 }: NoteEditorProps) {
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;

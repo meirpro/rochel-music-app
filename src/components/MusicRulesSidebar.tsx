@@ -20,30 +20,24 @@ interface MusicRulesSidebarProps {
   isOpen: boolean;
 }
 
-export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
-  // Persist expanded section in localStorage
-  const [expandedSection, setExpandedSection] = useLocalStorage<string | null>(
-    "rochel-editor-sidebar-section",
-    "durations",
-    SSR_SAFE,
-  );
-
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
-  const Section = ({
-    id,
-    title,
-    children,
-  }: {
-    id: string;
-    title: string;
-    children: React.ReactNode;
-  }) => (
+// Section component for collapsible sections
+function Section({
+  id,
+  title,
+  children,
+  expandedSection,
+  onToggle,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+  expandedSection: string | null;
+  onToggle: (section: string) => void;
+}) {
+  return (
     <div className="border-b border-purple-100 last:border-b-0">
       <button
-        onClick={() => toggleSection(id)}
+        onClick={() => onToggle(id)}
         className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-purple-50 transition-colors"
       >
         <span className="font-semibold text-purple-800">{title}</span>
@@ -68,51 +62,57 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
       )}
     </div>
   );
+}
 
-  // Mini note SVG for examples
-  const MiniNote = ({
-    type,
-    color = NOTE_COLORS.G,
-  }: {
-    type: "whole" | "half" | "quarter" | "eighth";
-    color?: string;
-  }) => {
-    const isHollow = type === "whole" || type === "half";
-    const hasStem = type !== "whole";
-    const hasFlag = type === "eighth";
+// Mini note SVG for examples
+function MiniNote({
+  type,
+  color = NOTE_COLORS.G,
+}: {
+  type: "whole" | "half" | "quarter" | "eighth";
+  color?: string;
+}) {
+  const isHollow = type === "whole" || type === "half";
+  const hasStem = type !== "whole";
+  const hasFlag = type === "eighth";
 
-    return (
-      <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
-        <ellipse
-          cx="10"
-          cy="20"
-          rx="5"
-          ry="3.5"
-          fill={isHollow ? "#fff" : color}
-          stroke={isHollow ? color : "#000"}
-          strokeWidth={isHollow ? 1.5 : 0.5}
-          transform="rotate(-15 10 20)"
+  return (
+    <svg width="20" height="28" viewBox="0 0 20 28" className="inline-block">
+      <ellipse
+        cx="10"
+        cy="20"
+        rx="5"
+        ry="3.5"
+        fill={isHollow ? "#fff" : color}
+        stroke={isHollow ? color : "#000"}
+        strokeWidth={isHollow ? 1.5 : 0.5}
+        transform="rotate(-15 10 20)"
+      />
+      {hasStem && (
+        <line x1="14" y1="19" x2="14" y2="6" stroke={color} strokeWidth={1.5} />
+      )}
+      {hasFlag && (
+        <path
+          d="M 14 6 Q 18 9 17 14"
+          stroke={color}
+          strokeWidth={1.5}
+          fill="none"
         />
-        {hasStem && (
-          <line
-            x1="14"
-            y1="19"
-            x2="14"
-            y2="6"
-            stroke={color}
-            strokeWidth={1.5}
-          />
-        )}
-        {hasFlag && (
-          <path
-            d="M 14 6 Q 18 9 17 14"
-            stroke={color}
-            strokeWidth={1.5}
-            fill="none"
-          />
-        )}
-      </svg>
-    );
+      )}
+    </svg>
+  );
+}
+
+export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
+  // Persist expanded section in localStorage
+  const [expandedSection, setExpandedSection] = useLocalStorage<string | null>(
+    "rochel-editor-sidebar-section",
+    "durations",
+    SSR_SAFE,
+  );
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
   };
 
   return (
@@ -132,7 +132,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
 
       <div className="divide-y divide-gray-200">
         {/* Note Durations */}
-        <Section id="durations" title="Note Durations">
+        <Section
+          id="durations"
+          title="Note Durations"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <MiniNote type="whole" />
@@ -172,7 +177,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Beaming Rules */}
-        <Section id="beaming" title="Beaming Rules">
+        <Section
+          id="beaming"
+          title="Beaming Rules"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>
               <strong>Beams</strong> connect eighth notes to show rhythm
@@ -252,7 +262,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Stem Direction */}
-        <Section id="stems" title="Stem Direction">
+        <Section
+          id="stems"
+          title="Stem Direction"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>
               Stem direction depends on the note&apos;s position on the staff:
@@ -279,7 +294,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Time Signatures */}
-        <Section id="time" title="Time Signatures">
+        <Section
+          id="time"
+          title="Time Signatures"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>Time signatures tell you how many beats per measure:</p>
             <div className="grid grid-cols-2 gap-3">
@@ -314,7 +334,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Color Legend */}
-        <Section id="colors" title="Note Colors">
+        <Section
+          id="colors"
+          title="Note Colors"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>Each pitch has its own color to help you learn:</p>
             <div className="grid grid-cols-2 gap-2">
@@ -349,7 +374,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Staff & Clef */}
-        <Section id="staff" title="Staff & Note Placement">
+        <Section
+          id="staff"
+          title="Staff & Note Placement"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>
               This editor uses a simplified <strong>3-line staff</strong>. Notes
@@ -381,7 +411,12 @@ export function MusicRulesSidebar({ isOpen }: MusicRulesSidebarProps) {
         </Section>
 
         {/* Repeat Signs */}
-        <Section id="repeats" title="Repeat Signs">
+        <Section
+          id="repeats"
+          title="Repeat Signs"
+          expandedSection={expandedSection}
+          onToggle={toggleSection}
+        >
           <div className="space-y-3">
             <p>Repeat signs tell you to play a section again:</p>
             <div className="flex items-center gap-4 bg-purple-100 rounded-lg p-3 shadow-sm">

@@ -17,6 +17,10 @@ interface ToolPaletteProps {
   canRedo?: boolean;
   // Piano state for margin adjustment
   isPianoOpen?: boolean;
+  // Learn mode: filter to show only specific tools
+  allowedTools?: NoteTool[];
+  // Learn mode: hide entire sections
+  hideSections?: ("notes" | "markup" | "actions")[];
 }
 
 // SVG Note Icons - larger for better visibility
@@ -522,6 +526,8 @@ export function ToolPalette({
   canUndo = false,
   canRedo = false,
   isPianoOpen = false,
+  allowedTools,
+  hideSections = [],
 }: ToolPaletteProps) {
   const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
 
@@ -580,7 +586,7 @@ export function ToolPalette({
     <Tooltip.Provider>
       <div
         id={TOUR_ELEMENT_IDS.toolPalette}
-        className={`w-[120px] bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-3 shadow-sm overflow-y-auto ${
+        className={`w-[120px] bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-3 shadow-sm overflow-y-auto overflow-x-hidden ${
           isPianoOpen ? "pb-40" : ""
         }`}
       >
@@ -668,50 +674,71 @@ export function ToolPalette({
         )}
 
         {/* Note tools section */}
-        <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
-          NOTES
-        </div>
-        <div className="grid grid-cols-2 gap-2 px-2 mb-3">
-          {NOTE_TOOLS.map(renderToolButton)}
-        </div>
-
-        {/* Divider */}
-        <div className="w-20 h-px bg-purple-300 my-2" />
+        {!hideSections.includes("notes") && (
+          <>
+            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+              NOTES
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-2 mb-3">
+              {NOTE_TOOLS.filter(
+                (tool) => !allowedTools || allowedTools.includes(tool.id),
+              ).map(renderToolButton)}
+            </div>
+            {/* Divider - only show if next section is visible */}
+            {!hideSections.includes("markup") && (
+              <div className="w-20 h-px bg-purple-300 my-2" />
+            )}
+          </>
+        )}
 
         {/* Markup tools section */}
-        <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
-          MARKUP
-        </div>
-        <div className="grid grid-cols-2 gap-2 px-2 mb-3">
-          {MARKUP_TOOLS.map(renderToolButton)}
-        </div>
-
-        {/* Divider */}
-        <div className="w-20 h-px bg-purple-300 my-2" />
+        {!hideSections.includes("markup") && (
+          <>
+            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+              MARKUP
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-2 mb-3">
+              {MARKUP_TOOLS.filter(
+                (tool) => !allowedTools || allowedTools.includes(tool.id),
+              ).map(renderToolButton)}
+            </div>
+            {/* Divider - only show if next section is visible */}
+            {!hideSections.includes("actions") && (
+              <div className="w-20 h-px bg-purple-300 my-2" />
+            )}
+          </>
+        )}
 
         {/* Action tools section - Delete & Move */}
-        <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
-          ACTIONS
-        </div>
-        <div className="flex gap-2 px-2">
-          {ACTION_TOOLS.map((tool) => {
-            const isMove = tool.id === "move";
-            const isActive = isMove ? allowMove : selectedTool === tool.id;
-            const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
+        {!hideSections.includes("actions") && (
+          <>
+            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+              ACTIONS
+            </div>
+            <div className="flex gap-2 px-2">
+              {ACTION_TOOLS.filter(
+                (tool) =>
+                  !allowedTools ||
+                  allowedTools.includes(tool.id as NoteTool) ||
+                  tool.id === "move",
+              ).map((tool) => {
+                const isMove = tool.id === "move";
+                const isActive = isMove ? allowMove : selectedTool === tool.id;
+                const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
 
-            return (
-              <Tooltip.Root key={tool.id} delayDuration={300}>
-                <Tooltip.Trigger asChild>
-                  <button
-                    id={tourId}
-                    onClick={() => {
-                      if (isMove) {
-                        onAllowMoveChange(!allowMove);
-                      } else {
-                        handleToolClick(tool.id as NoteTool);
-                      }
-                    }}
-                    className={`
+                return (
+                  <Tooltip.Root key={tool.id} delayDuration={300}>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        id={tourId}
+                        onClick={() => {
+                          if (isMove) {
+                            onAllowMoveChange(!allowMove);
+                          } else {
+                            handleToolClick(tool.id as NoteTool);
+                          }
+                        }}
+                        className={`
                       w-12 h-12 rounded-xl border-2 flex items-center justify-center
                       transition-all duration-150 hover:scale-105 active:scale-95
                       ${
@@ -720,27 +747,29 @@ export function ToolPalette({
                           : `${tool.color} hover:bg-gray-200 hover:border-gray-400`
                       }
                     `}
-                  >
-                    {tool.icon}
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content
-                    className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm shadow-xl z-50"
-                    side="left"
-                    sideOffset={8}
-                  >
-                    <div className="font-semibold">{tool.label}</div>
-                    <div className="text-gray-300 text-xs">
-                      {tool.description}
-                    </div>
-                    <Tooltip.Arrow className="fill-gray-900" />
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-            );
-          })}
-        </div>
+                      >
+                        {tool.icon}
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm shadow-xl z-50"
+                        side="left"
+                        sideOffset={8}
+                      >
+                        <div className="font-semibold">{tool.label}</div>
+                        <div className="text-gray-300 text-xs">
+                          {tool.description}
+                        </div>
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </Tooltip.Provider>
   );

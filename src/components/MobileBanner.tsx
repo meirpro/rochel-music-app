@@ -8,25 +8,37 @@
  * Dismissed state is stored in sessionStorage (reappears on new session).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore, useCallback } from "react";
 
 const STORAGE_KEY = "rochel-mobile-banner-dismissed";
 
-export function MobileBanner() {
-  const [isDismissed, setIsDismissed] = useState(true); // Start hidden to avoid flash
-
-  // Check sessionStorage on mount
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem(STORAGE_KEY) === "true";
-    setIsDismissed(dismissed);
+// Use useSyncExternalStore for SSR-safe sessionStorage access
+function useSessionStorageDismissed(): boolean {
+  const subscribe = useCallback((callback: () => void) => {
+    window.addEventListener("storage", callback);
+    return () => window.removeEventListener("storage", callback);
   }, []);
 
+  const getSnapshot = useCallback(
+    () => sessionStorage.getItem(STORAGE_KEY) === "true",
+    [],
+  );
+
+  const getServerSnapshot = useCallback(() => true, []); // Default to dismissed on server
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export function MobileBanner() {
+  const storageDismissed = useSessionStorageDismissed();
+  const [localDismissed, setLocalDismissed] = useState(false);
+
   const handleDismiss = () => {
-    setIsDismissed(true);
+    setLocalDismissed(true);
     sessionStorage.setItem(STORAGE_KEY, "true");
   };
 
-  if (isDismissed) {
+  if (storageDismissed || localDismissed) {
     return null;
   }
 

@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import {
-  TutorialProvider,
-  useTutorial,
-  TUTORIAL_MODULES,
-  TutorialModule,
-} from "./useTutorial";
+import { TutorialProvider, useTutorial, TUTORIAL_MODULES } from "./useTutorial";
 
 // Wrapper component for the hook
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -164,22 +159,12 @@ describe("useTutorial hook", () => {
   });
 
   describe("setPreferredLibrary", () => {
-    it("should change preferred library to nextstep", () => {
+    it("should keep driver as the preferred library", () => {
       const { result } = renderHook(() => useTutorial(), { wrapper });
 
-      act(() => {
-        result.current.setPreferredLibrary("nextstep");
-      });
+      // Driver is the only supported library now
+      expect(result.current.activeLibrary).toBe("driver");
 
-      expect(result.current.activeLibrary).toBe("nextstep");
-    });
-
-    it("should change preferred library back to driver", () => {
-      const { result } = renderHook(() => useTutorial(), { wrapper });
-
-      act(() => {
-        result.current.setPreferredLibrary("nextstep");
-      });
       act(() => {
         result.current.setPreferredLibrary("driver");
       });

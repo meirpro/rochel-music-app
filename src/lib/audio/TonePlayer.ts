@@ -1,3 +1,16 @@
+/**
+ * NOTE: Importing Tone.js triggers a browser console warning:
+ * "The AudioContext was not allowed to start. It must be resumed (or created)
+ * after a user gesture on the page."
+ *
+ * This warning is EXPECTED and BENIGN. Tone.js creates an AudioContext in
+ * "suspended" state on import. The context is properly resumed on first user
+ * interaction via initAudio(). We intentionally ignore this warning rather than
+ * use dynamic imports, as audio is core functionality and the added complexity
+ * isn't worth eliminating a harmless console message.
+ *
+ * Decision logged: 2026-01-27
+ */
 import * as Tone from "tone";
 import { startKeepAlive, handleVisibilityKeepAlive } from "./keepAlive";
 

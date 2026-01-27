@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   useTutorial,
   TUTORIAL_MODULES,
@@ -21,11 +22,10 @@ interface TutorialMenuProps {
 export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
   const {
     completedModules,
-    activeLibrary,
-    setPreferredLibrary,
     markComplete,
     resetAllTutorials,
     getModuleProgress,
+    hasGraduated,
   } = useTutorial();
 
   const driverTour = useDriverTour({
@@ -74,13 +74,7 @@ export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
     onClose();
     // Small delay to let menu close before tour starts
     setTimeout(() => {
-      if (activeLibrary === "driver") {
-        driverTour.startTour(module);
-      } else {
-        // NextStepjs will be triggered via the provider
-        // For now, we'll use driver.js as fallback
-        driverTour.startTour(module);
-      }
+      driverTour.startTour(module);
     }, 100);
   };
 
@@ -119,6 +113,78 @@ export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
+      </div>
+
+      {/* Learn Music Basics - Featured section */}
+      <div className="p-2 border-b border-teal-200 bg-gradient-to-r from-teal-50 to-blue-50">
+        <Link
+          href="/learn"
+          onClick={onClose}
+          className={`w-full text-left px-3 py-3 rounded-lg transition-all border-2 flex items-start gap-3 ${
+            hasGraduated
+              ? "bg-green-50 hover:bg-green-100 border-green-300"
+              : "bg-gradient-to-r from-teal-100 to-blue-100 hover:from-teal-200 hover:to-blue-200 border-teal-300 hover:border-teal-400"
+          }`}
+        >
+          {/* Icon */}
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+              hasGraduated
+                ? "bg-green-500 text-white"
+                : "bg-teal-500 text-white"
+            }`}
+          >
+            {hasGraduated ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <span>📚</span>
+            )}
+          </div>
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div
+              className={`font-semibold text-sm flex items-center gap-2 ${
+                hasGraduated ? "text-green-700" : "text-teal-800"
+              }`}
+            >
+              Learn Music Basics
+              {!hasGraduated && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-teal-500 text-white rounded-full font-medium">
+                  5 STAGES
+                </span>
+              )}
+            </div>
+            <div
+              className={`text-xs mt-0.5 ${
+                hasGraduated ? "text-green-600" : "text-teal-700"
+              }`}
+            >
+              {hasGraduated
+                ? "You've completed the music basics course!"
+                : "New to music? Learn to read sheet music step by step"}
+            </div>
+          </div>
+          {/* Arrow icon */}
+          <div
+            className={`flex-shrink-0 mt-1 ${
+              hasGraduated ? "text-green-400" : "text-teal-500"
+            }`}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+        </Link>
       </div>
 
       {/* Quick Tour - Featured for new users */}
@@ -367,33 +433,6 @@ export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
 
       {/* Footer */}
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-        {/* Library toggle */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500">Tour engine:</span>
-          <div className="flex rounded-lg overflow-hidden border border-gray-300">
-            <button
-              onClick={() => setPreferredLibrary("driver")}
-              className={`px-2 py-1 text-xs transition-colors ${
-                activeLibrary === "driver"
-                  ? "bg-purple-500 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Driver.js
-            </button>
-            <button
-              onClick={() => setPreferredLibrary("nextstep")}
-              className={`px-2 py-1 text-xs transition-colors ${
-                activeLibrary === "nextstep"
-                  ? "bg-purple-500 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              NextStep
-            </button>
-          </div>
-        </div>
-
         {/* Reset button */}
         {showResetConfirm ? (
           <div className="flex items-center gap-2">
