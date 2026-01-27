@@ -10,28 +10,86 @@ interface Stage2DurationsProps {
   onComplete: () => void;
 }
 
+// Teaching tempo: 60 BPM = 1 beat per second (easy to count)
+const TEACHING_TEMPO = 60;
+
+// Convert beats to seconds at teaching tempo
+function beatsToSeconds(beats: number): number {
+  return (60 / TEACHING_TEMPO) * beats;
+}
+
+// SVG Note component for visual display
+function NoteSVG({
+  type,
+  size = 48,
+}: {
+  type: "whole" | "half" | "quarter";
+  size?: number;
+}) {
+  const isHollow = type === "whole" || type === "half";
+  const hasStem = type !== "whole";
+  const color = "#7c3aed"; // Purple-600
+
+  // Scale factor based on size
+  const scale = size / 48;
+
+  return (
+    <svg
+      width={size}
+      height={size * 1.5}
+      viewBox="0 0 48 72"
+      className="mx-auto"
+    >
+      {/* Stem */}
+      {hasStem && (
+        <line
+          x1={36}
+          y1={36}
+          x2={36}
+          y2={8}
+          stroke={color}
+          strokeWidth={3 * scale}
+        />
+      )}
+      {/* Notehead - ellipse rotated slightly */}
+      <ellipse
+        cx={24}
+        cy={40}
+        rx={13}
+        ry={10}
+        fill={isHollow ? "#ffffff" : color}
+        stroke={color}
+        strokeWidth={2.5 * scale}
+        transform="rotate(-20 24 40)"
+      />
+    </svg>
+  );
+}
+
 // Duration info for teaching
-const DURATION_INFO = [
+const DURATION_INFO: Array<{
+  name: string;
+  beats: number;
+  type: "whole" | "half" | "quarter";
+  description: string;
+}> = [
   {
     name: "Whole Note",
     beats: 4,
-    emoji: "⬭",
+    type: "whole",
     description: "Hold for 4 beats (count: 1-2-3-4)",
-    visual: "○",
   },
   {
     name: "Half Note",
     beats: 2,
-    emoji: "◐",
+    type: "half",
     description: "Hold for 2 beats (count: 1-2)",
-    visual: "𝅗𝅥",
   },
   {
     name: "Quarter Note",
     beats: 1,
-    emoji: "●",
+    type: "quarter",
     description: "Hold for 1 beat (count: 1)",
-    visual: "♩",
   },
 ];
 
@@ -65,9 +123,12 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
     const midi = pitchToMidi("C4");
     if (midi !== null) {
       setPlayingDuration(beats);
-      // Play note for the duration (at 60 BPM, 1 beat = 1 second)
-      player.playNote(midi, beats * 0.5);
-      setTimeout(() => setPlayingDuration(null), beats * 500);
+      // Calculate duration like the main app: beatsToSeconds * 0.9 for natural decay
+      // At 60 BPM: whole=3.6s, half=1.8s, quarter=0.9s
+      const durationSeconds = Math.max(0.5, beatsToSeconds(beats) * 0.9);
+      player.playNote(midi, durationSeconds);
+      // Keep "Playing..." indicator visible for full duration
+      setTimeout(() => setPlayingDuration(null), durationSeconds * 1000);
     }
   }, []);
 
@@ -152,7 +213,9 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                     }
                   `}
                   >
-                    <div className="text-4xl mb-2">{duration.visual}</div>
+                    <div className="mb-2">
+                      <NoteSVG type={duration.type} size={48} />
+                    </div>
                     <div className="font-bold text-purple-800">
                       {duration.name}
                     </div>
