@@ -17,7 +17,7 @@ export const STAFF_CENTER_OFFSET = 80;
 
 // Decoration widths for time signatures and repeat markers
 export const TIME_SIG_DISPLAY_WIDTH = 35; // Width reserved for time signature display
-export const REPEAT_MARKER_WIDTH = 20; // Width reserved for repeat markers
+export const REPEAT_MARKER_WIDTH = 30; // Width reserved for repeat markers (dots at ±18px + radius)
 
 /**
  * Calculate beat width based on noteSpacing setting

@@ -705,9 +705,17 @@ export default function Home() {
           <div className="py-4">
             <div className="mx-auto w-fit">
               <NoteEditor
-                notes={toLegacyNotes(composition.notes as EditorNote[], layout)}
+                notes={toLegacyNotes(
+                  composition.notes as EditorNote[],
+                  layout,
+                  timeSignatureChanges,
+                )}
                 onNotesChange={(legacyNotes) => {
-                  const newNotes = fromLegacyNotes(legacyNotes, layout);
+                  const newNotes = fromLegacyNotes(
+                    legacyNotes,
+                    layout,
+                    timeSignatureChanges,
+                  );
                   updateComposition({ notes: newNotes });
                 }}
                 repeatMarkers={toLegacyRepeatMarkers(

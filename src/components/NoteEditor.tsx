@@ -282,8 +282,11 @@ function calculateSystemLayouts(
       const hasRepeatEnd = repeatEndMeasures.has(measureIndex);
 
       // Calculate prefix and suffix widths
+      // Note: For first measure of row, time sig is rendered in the preamble area
+      // (with the clef, at x=85) rather than as a prefix after the bar line.
+      // So we only count time sig width for mid-row changes.
       let prefixWidth = 0;
-      if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+      if (showTimeSig && !isFirstInRow) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
       if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
 
       let suffixWidth = 0;
@@ -400,6 +403,123 @@ function getLayoutForSystem(
   );
 }
 
+// Find the best system for a given X position by checking where it maps to a valid beat
+// This handles the case where Y drift causes the wrong system to be initially selected
+function findBestSystemForX(
+  x: number,
+  initialSystem: number,
+  systemLayouts: SystemLayout[],
+  systemCount: number,
+): { system: number; beat: number; sysLayout: SystemLayout } {
+  // Use actual layout count to ensure we don't access non-existent layouts
+  const layoutCount = systemLayouts.length;
+
+  // Helper to calculate beat for a given system
+  // Returns both the clamped beat and whether it was clamped (indicates X beyond natural range)
+  const calcBeatForSystem = (
+    sysIdx: number,
+  ): { beat: number; layout: SystemLayout; wasClamped: boolean } | null => {
+    // Must be within BOTH systemCount and actual layouts
+    if (sysIdx < 0 || sysIdx >= systemCount || sysIdx >= layoutCount)
+      return null;
+    const layout = systemLayouts[sysIdx];
+    if (!layout) return null;
+
+    const noteOffset = getNoteOffset(layout.beatWidth);
+    const snappedX = snapX(x, layout.staffRight, layout.beatWidth, layout);
+    const rawBeat = getBeatFromXInSystem(layout, snappedX, noteOffset);
+    // Check if beat is within valid range (with small tolerance)
+    if (rawBeat >= -0.25 && rawBeat < layout.totalBeats + 0.25) {
+      const clampedBeat = Math.max(
+        0,
+        Math.min(layout.totalBeats - 0.5, rawBeat),
+      );
+      // Beat was clamped if raw value differs from clamped value by more than snap tolerance
+      const wasClamped = Math.abs(rawBeat - clampedBeat) > 0.3;
+      return {
+        beat: clampedBeat,
+        layout,
+        wasClamped,
+      };
+    }
+    return null;
+  };
+
+  // STRATEGY: When Y drift causes wrong system selection, prefer the system
+  // where the beat makes more physical sense. Y drift downward is common when
+  // clicking at the bottom-right of a row.
+  const initialResult = calcBeatForSystem(initialSystem);
+  const aboveResult =
+    initialSystem > 0 ? calcBeatForSystem(initialSystem - 1) : null;
+
+  // If both systems give valid results, check if the initial beat was clamped
+  // Clamping indicates X is beyond the system's natural beat range (Y drift case)
+  // Example: clicking at beat 25 (row 2) with Y drift to row 3
+  //   - Row 3 raw beat = 3.85, clamped to 3.5 (wasClamped = true)
+  //   - Row 2 raw beat = 12.5, not clamped (wasClamped = false)
+  //   - Prefer row 2 because X naturally belongs there
+  if (initialResult && aboveResult) {
+    if (initialResult.wasClamped && !aboveResult.wasClamped) {
+      return {
+        system: initialSystem - 1,
+        beat: aboveResult.beat,
+        sysLayout: aboveResult.layout,
+      };
+    }
+  }
+
+  // Use initial system if it has a valid result
+  if (initialResult) {
+    return {
+      system: initialSystem,
+      beat: initialResult.beat,
+      sysLayout: initialResult.layout,
+    };
+  }
+
+  // Try system above
+  if (aboveResult) {
+    return {
+      system: initialSystem - 1,
+      beat: aboveResult.beat,
+      sysLayout: aboveResult.layout,
+    };
+  }
+
+  // Try system below
+  if (initialSystem < systemCount - 1 && initialSystem < layoutCount - 1) {
+    const belowResult = calcBeatForSystem(initialSystem + 1);
+    if (belowResult) {
+      return {
+        system: initialSystem + 1,
+        beat: belowResult.beat,
+        sysLayout: belowResult.layout,
+      };
+    }
+  }
+
+  // Fallback: use the closest valid system
+  const fallbackSystemIdx =
+    initialSystem < layoutCount ? initialSystem : layoutCount - 1;
+  const fallbackLayout =
+    systemLayouts[fallbackSystemIdx] ||
+    systemLayouts[0] ||
+    getLayoutForSystem(systemLayouts, 0);
+  const noteOffset = getNoteOffset(fallbackLayout.beatWidth);
+  const snappedX = snapX(
+    x,
+    fallbackLayout.staffRight,
+    fallbackLayout.beatWidth,
+    fallbackLayout,
+  );
+  const rawBeat = getBeatFromXInSystem(fallbackLayout, snappedX, noteOffset);
+  return {
+    system: fallbackSystemIdx,
+    beat: Math.max(0, Math.min(fallbackLayout.totalBeats - 0.5, rawBeat)),
+    sysLayout: fallbackLayout,
+  };
+}
+
 // Find which system contains a given absolute beat and return the beat within that system
 function getSystemForAbsoluteBeat(
   systemLayouts: SystemLayout[],
@@ -469,19 +589,23 @@ function getBeatFromXInSystem(
     const measureEndX =
       measureStartX + measure.beatsInMeasure * sysLayout.beatWidth;
 
+    // Extend left tolerance to include prefixWidth (time sig display area)
+    // so clicks in the decoration area are assigned to this measure
+    const leftTolerance = measure.prefixWidth + 5;
+
     if (
-      xWithoutOffset >= measureStartX - 5 &&
+      xWithoutOffset >= measureStartX - leftTolerance &&
       xWithoutOffset < measureEndX + 5
     ) {
-      // X is in this measure
-      const xInMeasure = xWithoutOffset - measureStartX;
+      // X is in this measure - clamp xInMeasure to not go negative
+      const xInMeasure = Math.max(0, xWithoutOffset - measureStartX);
       const beatInMeasure = xInMeasure / sysLayout.beatWidth;
       const rawBeat = measure.startBeatInSystem + beatInMeasure;
       return Math.round(rawBeat * 2) / 2; // Snap to half-beats
     }
   }
 
-  // Fallback: use simple calculation
+  // Fallback: use simple calculation (should rarely reach here now)
   const rawBeat = (xWithoutOffset - LEFT_MARGIN) / sysLayout.beatWidth;
   return Math.round(rawBeat * 2) / 2;
 }
@@ -633,6 +757,44 @@ const POSITION_TO_PITCH: Pitch[] = [
 // getStaffCenterY imported from @/lib/layoutUtils
 
 function getSystemFromY(y: number, systemCount: number): number {
+  // Use actual staff visual boundaries instead of simple SYSTEM_HEIGHT division
+  // Each staff has valid note placement from position 7 (top) to position 0 (bottom)
+  // Position 7: y = staffCenterY - 48 (above top line)
+  // Position 0: y = staffCenterY + 64 (below bottom line)
+  // For gaps between systems, use midpoint as boundary
+
+  for (let sys = 0; sys < systemCount; sys++) {
+    const staffCenterY = getStaffCenterY(sys);
+
+    // Calculate visual boundaries for this system
+    // Extend beyond the exact note positions to catch clicks near the staff
+    const topNoteY = staffCenterY - 48; // Position 7 (highest note)
+    const bottomNoteY = staffCenterY + 64; // Position 0 (lowest note)
+
+    // Top boundary: midpoint to previous system, or 0 for first system
+    let topBound: number;
+    if (sys === 0) {
+      topBound = 0;
+    } else {
+      const prevBottomNoteY = getStaffCenterY(sys - 1) + 64;
+      topBound = (prevBottomNoteY + topNoteY) / 2;
+    }
+
+    // Bottom boundary: midpoint to next system, or Infinity for last system
+    let bottomBound: number;
+    if (sys === systemCount - 1) {
+      bottomBound = Infinity;
+    } else {
+      const nextTopNoteY = getStaffCenterY(sys + 1) - 48;
+      bottomBound = (bottomNoteY + nextTopNoteY) / 2;
+    }
+
+    if (y >= topBound && y < bottomBound) {
+      return sys;
+    }
+  }
+
+  // Fallback: use simple division (should rarely reach here)
   const system = Math.floor((y - SYSTEM_TOP_MARGIN) / SYSTEM_HEIGHT);
   return Math.max(0, Math.min(systemCount - 1, system));
 }
@@ -731,12 +893,17 @@ function snapX(
       const measureStartX = LEFT_MARGIN + measure.xOffset;
       const measureEndX = measureStartX + measure.beatsInMeasure * beatWidth;
 
+      // Extend left tolerance to include prefixWidth (time sig display area)
+      // so clicks in the decoration area snap to the first beat
+      const leftTolerance = measure.prefixWidth + 10;
+
       if (
-        xWithoutOffset >= measureStartX - 10 &&
+        xWithoutOffset >= measureStartX - leftTolerance &&
         xWithoutOffset < measureEndX + 10
       ) {
         // X is in this measure - snap within it
-        const xInMeasure = xWithoutOffset - measureStartX;
+        // Clamp xInMeasure to not go negative (clicks in prefix area snap to beat 0)
+        const xInMeasure = Math.max(0, xWithoutOffset - measureStartX);
         const snappedBeatInMeasure =
           Math.round(xInMeasure / (beatWidth / 2)) * (beatWidth / 2);
         // Clamp to measure bounds
@@ -1447,12 +1614,16 @@ export function NoteEditor({
       }
 
       const { x, y } = getCoords(e);
-      const system = getSystemFromY(y, systemCount);
-      const staffCenterY = getStaffCenterY(system);
+      const initialSystem = getSystemFromY(y, systemCount);
 
-      // Get system-specific layout for proper bounds and snapping
-      const sysLayoutForCtx = getLayoutForSystem(systemLayouts, system);
-      const sysBeatWidthForCtx = sysLayoutForCtx.beatWidth;
+      // Find the best system for this X position (handles Y drift near system boundaries)
+      const {
+        system: bestSystem,
+        beat,
+        sysLayout: sysLayoutForCtx,
+      } = findBestSystemForX(x, initialSystem, systemLayouts, systemCount);
+
+      const staffCenterY = getStaffCenterY(bestSystem);
       const sysStaffRightForCtx = sysLayoutForCtx.staffRight;
 
       // Check if click is within valid staff bounds (include some margin)
@@ -1461,23 +1632,12 @@ export function NoteEditor({
       if (y > staffCenterY + LINE_SPACING * 2 + 20) return;
 
       // Check if clicking on an existing note (let note handler take over)
-      const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(
-        x,
-        sysStaffRightForCtx,
-        sysBeatWidthForCtx,
-        sysLayoutForCtx,
-      );
-      const beat = getBeatFromXInSystem(
-        sysLayoutForCtx,
-        snappedX,
-        getNoteOffset(sysBeatWidthForCtx),
-      );
+      const pitch = getPitchFromY(y, bestSystem);
 
       const clickedNote = notes.find(
         (n) =>
           Math.abs(n.beat - beat) < 0.25 &&
-          n.system === system &&
+          n.system === bestSystem &&
           n.pitch === pitch,
       );
       if (clickedNote) {
@@ -1507,7 +1667,7 @@ export function NoteEditor({
         x: menuX,
         y: menuY,
         beat,
-        system,
+        system: bestSystem,
         pitch,
       });
     },
@@ -1788,23 +1948,15 @@ export function NoteEditor({
         return;
       }
 
-      // Get this system's layout for variable beat width for note placement
-      const sysLayoutForNote = getLayoutForSystem(systemLayouts, system);
-      const sysBeatWidthForNote = sysLayoutForNote.beatWidth;
-      const sysStaffRightForNote = sysLayoutForNote.staffRight;
+      // Find the best system for this X position (handles Y drift near system boundaries)
+      const {
+        system: bestSystem,
+        beat,
+        sysLayout: sysLayoutForNote,
+      } = findBestSystemForX(x, system, systemLayouts, systemCount);
 
-      const pitch = getPitchFromY(y, system);
-      const snappedX = snapX(
-        x,
-        sysStaffRightForNote,
-        sysBeatWidthForNote,
-        sysLayoutForNote,
-      );
-      const beat = getBeatFromXInSystem(
-        sysLayoutForNote,
-        snappedX,
-        getNoteOffset(sysBeatWidthForNote),
-      );
+      // Use the corrected system for pitch calculation
+      const pitch = getPitchFromY(y, bestSystem);
 
       // Check for collision
       // If allowChords: only block exact same position (beat + pitch)
@@ -1812,7 +1964,7 @@ export function NoteEditor({
       const existingNote = notes.find(
         (n) =>
           Math.abs(n.beat - beat) < 0.25 &&
-          n.system === system &&
+          n.system === bestSystem &&
           (allowChords ? n.pitch === pitch : true),
       );
       if (existingNote) {
@@ -1826,7 +1978,7 @@ export function NoteEditor({
         pitch,
         duration,
         beat,
-        system,
+        system: bestSystem,
       };
 
       onNotesChange([...notes, newNote]);
@@ -2005,37 +2157,31 @@ export function NoteEditor({
       }
 
       if (!draggedNote) return;
-      const system = getSystemFromY(y, systemCount);
-      const pitch = getPitchFromY(y, system);
+      const initialSystem = getSystemFromY(y, systemCount);
 
-      // Get system-specific layout for proper snapping
-      const sysLayoutForDrag = getLayoutForSystem(systemLayouts, system);
-      const sysBeatWidthForDrag = sysLayoutForDrag.beatWidth;
-      const sysStaffRightForDrag = sysLayoutForDrag.staffRight;
-      const snappedX = snapX(
+      // Find the best system for this X position (handles Y drift near system boundaries)
+      const { system: bestSystem, beat } = findBestSystemForX(
         x,
-        sysStaffRightForDrag,
-        sysBeatWidthForDrag,
-        sysLayoutForDrag,
+        initialSystem,
+        systemLayouts,
+        systemCount,
       );
-      const beat = getBeatFromXInSystem(
-        sysLayoutForDrag,
-        snappedX,
-        getNoteOffset(sysBeatWidthForDrag),
-      );
+
+      // Use the corrected system for pitch calculation
+      const pitch = getPitchFromY(y, bestSystem);
 
       // Check if another note exists at this position (excluding the dragged note)
       const collision = notes.find(
         (n) =>
           n.id !== draggedNote &&
           Math.abs(n.beat - beat) < 0.25 &&
-          n.system === system,
+          n.system === bestSystem,
       );
       if (collision) return; // Don't allow moving to occupied position
 
       onNotesChange(
         notes.map((n) =>
-          n.id === draggedNote ? { ...n, beat, pitch, system } : n,
+          n.id === draggedNote ? { ...n, beat, pitch, system: bestSystem } : n,
         ),
       );
     },
@@ -2658,9 +2804,19 @@ export function NoteEditor({
               {/* Time signature display - shown at measures where time sig changes */}
               {measure?.showTimeSig && (
                 <g>
-                  {/* Numerator - styled to match initial time signature */}
+                  {/*
+                    Position time sig based on location:
+                    - First measure of row (measureIndex === 0): Use same position as initial time sig (x=85)
+                      This follows music notation convention: Clef → Time Sig → Bar line → Notes
+                    - Mid-row changes: After the bar line (standard practice for time sig changes)
+                  */}
+                  {/* Numerator */}
                   <text
-                    x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
+                    x={
+                      measureIndex === 0
+                        ? 85
+                        : barX + TIME_SIG_DISPLAY_WIDTH / 2
+                    }
                     y={staffCenterY + visualCenterOffset - LINE_SPACING / 2 + 6}
                     fontSize={20}
                     fontWeight="bold"
@@ -2671,7 +2827,11 @@ export function NoteEditor({
                   </text>
                   {/* Denominator */}
                   <text
-                    x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
+                    x={
+                      measureIndex === 0
+                        ? 85
+                        : barX + TIME_SIG_DISPLAY_WIDTH / 2
+                    }
                     y={staffCenterY + visualCenterOffset + LINE_SPACING / 2 + 6}
                     fontSize={20}
                     fontWeight="bold"

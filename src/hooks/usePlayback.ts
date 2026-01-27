@@ -255,8 +255,10 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         const hasRepeatStart = repeatStartMeasures.has(measureNum);
         const hasRepeatEnd = repeatEndMeasures.has(measureNum);
 
+        // Note: For first measure of row, time sig is rendered in preamble area
+        // (with clef), not as a prefix after bar line. Match NoteEditor logic.
         let prefixWidth = 0;
-        if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+        if (showTimeSig && !isFirstInRow) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
         if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
 
         let suffixWidth = 0;
@@ -310,8 +312,9 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         const showTimeSig = shouldShowTimeSig(measureNum, isFirstInRow);
         const hasRepeatStart = repeatStartMeasures.has(measureNum);
 
+        // Note: For first measure of row, time sig is in preamble, not prefix
         let prefixWidth = 0;
-        if (showTimeSig) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
+        if (showTimeSig && !isFirstInRow) prefixWidth += TIME_SIG_DISPLAY_WIDTH;
         if (hasRepeatStart) prefixWidth += REPEAT_MARKER_WIDTH;
 
         measures[m].xOffset = currentX + prefixWidth;
