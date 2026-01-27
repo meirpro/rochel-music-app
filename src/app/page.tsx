@@ -291,6 +291,73 @@ export default function Home() {
       ? savedSongs[currentSongId].name
       : "Untitled Song";
 
+  // Check if current composition has unsaved changes compared to saved version
+  // Returns true if there are changes that would be lost by switching songs
+  const hasUnsavedChanges = useCallback((): boolean => {
+    // If no current song selected, any notes are "unsaved"
+    if (!currentSongId || !savedSongs[currentSongId]) {
+      const comp = composition as Composition;
+      return comp.notes.length > 0 || comp.repeatMarkers.length > 0;
+    }
+
+    // Compare current composition with saved version
+    const savedComp = savedSongs[currentSongId].composition as Composition;
+    const currentComp = composition as Composition;
+
+    // Quick check: different number of notes or markers
+    if (savedComp.notes.length !== currentComp.notes.length) return true;
+    if (savedComp.repeatMarkers.length !== currentComp.repeatMarkers.length)
+      return true;
+
+    // Deep check: compare actual content (serialize and compare)
+    // This handles reordering, property changes, etc.
+    const savedNotesStr = JSON.stringify(
+      [...savedComp.notes].sort((a, b) => a.absoluteBeat - b.absoluteBeat),
+    );
+    const currentNotesStr = JSON.stringify(
+      [...currentComp.notes].sort((a, b) => a.absoluteBeat - b.absoluteBeat),
+    );
+    if (savedNotesStr !== currentNotesStr) return true;
+
+    const savedMarkersStr = JSON.stringify(
+      [...savedComp.repeatMarkers].sort(
+        (a, b) => a.measureNumber - b.measureNumber,
+      ),
+    );
+    const currentMarkersStr = JSON.stringify(
+      [...currentComp.repeatMarkers].sort(
+        (a, b) => a.measureNumber - b.measureNumber,
+      ),
+    );
+    if (savedMarkersStr !== currentMarkersStr) return true;
+
+    // Check lyrics too
+    const savedLyrics = savedComp.lyrics || [];
+    const currentLyrics = currentComp.lyrics || [];
+    if (savedLyrics.length !== currentLyrics.length) return true;
+    const savedLyricsStr = JSON.stringify(
+      [...savedLyrics].sort((a, b) => a.absoluteBeat - b.absoluteBeat),
+    );
+    const currentLyricsStr = JSON.stringify(
+      [...currentLyrics].sort((a, b) => a.absoluteBeat - b.absoluteBeat),
+    );
+    if (savedLyricsStr !== currentLyricsStr) return true;
+
+    return false;
+  }, [currentSongId, savedSongs, composition]);
+
+  // Confirm before losing unsaved changes
+  // Returns true if user wants to proceed, false if they cancelled
+  const confirmUnsavedChanges = useCallback((): boolean => {
+    if (!hasUnsavedChanges()) return true;
+
+    return window.confirm(
+      "You have unsaved changes to the current song.\n\n" +
+        "If you switch songs now, your changes will be lost.\n\n" +
+        "Click OK to discard changes and switch, or Cancel to go back.",
+    );
+  }, [hasUnsavedChanges]);
+
   // Update document title dynamically with current song name
   useDocumentTitle(
     currentSongTitle !== "Untitled Song"
@@ -441,8 +508,19 @@ export default function Home() {
 
   // Load song handler (with automatic migration)
   // showToast: false on initial page load, true when user manually selects a song
+  // skipConfirm: true to skip the unsaved changes confirmation (used for auto-load on mount)
   const handleLoadSong = useCallback(
-    (song: SavedSong, showToast = true, preserveTempo = false) => {
+    (
+      song: SavedSong,
+      showToast = true,
+      preserveTempo = false,
+      skipConfirm = false,
+    ) => {
+      // Check for unsaved changes before switching (unless skipping)
+      if (!skipConfirm && !confirmUnsavedChanges()) {
+        return; // User cancelled, don't switch songs
+      }
+
       // Stop any currently playing song before switching
       playback.handleStop();
 
@@ -491,6 +569,7 @@ export default function Home() {
       setSavedSongs,
       setTotalMeasures,
       playback.handleStop,
+      confirmUnsavedChanges,
     ],
   );
 
@@ -518,8 +597,13 @@ export default function Home() {
         (parsedComp.notes?.length === 0 &&
           parsedComp.repeatMarkers?.length === 0);
 
-      if (isEmptyComposition && parsedSongId && parsedSongs?.[parsedSongId]) {
-        const song = parsedSongs[parsedSongId];
+      // For new users: localStorage may be empty, so fall back to defaults
+      // getDefaultSongs() provides the built-in songs like Dayenu
+      const songsToUse = parsedSongs ?? getDefaultSongs();
+      const songIdToUse = parsedSongId ?? "default-dayenu";
+
+      if (isEmptyComposition && songsToUse[songIdToUse]) {
+        const song = songsToUse[songIdToUse];
         // Load song but preserve user's tempo from localStorage
         const userTempo = parsedSettings?.tempo ?? DEFAULT_SETTINGS.tempo;
         setComposition(song.composition);
@@ -529,6 +613,17 @@ export default function Home() {
           timeSignature: song.settings.timeSignature,
         }));
         setCurrentSongId(song.id);
+
+        // Also calculate and set totalMeasures based on song content
+        const notes = song.composition.notes as EditorNote[];
+        const songBeatsPerMeasure = song.settings.timeSignature.numerator;
+        if (notes.length > 0) {
+          const maxBeat = Math.max(
+            ...notes.map((n: EditorNote) => n.absoluteBeat + n.duration),
+          );
+          const requiredMeasures = Math.ceil(maxBeat / songBeatsPerMeasure);
+          setTotalMeasures(Math.max(requiredMeasures, 4));
+        }
       }
     }, 50); // Small delay for localStorage hydration
     return () => clearTimeout(timer);

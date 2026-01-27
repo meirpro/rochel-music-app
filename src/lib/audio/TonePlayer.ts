@@ -142,28 +142,95 @@ export function setInstrument(instrument: InstrumentType): void {
 
 /**
  * Initialize audio - MUST be called from a user gesture (click/tap)
- * This unlocks audio on iOS Safari and handles window focus changes.
- * Returns a promise that resolves when audio is ready.
+ *
+ * Web Audio API Security Model:
+ * - Browsers block audio playback until a user gesture (click/tap) occurs
+ * - This prevents websites from playing unwanted sounds automatically
+ * - iOS Safari is particularly strict about this requirement
+ *
+ * Why this function exists:
+ * - Centralizes audio initialization to ensure it only happens once
+ * - Handles the complex async dance required to unlock audio on all browsers
+ * - Sets up keep-alive mechanisms for Safari's aggressive audio suspension
+ *
+ * Returns a promise that resolves when audio is ready (or has failed to start).
  */
 export function initAudio(): Promise<void> {
+  // Singleton pattern: only initialize once, return same promise on subsequent calls
+  // This prevents race conditions if multiple components try to init simultaneously
   if (!initPromise) {
     initPromise = (async () => {
-      // Configure low-latency context BEFORE starting
+      // Step 1: Configure low-latency context BEFORE starting
+      // Must happen before Tone.start() because some settings can only be set
+      // on a fresh context (before it transitions from "suspended" to "running")
       ensureLowLatencyContext();
       console.log("[TonePlayer] Starting Tone.js...", Tone.context.state);
+
+      // Step 2: Request audio permission via Tone.start()
+      // This is Tone.js's wrapper around AudioContext.resume()
+      // It tells the browser "the user wants audio now"
       await Tone.start();
-      audioReady = true;
-      console.log("[TonePlayer] Tone.js started:", Tone.context.state);
+      console.log("[TonePlayer] After Tone.start():", Tone.context.state);
 
-      // Prime the synth with an inaudible note to prevent first-note swallowing
-      const s = getSynth();
-      s.triggerAttackRelease(1, 0.001, Tone.context.currentTime); // 1Hz = inaudible
-      console.log("[TonePlayer] Synth primed");
+      // Step 3: Handle the "suspended but promised" edge case
+      // IMPORTANT: Tone.start() can resolve its promise while context is still
+      // "suspended". This happens when:
+      // - The user gesture wasn't "strong enough" (e.g., too far from the click)
+      // - The browser is being extra cautious (common on iOS Safari)
+      // - The page loaded recently and browser wants more user interaction
+      //
+      // Solution: Explicitly call resume() and check state
+      if (Tone.context.state !== "running") {
+        console.log("[TonePlayer] Context not running, resuming...");
+        await Tone.context.resume();
+        console.log("[TonePlayer] After resume:", Tone.context.state);
+      }
 
-      // Start keep-alive layer to prevent Safari suspension
-      startKeepAlive();
+      // Step 4: Poll for "running" state with timeout
+      // Even after resume(), the context may take a moment to transition.
+      // This is async at the OS audio layer level.
+      // We poll every 20ms for up to 1 second (50 attempts) before giving up.
+      let attempts = 0;
+      while (Tone.context.state !== "running" && attempts < 50) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        attempts++;
+      }
 
-      // Handle Safari suspending audio when window loses focus
+      // Step 5: Log failure but don't throw - let caller decide how to handle
+      // The caller (usePlayback) will check isAudioReady() and show appropriate UI
+      if (Tone.context.state !== "running") {
+        console.warn(
+          "[TonePlayer] Context still not running after wait:",
+          Tone.context.state,
+        );
+      }
+
+      // Step 6: Set the ready flag for synchronous checks elsewhere
+      // isAudioReady() uses this for fast-path audio playback
+      audioReady = Tone.context.state === "running";
+      console.log("[TonePlayer] Tone.js ready:", Tone.context.state);
+
+      // Step 7: Prime the synth to prevent "first note swallowing"
+      // Some browsers/devices drop the first audio event after context starts.
+      // Playing an inaudible note (1Hz is below human hearing ~20Hz) warms up
+      // the audio pipeline so real notes play correctly.
+      if (audioReady) {
+        const s = getSynth();
+        s.triggerAttackRelease(1, 0.001, Tone.context.currentTime); // 1Hz = inaudible
+        console.log("[TonePlayer] Synth primed");
+
+        // Step 8: Start keep-alive layer for Safari
+        // Safari aggressively suspends AudioContext when:
+        // - Tab loses focus
+        // - Device screen locks
+        // - No audio plays for ~30 seconds
+        // The keep-alive plays inaudible tones periodically to prevent this
+        startKeepAlive();
+      }
+
+      // Step 9: Listen for visibility changes to handle tab switching
+      // When user switches tabs and comes back, Safari may have suspended audio.
+      // This listener resumes the context when the tab becomes visible again.
       document.addEventListener("visibilitychange", handleVisibilityChange);
     })();
   }
@@ -172,6 +239,17 @@ export function initAudio(): Promise<void> {
 
 /**
  * Check if audio is ready for immediate playback (synchronous check)
+ *
+ * Why two conditions?
+ * - audioReady: Set during initAudio() - indicates initialization completed successfully
+ * - Tone.context.state === "running": Live check of actual AudioContext state
+ *
+ * We check both because:
+ * 1. audioReady alone could be stale (Safari may have suspended context since init)
+ * 2. context.state alone doesn't tell us if init completed (could be running from elsewhere)
+ *
+ * This function enables the "fast path" in playNote() - when audio is ready,
+ * we can play notes synchronously without async overhead, reducing latency.
  */
 export function isAudioReady(): boolean {
   return audioReady && Tone.context.state === "running";

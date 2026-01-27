@@ -15,6 +15,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import {
   initAudio,
+  isAudioReady,
   getTransport,
   getDraw,
   beatsToSeconds,
@@ -671,8 +672,27 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
   // Play handler
   const handlePlay = useCallback(async () => {
-    // Initialize audio on first interaction (handles iOS Safari)
+    // Step 1: Initialize audio context (required for Web Audio API)
+    // This MUST be called from a user gesture (click/tap) to unlock audio.
+    // On iOS Safari, audio won't play at all without this user-initiated call.
+    // The function is idempotent - subsequent calls return the same promise.
     await initAudio();
+
+    // Step 2: Verify audio actually started
+    // IMPORTANT: initAudio() resolving does NOT guarantee audio is working!
+    // The AudioContext may still be "suspended" if:
+    // - Browser didn't accept the user gesture (too far from click event)
+    // - iOS Safari wanted a more direct interaction
+    // - Page loaded too recently
+    //
+    // If audio isn't ready, we show a helpful error and bail out.
+    // This prevents the confusing UX of playhead moving with no sound.
+    if (!isAudioReady()) {
+      toast.error(
+        "Audio failed to start. Please tap the screen and try again.",
+      );
+      return;
+    }
 
     if (composition.notes.length === 0) {
       toast.error("No notes to play");
