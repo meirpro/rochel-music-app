@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
+import { NoteSVG } from "../components/NoteSVG";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { pitchToMidi } from "@/lib/constants";
 
@@ -145,27 +146,39 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
               <strong>1.5 times longer</strong>. It adds half the note&apos;s
               value.
             </p>
-            <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-3">
+            <div className="bg-gray-50 rounded-lg p-4 my-4 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-32 text-right font-medium">Dotted half:</div>
-                <div className="flex-1">
-                  2 + 1 = <strong>3 beats</strong>
+                <div className="w-16 flex justify-center">
+                  <NoteSVG duration={3} size={36} />
+                </div>
+                <div className="w-28 font-medium text-purple-800">
+                  Dotted half
+                </div>
+                <div className="flex-1 text-gray-700">
+                  2 + 1 = <strong className="text-purple-600">3 beats</strong>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-32 text-right font-medium">
-                  Dotted quarter:
+                <div className="w-16 flex justify-center">
+                  <NoteSVG duration={1.5} size={36} />
                 </div>
-                <div className="flex-1">
-                  1 + ½ = <strong>1.5 beats</strong>
+                <div className="w-28 font-medium text-purple-800">
+                  Dotted quarter
+                </div>
+                <div className="flex-1 text-gray-700">
+                  1 + ½ = <strong className="text-purple-600">1.5 beats</strong>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-32 text-right font-medium">
-                  Dotted eighth:
+                <div className="w-16 flex justify-center">
+                  <NoteSVG duration={0.75} size={36} />
                 </div>
-                <div className="flex-1">
-                  ½ + ¼ = <strong>0.75 beats</strong>
+                <div className="w-28 font-medium text-purple-800">
+                  Dotted eighth
+                </div>
+                <div className="flex-1 text-gray-700">
+                  ½ + ¼ ={" "}
+                  <strong className="text-purple-600">0.75 beats</strong>
                 </div>
               </div>
             </div>

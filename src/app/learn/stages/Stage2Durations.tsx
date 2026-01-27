@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
+import { NoteSVG, NoteDuration } from "../components/NoteSVG";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { pitchToMidi } from "@/lib/constants";
 
@@ -18,77 +19,29 @@ function beatsToSeconds(beats: number): number {
   return (60 / TEACHING_TEMPO) * beats;
 }
 
-// SVG Note component for visual display
-function NoteSVG({
-  type,
-  size = 48,
-}: {
-  type: "whole" | "half" | "quarter";
-  size?: number;
-}) {
-  const isHollow = type === "whole" || type === "half";
-  const hasStem = type !== "whole";
-  const color = "#7c3aed"; // Purple-600
-
-  // Scale factor based on size
-  const scale = size / 48;
-
-  return (
-    <svg
-      width={size}
-      height={size * 1.5}
-      viewBox="0 0 48 72"
-      className="mx-auto"
-    >
-      {/* Stem */}
-      {hasStem && (
-        <line
-          x1={36}
-          y1={36}
-          x2={36}
-          y2={8}
-          stroke={color}
-          strokeWidth={3 * scale}
-        />
-      )}
-      {/* Notehead - ellipse rotated slightly */}
-      <ellipse
-        cx={24}
-        cy={40}
-        rx={13}
-        ry={10}
-        fill={isHollow ? "#ffffff" : color}
-        stroke={color}
-        strokeWidth={2.5 * scale}
-        transform="rotate(-20 24 40)"
-      />
-    </svg>
-  );
-}
-
 // Duration info for teaching
 const DURATION_INFO: Array<{
   name: string;
   beats: number;
-  type: "whole" | "half" | "quarter";
+  duration: NoteDuration;
   description: string;
 }> = [
   {
     name: "Whole Note",
     beats: 4,
-    type: "whole",
+    duration: 4,
     description: "Hold for 4 beats (count: 1-2-3-4)",
   },
   {
     name: "Half Note",
     beats: 2,
-    type: "half",
+    duration: 2,
     description: "Hold for 2 beats (count: 1-2)",
   },
   {
     name: "Quarter Note",
     beats: 1,
-    type: "quarter",
+    duration: 1,
     description: "Hold for 1 beat (count: 1)",
   },
 ];
@@ -214,7 +167,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                   `}
                   >
                     <div className="mb-2">
-                      <NoteSVG type={duration.type} size={48} />
+                      <NoteSVG duration={duration.duration} size={48} />
                     </div>
                     <div className="font-bold text-purple-800">
                       {duration.name}
