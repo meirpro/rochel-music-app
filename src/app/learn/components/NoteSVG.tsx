@@ -158,9 +158,96 @@ export function getDurationName(duration: NoteDuration): string {
 }
 
 /**
+ * Alternative NoteSVG with filled flags (bolder look)
+ * Same functionality as NoteSVG but with filled flag paths
+ */
+export function NoteSVGFilled({
+  duration,
+  size = 48,
+  color = "#7c3aed",
+}: NoteSVGProps) {
+  const isWhole = duration === 4;
+  const isHalf = duration === 2 || duration === 3;
+  const isHollow = isWhole || isHalf;
+  const hasStem = !isWhole;
+  const hasFlag = duration === 0.5 || duration === 0.75;
+  const hasDoubleFlag = duration === 0.25;
+  const hasDot = duration === 0.75 || duration === 1.5 || duration === 3;
+
+  const scale = size / 48;
+  const width = hasDot ? size * 1.3 : size;
+
+  return (
+    <svg
+      width={width}
+      height={size * 1.5}
+      viewBox={hasDot ? "0 0 62 72" : "0 0 48 72"}
+      className="mx-auto"
+    >
+      {/* Stem */}
+      {hasStem && (
+        <line
+          x1={36}
+          y1={36}
+          x2={36}
+          y2={8}
+          stroke={color}
+          strokeWidth={3 * scale}
+        />
+      )}
+
+      {/* Single flag - FILLED style */}
+      {hasFlag && (
+        <path
+          d="M36 8 Q48 16 46 28 Q43 20 36 17"
+          fill={color}
+          stroke={color}
+          strokeWidth={1}
+        />
+      )}
+
+      {/* Double flag - FILLED style */}
+      {hasDoubleFlag && (
+        <>
+          <path
+            d="M36 8 Q48 14 46 24 Q43 18 36 15"
+            fill={color}
+            stroke={color}
+            strokeWidth={1}
+          />
+          <path
+            d="M36 16 Q48 22 46 32 Q43 26 36 23"
+            fill={color}
+            stroke={color}
+            strokeWidth={1}
+          />
+        </>
+      )}
+
+      {/* Notehead */}
+      <ellipse
+        cx={24}
+        cy={40}
+        rx={13}
+        ry={10}
+        fill={isHollow ? "#ffffff" : color}
+        stroke={color}
+        strokeWidth={2.5 * scale}
+        transform="rotate(-20 24 40)"
+      />
+
+      {/* Dot */}
+      {hasDot && <circle cx={50} cy={40} r={3.5 * scale} fill={color} />}
+    </svg>
+  );
+}
+
+/**
  * SVG component for two beamed eighth notes
- * Used to show beamed pairs in rhythm teaching
- * Matches main editor's beam rendering style
+ * Rendering matches NoteEditor.tsx beam rendering:
+ * - Stems: strokeWidth=3
+ * - Beam: polygon with thickness=6
+ * - Noteheads: ellipse rx=13, ry=11, rotate(-20)
  */
 export function BeamedEighthsSVG({
   size = 32,
@@ -169,66 +256,75 @@ export function BeamedEighthsSVG({
   size?: number;
   color?: string;
 }) {
+  // Scale factor (base size 32 maps to viewBox)
   const scale = size / 32;
-  const beamThickness = 5 * scale;
 
-  // Beam endpoints (horizontal beam)
-  const beamY = 6;
-  const leftStemX = 14;
-  const rightStemX = 44;
+  // Main editor uses beamThickness = 6
+  const beamThickness = 6;
+  // Main editor uses stemWidth = 3
+  const stemWidth = 3;
+
+  // Layout positions in viewBox coordinates
+  const beamY = 8;
+  const noteheadY = 44;
+  const leftNoteX = 16;
+  const rightNoteX = 52;
+  // Stems attach to right side of notehead when stems go up
+  const leftStemX = leftNoteX + 9; // notehead rx offset
+  const rightStemX = rightNoteX + 9;
 
   return (
     <svg
-      width={size * 1.8}
-      height={size * 1.5}
-      viewBox="0 0 58 48"
+      width={size * 2.2}
+      height={size * 1.8}
+      viewBox="0 0 70 58"
       className="inline-block align-middle"
     >
-      {/* Left stem - from notehead to beam */}
+      {/* Left stem - from notehead to beam (like NoteEditor line 3764-3773) */}
       <line
         x1={leftStemX}
-        y1={32}
+        y1={noteheadY}
         x2={leftStemX}
         y2={beamY}
         stroke={color}
-        strokeWidth={3 * scale}
+        strokeWidth={stemWidth * scale}
       />
-      {/* Right stem - from notehead to beam */}
+      {/* Right stem */}
       <line
         x1={rightStemX}
-        y1={32}
+        y1={noteheadY}
         x2={rightStemX}
         y2={beamY}
         stroke={color}
-        strokeWidth={3 * scale}
+        strokeWidth={stemWidth * scale}
       />
-      {/* Beam - polygon like main editor */}
+      {/* Primary beam - polygon like NoteEditor line 3777-3791 */}
       <polygon
         points={`
-          ${leftStemX - 1},${beamY}
-          ${rightStemX + 1},${beamY}
-          ${rightStemX + 1},${beamY + beamThickness}
-          ${leftStemX - 1},${beamY + beamThickness}
+          ${leftStemX},${beamY}
+          ${rightStemX},${beamY}
+          ${rightStemX},${beamY + beamThickness}
+          ${leftStemX},${beamY + beamThickness}
         `}
         fill={color}
       />
-      {/* Left notehead - sized like main editor */}
+      {/* Left notehead - ellipse like NoteEditor line 2554-2562 (rx=13, ry=11) */}
       <ellipse
-        cx={10}
-        cy={36}
-        rx={9}
-        ry={8}
+        cx={leftNoteX}
+        cy={noteheadY}
+        rx={13 * scale}
+        ry={11 * scale}
         fill={color}
-        transform="rotate(-20 10 36)"
+        transform={`rotate(-20 ${leftNoteX} ${noteheadY})`}
       />
       {/* Right notehead */}
       <ellipse
-        cx={40}
-        cy={36}
-        rx={9}
-        ry={8}
+        cx={rightNoteX}
+        cy={noteheadY}
+        rx={13 * scale}
+        ry={11 * scale}
         fill={color}
-        transform="rotate(-20 40 36)"
+        transform={`rotate(-20 ${rightNoteX} ${noteheadY})`}
       />
     </svg>
   );
