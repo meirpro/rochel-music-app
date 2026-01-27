@@ -10,7 +10,7 @@ interface StageCompleteProps {
 }
 
 // Pre-generate confetti data to avoid calling Math.random during render
-const CONFETTI_EMOJIS = ["🎉", "🎵", "⭐", "🎶", "✨"];
+const CONFETTI_EMOJIS = ["🎉", "🎵", "🎶", "🎊", "🎈"];
 
 export function StageComplete({
   stage,

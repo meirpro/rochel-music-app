@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTutorial } from "@/hooks/useTutorial";
 import { LearnLayout } from "./components/LearnLayout";
@@ -21,12 +21,20 @@ export const STAGE_INFO: Record<
 
 export default function LearnPage() {
   const router = useRouter();
-  const { learnProgress, advanceLearnStage, completeLearn } = useTutorial();
+  const { learnProgress, setLearnStage, advanceLearnStage, completeLearn } =
+    useTutorial();
 
   // Current stage from progress, default to 1
   const [currentStage, setCurrentStage] = useState<LearnStage>(
     (learnProgress?.currentStage as LearnStage) || 1,
   );
+
+  // Sync with persisted state after hydration (useLocalStorage with SSR_SAFE)
+  useEffect(() => {
+    if (learnProgress?.currentStage) {
+      setCurrentStage(learnProgress.currentStage as LearnStage);
+    }
+  }, [learnProgress?.currentStage]);
 
   // Handle stage completion
   const handleStageComplete = useCallback(() => {
@@ -51,15 +59,17 @@ export default function LearnPage() {
           stage === 1
         ) {
           setCurrentStage(stage);
+          setLearnStage(stage); // Persist to localStorage
         }
       } else {
         // Stages 3-5 are freely accessible after completing stage 2
         if (learnProgress?.completedStages?.includes(2)) {
           setCurrentStage(stage);
+          setLearnStage(stage); // Persist to localStorage
         }
       }
     },
-    [learnProgress],
+    [learnProgress, setLearnStage],
   );
 
   // Handle exit to editor

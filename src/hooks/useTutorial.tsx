@@ -50,6 +50,7 @@ interface TutorialContextValue {
   setPreferredLibrary: (library: TourLibrary) => void;
 
   // Learn page actions
+  setLearnStage: (stage: 1 | 2 | 3 | 4 | 5) => void;
   advanceLearnStage: (stage: 1 | 2 | 3 | 4 | 5) => void;
   completeLearn: () => void;
 
@@ -172,6 +173,21 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     return { total, completed, percentage };
   }, [state.completedModules]);
 
+  // Set current learn stage (for navigation, doesn't mark anything complete)
+  const setLearnStage = useCallback(
+    (stage: 1 | 2 | 3 | 4 | 5) => {
+      const currentProgress = state.learnProgress || DEFAULT_LEARN_PROGRESS;
+      setState({
+        ...state,
+        learnProgress: {
+          ...currentProgress,
+          currentStage: stage,
+        },
+      });
+    },
+    [state, setState],
+  );
+
   // Advance to a new learn stage (and mark previous as complete)
   const advanceLearnStage = useCallback(
     (stage: 1 | 2 | 3 | 4 | 5) => {
@@ -225,6 +241,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     markWelcomeSeen,
     resetAllTutorials,
     setPreferredLibrary,
+    setLearnStage,
     advanceLearnStage,
     completeLearn,
     isFirstVisit,

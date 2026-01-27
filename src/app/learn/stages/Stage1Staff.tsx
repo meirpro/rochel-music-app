@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
@@ -27,6 +27,27 @@ export function Stage1Staff({ onComplete }: Stage1StaffProps) {
   const [step, setStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
   const [playedNotes, setPlayedNotes] = useState<Set<string>>(new Set());
+
+  // Refs for scrolling to sections
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+  const step4Ref = useRef<HTMLDivElement>(null);
+
+  // Scroll to newly revealed section when step changes
+  useEffect(() => {
+    const refs = [step1Ref, step2Ref, step3Ref, step4Ref];
+    const targetRef = refs[step];
+    if (targetRef?.current && step > 0) {
+      // Small delay to allow DOM to render
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [step]);
 
   const handlePlayNote = useCallback((pitch: Pitch) => {
     const player = getAudioPlayer();
@@ -66,143 +87,156 @@ export function Stage1Staff({ onComplete }: Stage1StaffProps) {
       </div>
 
       {/* Step 1: What is a staff? */}
-      {step >= 0 && (
-        <ConceptCard title="What is a Staff?" emoji="🎼">
-          <p className="mb-4">
-            A <strong>staff</strong> is a set of horizontal lines where we write
-            music. Think of it like lined paper for notes!
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4">
-            {/* Simple staff visualization */}
-            <svg viewBox="0 0 400 100" className="w-full max-w-md mx-auto">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <line
-                  key={i}
-                  x1="20"
-                  y1={20 + i * 15}
-                  x2="380"
-                  y2={20 + i * 15}
-                  stroke="#6b7280"
-                  strokeWidth="1"
-                />
-              ))}
-              <text
-                x="200"
-                y="95"
-                textAnchor="middle"
-                className="text-sm"
-                fill="#6b7280"
-              >
-                ↑ 5 lines = 1 staff
-              </text>
-            </svg>
-          </div>
-          <p className="text-sm text-gray-600">
-            Notes sit <strong>on lines</strong> or{" "}
-            <strong>in the spaces between lines</strong>.
-          </p>
-        </ConceptCard>
-      )}
+      <div ref={step1Ref}>
+        {step >= 0 && (
+          <ConceptCard title="What is a Staff?" emoji="🎼">
+            <p className="mb-4">
+              A <strong>staff</strong> is a set of horizontal lines where we
+              write music. Think of it like lined paper for notes!
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4">
+              {/* Simple staff visualization */}
+              <svg viewBox="0 0 400 100" className="w-full max-w-md mx-auto">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <line
+                    key={i}
+                    x1="20"
+                    y1={20 + i * 15}
+                    x2="380"
+                    y2={20 + i * 15}
+                    stroke="#6b7280"
+                    strokeWidth="1"
+                  />
+                ))}
+                <text
+                  x="200"
+                  y="95"
+                  textAnchor="middle"
+                  className="text-sm"
+                  fill="#6b7280"
+                >
+                  ↑ 5 lines = 1 staff
+                </text>
+              </svg>
+            </div>
+            <p className="text-sm text-gray-600">
+              Notes sit <strong>on lines</strong> or{" "}
+              <strong>in the spaces between lines</strong>.
+            </p>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 2: High vs Low */}
-      {step >= 1 && (
-        <ConceptCard title="High & Low" emoji="📈">
-          <p className="mb-4">
-            Notes placed <strong>higher on the staff</strong> sound{" "}
-            <strong>higher</strong> (like a bird chirping).
-            <br />
-            Notes placed <strong>lower</strong> sound <strong>lower</strong>{" "}
-            (like a bear growling).
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 my-4 flex justify-around items-center">
-            <div className="text-center">
-              <div className="text-4xl mb-2">🐦</div>
-              <div className="text-sm text-gray-600">High notes</div>
+      <div ref={step2Ref}>
+        {step >= 1 && (
+          <ConceptCard title="High & Low" emoji="📈">
+            <p className="mb-4">
+              Notes placed <strong>higher on the staff</strong> sound{" "}
+              <strong>higher</strong> (like a bird chirping).
+              <br />
+              Notes placed <strong>lower</strong> sound <strong>lower</strong>{" "}
+              (like a bear growling).
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 my-4 flex justify-around items-center">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🐦</div>
+                <div className="text-sm text-gray-600">High notes</div>
+              </div>
+              <div className="text-2xl text-gray-400">↕️</div>
+              <div className="text-center">
+                <div className="text-4xl mb-2">🐻</div>
+                <div className="text-sm text-gray-600">Low notes</div>
+              </div>
             </div>
-            <div className="text-2xl text-gray-400">↕️</div>
-            <div className="text-center">
-              <div className="text-4xl mb-2">🐻</div>
-              <div className="text-sm text-gray-600">Low notes</div>
-            </div>
-          </div>
-        </ConceptCard>
-      )}
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 3: Meet the notes */}
-      {step >= 2 && (
-        <ConceptCard title="Meet the Notes" emoji="🎵" variant="interactive">
-          <p className="mb-4">
-            Click each note to hear how it sounds! Notes are named using
-            letters: <strong>C D E F G A B</strong> (then it repeats).
-          </p>
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 my-4">
-            {STAGE1_NOTES.map((note) => {
-              const color = getNoteColor(note.pitch);
-              const isPlayed = playedNotes.has(note.pitch);
-              return (
-                <button
-                  key={note.pitch}
-                  onClick={() => handlePlayNote(note.pitch)}
-                  className={`
+      <div ref={step3Ref}>
+        {step >= 2 && (
+          <ConceptCard title="Meet the Notes" emoji="🎵" variant="interactive">
+            <p className="mb-4">
+              Click each note to hear how it sounds! Notes are named using
+              letters: <strong>C D E F G A B</strong> (then it repeats).
+            </p>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 my-4">
+              {STAGE1_NOTES.map((note) => {
+                const color = getNoteColor(note.pitch);
+                const isPlayed = playedNotes.has(note.pitch);
+                return (
+                  <button
+                    key={note.pitch}
+                    onClick={() => handlePlayNote(note.pitch)}
+                    className={`
                     p-3 rounded-xl border-2 transition-all
                     ${isPlayed ? "ring-2 ring-teal-400 ring-offset-2" : ""}
                     hover:scale-105 active:scale-95
                   `}
-                  style={{
-                    backgroundColor: color + "20",
-                    borderColor: color,
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full mx-auto mb-1"
-                    style={{ backgroundColor: color }}
-                  />
-                  <div className="font-bold text-gray-800">{note.label}</div>
-                  <div className="text-xs text-gray-500">{note.pitch}</div>
-                </button>
-              );
-            })}
-          </div>
-          {allNotesPlayed && (
-            <div className="text-center text-teal-600 font-medium">
-              Great job! You heard all the notes!
+                    style={{
+                      backgroundColor: color + "20",
+                      borderColor: color,
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full mx-auto mb-1"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="font-bold text-gray-800">{note.label}</div>
+                    <div className="text-xs text-gray-500">{note.pitch}</div>
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </ConceptCard>
-      )}
+            {allNotesPlayed && (
+              <div className="text-center text-teal-600 font-medium">
+                Great job! You heard all the notes!
+              </div>
+            )}
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Step 4: Lines vs Spaces */}
-      {step >= 3 && (
-        <ConceptCard title="Lines vs Spaces" emoji="📍" variant="tip">
-          <p className="mb-4">
-            <strong>Tip:</strong> Notes on <em>lines</em> have the line going
-            through their middle. Notes in <em>spaces</em> sit between two
-            lines.
-          </p>
-          <div className="bg-amber-50 rounded-lg p-4 my-4">
-            <div className="flex justify-around text-center">
-              <div>
-                <div className="text-2xl mb-2">━●━</div>
-                <div className="text-sm font-medium">On a line</div>
-                <div className="text-xs text-gray-500">E, G, B</div>
-              </div>
-              <div>
-                <div className="text-2xl mb-2">
-                  ━<br />●<br />━
+      <div ref={step4Ref}>
+        {step >= 3 && (
+          <ConceptCard title="Lines vs Spaces" emoji="📍" variant="tip">
+            <p className="mb-4">
+              <strong>Tip:</strong> Notes on <em>lines</em> have the line going
+              through their middle. Notes in <em>spaces</em> sit between two
+              lines.
+            </p>
+            <div className="bg-amber-50 rounded-lg p-4 my-4">
+              <div className="flex justify-center gap-16 text-center">
+                <div>
+                  <div className="text-2xl mb-2">━●━</div>
+                  <div className="text-sm font-medium">On a line</div>
+                  <div className="text-xs text-gray-500">E, G, B</div>
                 </div>
-                <div className="text-sm font-medium">In a space</div>
-                <div className="text-xs text-gray-500">F, A, C</div>
+                <div>
+                  <div className="text-2xl mb-2 leading-tight">
+                    ━<br />●<br />━
+                  </div>
+                  <div className="text-sm font-medium">In a space</div>
+                  <div className="text-xs text-gray-500">F, A, C</div>
+                </div>
               </div>
             </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            <strong>Memory trick for lines:</strong> &quot;Every Good Boy Does
-            Fine&quot; (E-G-B-D-F)
-            <br />
-            <strong>Memory trick for spaces:</strong> &quot;FACE&quot; (F-A-C-E)
-          </p>
-        </ConceptCard>
-      )}
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>
+                <strong>Key insight:</strong> Notes go in order:{" "}
+                <strong>C-D-E-F-G-A-B</strong>, then back to C again! They
+                alternate between lines and spaces as you move up the staff.
+              </p>
+              <p className="text-xs text-gray-500">
+                If you know one note, the next one up is always the next letter
+                (and after G comes A).
+              </p>
+            </div>
+          </ConceptCard>
+        )}
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">
