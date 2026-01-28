@@ -1,5 +1,63 @@
 "use client";
 
+/**
+ * NoteEditor.tsx - Interactive Music Staff Notation Editor
+ *
+ * This component renders a musical staff where users can place, edit, and delete notes.
+ * It supports variable staff line counts (3-5 lines), time signatures, repeat markers,
+ * lyrics, and playback visualization.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * COORDINATE SYSTEM & LAYOUT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * The staff uses a coordinate system where:
+ * - X increases rightward (horizontal position = beat/time)
+ * - Y increases downward (vertical position = pitch)
+ *
+ * Key reference point: `staffCenterY` - the Y coordinate of the middle line (Line 3)
+ * for each system. All vertical positioning is relative to this point.
+ *
+ * Staff lines are numbered 1-5 from TOP to BOTTOM:
+ *   Line 1: staffCenterY - 64  (F5 in treble clef)
+ *   Line 2: staffCenterY - 32  (D5)
+ *   Line 3: staffCenterY + 0   (B4) ← REFERENCE POINT
+ *   Line 4: staffCenterY + 32  (G4) ← Treble clef curl wraps here
+ *   Line 5: staffCenterY + 64  (E4)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * VARIABLE STAFF LINES (3, 4, or 5 lines)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * The editor supports showing 3, 4, or 5 staff lines. When fewer lines are shown,
+ * we hide the TOP lines and keep the BOTTOM lines fixed:
+ *
+ *   5 lines: Lines 1-5 visible (full standard staff)
+ *   4 lines: Lines 2-5 visible (Line 1 hidden)
+ *   3 lines: Lines 3-5 visible (Lines 1-2 hidden)
+ *
+ * This means the bottom 3 lines (3, 4, 5) NEVER move - notes placed on these
+ * lines stay in the same visual position regardless of the staffLines setting.
+ *
+ * Key variables for adaptive positioning:
+ * - `staffTopOffset`: Y offset of the topmost VISIBLE line from staffCenterY
+ *     5 lines: -64, 4 lines: -32, 3 lines: 0
+ * - `staffBottomOffset`: Y offset of the bottommost line (always +64 for Line 5)
+ * - `visibleCenterOffset`: Center point of the VISIBLE staff area
+ *     Used to vertically center time signatures and repeat markers
+ * - `decorationSpread`: How far apart time sig numbers and repeat dots spread
+ *     Scales with line count so decorations fill the visible space proportionally
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * TREBLE CLEF POSITIONING
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * The treble clef (G clef) must have its curl wrap around Line 4 (G4).
+ * We use an SVG path scaled to 5.1x, positioned so the curl aligns with G4.
+ * A clipPath limits the visible portion based on the staffLines setting,
+ * cutting off the top of the clef when fewer lines are shown.
+ */
+
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Pitch, LyricSyllable, TimeSignatureChange } from "@/lib/types";
@@ -49,21 +107,32 @@ function getNoteLabel(pitch: Pitch): string {
   return note;
 }
 
-// Time signature configuration
+/**
+ * Time Signature Configuration
+ *
+ * Each time signature defines:
+ * - beatsPerMeasure: Number of beats in one measure
+ * - beamGroups: How to group eighth notes for beaming
+ *     e.g., [2, 2] for 4/4 means beam beats 1-2 together, then beats 3-4 together
+ *     This follows standard music engraving rules (don't beam across beat groups)
+ * - measuresPerSystem: How many measures fit on one staff line
+ *     Longer meters (7/4, 9/8) get fewer measures per system to avoid crowding
+ * - shadeGroups: Visual beat grouping for the alternating background shading
+ */
 const TIME_SIG_CONFIG: Record<
   string,
   {
     beatsPerMeasure: number;
     beamGroups: number[];
     measuresPerSystem: number;
-    shadeGroups: number[]; // How to group beats for shading
+    shadeGroups: number[];
   }
 > = {
   "4/4": {
     beatsPerMeasure: 4,
-    beamGroups: [2, 2],
+    beamGroups: [2, 2], // Beam beats 1-2 together, 3-4 together (standard 4/4 beaming)
     measuresPerSystem: 2,
-    shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1], // Alternate each beat
+    shadeGroups: [1, 1, 1, 1, 1, 1, 1, 1],
   },
   "3/4": {
     beatsPerMeasure: 3,
@@ -554,24 +623,34 @@ function getMeasureAtBeat(
   return sysLayout.measures[0] || null;
 }
 
-// Calculate X position for a beat within a system (using variable beat width)
-// Now accounts for dynamic decoration widths (time sig, repeat markers)
+/**
+ * Calculate X position for a beat within a system
+ *
+ * Uses the system's per-measure layout which accounts for:
+ * - Time signature decoration widths (at measure boundaries)
+ * - Repeat marker widths (start/end markers)
+ * - Variable beat width based on noteSpacing setting
+ *
+ * @returns Rounded X coordinate to prevent sub-pixel rendering artifacts
+ */
 function getBeatXInSystem(
   sysLayout: SystemLayout,
   beatInSystem: number,
 ): number {
-  // Find which measure this beat belongs to
   const measure = getMeasureAtBeat(sysLayout, beatInSystem);
   if (!measure) {
-    // Fallback to old calculation if no measure found
-    return LEFT_MARGIN + beatInSystem * sysLayout.beatWidth;
+    // Fallback if no measure found (shouldn't happen in normal use)
+    return Math.round(LEFT_MARGIN + beatInSystem * sysLayout.beatWidth);
   }
 
   // Calculate beat position relative to measure start
   const beatInMeasure = beatInSystem - measure.startBeatInSystem;
 
   // Use measure's xOffset (accounts for all decorations before this measure)
-  return LEFT_MARGIN + measure.xOffset + beatInMeasure * sysLayout.beatWidth;
+  // Round to prevent floating-point artifacts in SVG rendering
+  return Math.round(
+    LEFT_MARGIN + measure.xOffset + beatInMeasure * sysLayout.beatWidth,
+  );
 }
 
 // Convert X coordinate to beat position within a system (accounts for decorations)
@@ -862,24 +941,50 @@ function changeOctave(pitch: Pitch, direction: "up" | "down"): Pitch {
   return buildPitch(parsed.note, parsed.accidental, newOctave);
 }
 
+/**
+ * Convert a pitch to its Y coordinate on the staff.
+ *
+ * Pitch Position System:
+ * - Position 0 = Middle C (C4), which is on a ledger line below the treble staff
+ * - Position 2 = E4, which sits ON Line 5 (bottom line of treble staff)
+ * - Position 4 = G4, which sits ON Line 4 (second from bottom, where treble clef curls)
+ * - Position 6 = B4, which sits ON Line 3 (middle line)
+ * - Each position step = one "slot" (either a line or a space)
+ *
+ * The formula converts position to Y coordinate:
+ * 1. Start from Line 5 (bottom line) at staffCenterY + 64
+ * 2. Move UP by (position - 2) half-line-spacings
+ *    (position 2 is E4 on Line 5, so we measure from there)
+ *
+ * Visual mapping (treble clef):
+ *   Pos 10 = F5 → Line 1 (top)      Y = staffCenterY - 64
+ *   Pos  8 = D5 → Line 2            Y = staffCenterY - 32
+ *   Pos  6 = B4 → Line 3 (middle)   Y = staffCenterY
+ *   Pos  4 = G4 → Line 4            Y = staffCenterY + 32
+ *   Pos  2 = E4 → Line 5 (bottom)   Y = staffCenterY + 64
+ */
 function getYFromPitch(pitch: Pitch, system: number): number {
-  // Use lookup table if available, otherwise compute dynamically
   const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;
-  // Round position to handle sharps/flats (which have fractional positions like 0.5)
-  // This ensures they render at valid staff positions
+
+  // Round to handle accidentals (sharps/flats share visual position with their natural)
   const roundedPos = Math.round(pos);
-  // Bottom line (Line 5) is at staffCenterY + 2*LINE_SPACING, where E4 sits (position 2)
-  // Each position step = half a line spacing (lines and spaces alternate)
+
+  // Line 5 (E4, position 2) is at staffCenterY + 2*LINE_SPACING (64px below center)
+  // Each position step moves by LINE_SPACING/2 (16px)
   const bottomLineY = staffCenterY + 2 * LINE_SPACING;
   return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
 }
 
-// Convert beat position to X coordinate (for rendering)
-// Notes are centered in their beat column
+/**
+ * Convert beat position to X coordinate (for rendering)
+ * Notes are centered within their beat column via getNoteOffset.
+ * @returns Rounded X coordinate to prevent sub-pixel rendering issues
+ */
 function getXFromBeat(beat: number, beatWidth: number = BEAT_WIDTH): number {
-  return LEFT_MARGIN + beat * beatWidth + getNoteOffset(beatWidth);
+  // Round to prevent floating-point artifacts in SVG (e.g., 236.14583...)
+  return Math.round(LEFT_MARGIN + beat * beatWidth + getNoteOffset(beatWidth));
 }
 
 // Convert X coordinate to beat position (for placement)
@@ -1050,8 +1155,22 @@ function MenuNoteIcon({
   );
 }
 
-// Function to group beamable notes (sixteenths, eighths, dotted eighths)
-// Now uses per-system layouts for variable time signatures
+/**
+ * Group Eighth Notes for Beaming
+ *
+ * Music engraving rules for beaming:
+ * 1. Only beam notes with flags (eighth notes and shorter): 0.25, 0.5, 0.75 beats
+ * 2. Never beam across beat group boundaries (defined by beamGroups in TIME_SIG_CONFIG)
+ *    - In 4/4: don't beam beats 2→3 (first half vs second half)
+ *    - In 6/8: beam groups of 3 (compound meter)
+ * 3. Never beam across bar lines
+ * 4. Don't beam notes with other notes (quarter notes, etc.) in between them
+ *
+ * The algorithm:
+ * - Sort beamable notes by position
+ * - Group consecutive notes that share the same "beat group"
+ * - A beat group is determined by the time signature's beamGroups array
+ */
 function groupEighthNotes(
   allNotes: EditorNote[],
   systemLayouts: SystemLayout[],
@@ -1160,9 +1279,19 @@ function groupEighthNotes(
   return groups;
 }
 
-// Helper to create a beam group with calculated stem direction
+/**
+ * Create a Beam Group with Stem Direction
+ *
+ * Stem direction rules (standard music engraving):
+ * 1. Find the note furthest from the middle line (Line 3)
+ * 2. ALL notes in the group get the same stem direction
+ * 3. If furthest note is above middle → stems point DOWN
+ *    If furthest note is below middle → stems point UP
+ * 4. If equidistant, default to stems DOWN (common convention)
+ *
+ * This ensures the beam doesn't collide with nearby staff lines.
+ */
 function createBeamGroup(notes: EditorNote[]): BeamGroup {
-  // Find the note furthest from the staff center to determine stem direction
   let maxDistance = 0;
   let stemDirection: "up" | "down" = "up";
 
@@ -1172,7 +1301,7 @@ function createBeamGroup(notes: EditorNote[]): BeamGroup {
     const distance = Math.abs(noteY - staffCenterY);
     if (distance > maxDistance) {
       maxDistance = distance;
-      // If the furthest note is above center, stems go down; otherwise up
+      // Note above center (lower Y) → stems down; note below center → stems up
       stemDirection = noteY < staffCenterY ? "down" : "up";
     }
   }
@@ -2610,10 +2739,26 @@ export function NoteEditor({
     );
   };
 
+  /**
+   * Render a single staff system (one horizontal line of music)
+   *
+   * Each system contains:
+   * - Staff lines (3, 4, or 5 based on settings)
+   * - Treble clef (clipped based on visible lines)
+   * - Time signature (on first system or at changes)
+   * - Bar lines separating measures
+   * - Beat shading for visual guidance
+   * - Repeat markers (start/end dots)
+   * - System number label
+   *
+   * Coordinate reference: All Y positions are relative to `staffCenterY`,
+   * which is the Y coordinate of the middle staff line (Line 3).
+   */
   const renderSystem = (systemIndex: number) => {
     const isFirstSystem = systemIndex === 0;
 
-    // Staff center position (fixed reference point for note positioning)
+    // Staff center Y: the fixed reference point (Line 3 position)
+    // Notes are positioned relative to this point regardless of visible line count
     const staffCenterY = getStaffCenterY(systemIndex);
 
     // Dynamic staff extents based on visible lines
@@ -2629,6 +2774,22 @@ export function NoteEditor({
 
     // Padding around staff for backgrounds and bar lines
     const staffPadding = 20;
+
+    // Visual center of visible lines (for positioning time sig, repeat markers)
+    // 3 lines: (0+64)/2=32, 4 lines: (-32+64)/2=16, 5 lines: (-64+64)/2=0
+    const visibleCenterOffset = (staffTopOffset + staffBottomOffset) / 2;
+
+    // Decoration spread scales with visible staff lines
+    // Time sig numbers and repeat dots spread apart more with more visible lines
+    // 3 lines: 16px (standard half-space, dots in middle 2 spaces)
+    // 4 lines: 28px (generous spread to fill 3 spaces)
+    // 5 lines: 32px (full line spacing, dots in outer 2 of 4 spaces)
+    const decorationSpread =
+      staffLines === 5
+        ? LINE_SPACING // 32px
+        : staffLines === 4
+          ? LINE_SPACING * 0.875 // 28px
+          : LINE_SPACING / 2; // 16px
 
     // Clip area extends 1.5 lines above visible top for note placement
     const clipTopOffset = staffTopOffset - 1.5 * LINE_SPACING; // 1.5 lines above top visible line
@@ -2846,7 +3007,9 @@ export function NoteEditor({
                         ? 85
                         : barX + TIME_SIG_DISPLAY_WIDTH / 2
                     }
-                    y={staffCenterY - LINE_SPACING / 2 + 6}
+                    y={
+                      staffCenterY + visibleCenterOffset - decorationSpread + 6
+                    }
                     fontSize={20}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -2861,7 +3024,9 @@ export function NoteEditor({
                         ? 85
                         : barX + TIME_SIG_DISPLAY_WIDTH / 2
                     }
-                    y={staffCenterY + LINE_SPACING / 2 + 6}
+                    y={
+                      staffCenterY + visibleCenterOffset + decorationSpread + 6
+                    }
                     fontSize={20}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -2903,15 +3068,19 @@ export function NoteEditor({
                 <g opacity={0.5} style={{ pointerEvents: "none" }}>
                   <rect
                     x={barX + 5}
-                    y={staffCenterY - LINE_SPACING - 5}
+                    y={
+                      staffCenterY + visibleCenterOffset - decorationSpread - 10
+                    }
                     width={25}
-                    height={LINE_SPACING * 2 + 10}
+                    height={decorationSpread * 2 + 20}
                     fill="#e0f2fe"
                     rx={3}
                   />
                   <text
                     x={barX + 17}
-                    y={staffCenterY - LINE_SPACING / 2 + 5}
+                    y={
+                      staffCenterY + visibleCenterOffset - decorationSpread + 5
+                    }
                     fontSize={14}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -2921,7 +3090,9 @@ export function NoteEditor({
                   </text>
                   <text
                     x={barX + 17}
-                    y={staffCenterY + LINE_SPACING / 2 + 5}
+                    y={
+                      staffCenterY + visibleCenterOffset + decorationSpread + 5
+                    }
                     fontSize={14}
                     fontWeight="bold"
                     textAnchor="middle"
@@ -3025,7 +3196,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX + 18}
-                    cy={staffCenterY - LINE_SPACING / 2}
+                    cy={staffCenterY + visibleCenterOffset - decorationSpread}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === startMarker.id
@@ -3038,7 +3209,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX + 18}
-                    cy={staffCenterY + LINE_SPACING / 2}
+                    cy={staffCenterY + visibleCenterOffset + decorationSpread}
                     r={hoveredMarker === startMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === startMarker.id
@@ -3054,7 +3225,7 @@ export function NoteEditor({
                     <g>
                       <rect
                         x={barX - 20}
-                        y={staffCenterY - LINE_SPACING - 45}
+                        y={staffCenterY + staffTopOffset - 45}
                         width={selectedTool === "delete" ? 90 : 80}
                         height={22}
                         fill="#1f2937"
@@ -3063,7 +3234,7 @@ export function NoteEditor({
                       />
                       <text
                         x={barX + (selectedTool === "delete" ? 25 : 20)}
-                        y={staffCenterY - LINE_SPACING - 30}
+                        y={staffCenterY + staffTopOffset - 30}
                         fontSize={11}
                         fill="white"
                         textAnchor="middle"
@@ -3171,7 +3342,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX - 18}
-                    cy={staffCenterY - LINE_SPACING / 2}
+                    cy={staffCenterY + visibleCenterOffset - decorationSpread}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === endMarker.id
@@ -3184,7 +3355,7 @@ export function NoteEditor({
                   />
                   <circle
                     cx={barX - 18}
-                    cy={staffCenterY + LINE_SPACING / 2}
+                    cy={staffCenterY + visibleCenterOffset + decorationSpread}
                     r={hoveredMarker === endMarker.id ? 7 : 5}
                     fill={
                       hoveredMarker === endMarker.id
@@ -3200,7 +3371,7 @@ export function NoteEditor({
                     <g>
                       <rect
                         x={barX - 90}
-                        y={staffCenterY - LINE_SPACING - 45}
+                        y={staffCenterY + staffTopOffset - 45}
                         width={selectedTool === "delete" ? 90 : 80}
                         height={22}
                         fill="#1f2937"
@@ -3209,7 +3380,7 @@ export function NoteEditor({
                       />
                       <text
                         x={barX - (selectedTool === "delete" ? 45 : 50)}
-                        y={staffCenterY - LINE_SPACING - 30}
+                        y={staffCenterY + staffTopOffset - 30}
                         fontSize={11}
                         fill="white"
                         textAnchor="middle"
@@ -3265,16 +3436,16 @@ export function NoteEditor({
               {/* Background highlight */}
               <rect
                 x={barX + 5}
-                y={staffCenterY - LINE_SPACING - 5}
+                y={staffCenterY + visibleCenterOffset - decorationSpread - 10}
                 width={25}
-                height={LINE_SPACING * 2 + 10}
+                height={decorationSpread * 2 + 20}
                 fill="#e0f2fe"
                 rx={3}
               />
               {/* Time signature numbers */}
               <text
                 x={barX + 17}
-                y={staffCenterY - LINE_SPACING / 2 + 5}
+                y={staffCenterY + visibleCenterOffset - decorationSpread + 5}
                 fontSize={14}
                 fontWeight="bold"
                 textAnchor="middle"
@@ -3284,7 +3455,7 @@ export function NoteEditor({
               </text>
               <text
                 x={barX + 17}
-                y={staffCenterY + LINE_SPACING / 2 + 5}
+                y={staffCenterY + visibleCenterOffset + decorationSpread + 5}
                 fontSize={14}
                 fontWeight="bold"
                 textAnchor="middle"
@@ -3367,9 +3538,14 @@ export function NoteEditor({
                     <rect
                       key={`highlight-${m}`}
                       x={measureX}
-                      y={staffCenterY - LINE_SPACING - 15}
+                      y={
+                        staffCenterY +
+                        visibleCenterOffset -
+                        decorationSpread -
+                        15
+                      }
                       width={measureWidth}
-                      height={LINE_SPACING * 2 + 30}
+                      height={decorationSpread * 2 + 30}
                       fill="#8b5cf6"
                       opacity={0.15}
                       rx={4}
@@ -3380,9 +3556,24 @@ export function NoteEditor({
             );
           })()}
 
-        {/* Treble clef (G clef) - SVG path with curl positioned on G line */}
-        {/* Clipped to visible staff area based on staffLines setting */}
-        {/* Original SVG: 15.186 x 40.768, scale 5.1x makes it ~208px tall */}
+        {/*
+          Treble Clef (G Clef) Rendering
+
+          The treble clef is called a "G clef" because its inner curl wraps around
+          the G line (Line 4, second from bottom). This is THE defining feature -
+          wherever you place the curl is where G4 lives.
+
+          Positioning math:
+          - Original SVG is 15.186 x 40.768 units
+          - Scale 5.1x makes it ~208px tall
+          - The curl center in the original SVG is at approximately y=18.8 units
+          - At 5.1x scale, that's 18.8 * 5.1 = ~96px from the top of the scaled clef
+          - G4 (Line 4) is at staffCenterY + 32 (one line below middle)
+          - So we position: translate(0, staffCenterY - 96) to align curl with G line
+
+          The clipPath limits visibility based on staffLines setting, cutting off
+          the top of the clef when fewer than 5 lines are shown.
+        */}
         <g clipPath={`url(#system-clip-${systemIndex})`}>
           <g
             transform={`translate(0, ${staffCenterY - 96}) scale(5.1)`}
@@ -3419,7 +3610,7 @@ export function NoteEditor({
             />
             <text
               x={85}
-              y={staffCenterY - LINE_SPACING / 2 + 6}
+              y={staffCenterY + visibleCenterOffset - decorationSpread + 6}
               fontSize={20}
               fontWeight="bold"
               textAnchor="middle"
@@ -3429,7 +3620,7 @@ export function NoteEditor({
             </text>
             <text
               x={85}
-              y={staffCenterY + LINE_SPACING / 2 + 6}
+              y={staffCenterY + visibleCenterOffset + decorationSpread + 6}
               fontSize={20}
               fontWeight="bold"
               textAnchor="middle"
@@ -3638,7 +3829,17 @@ export function NoteEditor({
             return stemDirection === "up" ? noteY - stemH : noteY + stemH;
           });
 
-          // Limit beam slope to max one staff space (engraver's rule)
+          /**
+           * Beam Slope Limiting (the "engraver's rule")
+           *
+           * In professional music engraving, beams should follow the melodic contour
+           * (ascending notes = beam slopes up, descending = slopes down) BUT the slope
+           * must be limited to prevent the beam from looking awkward or colliding with
+           * other elements.
+           *
+           * Standard rule: max slope = half a staff space (LINE_SPACING / 2 = 16px)
+           * This keeps beams visually balanced while still showing melodic direction.
+           */
           const MAX_BEAM_SLOPE = LINE_SPACING / 2; // 16px max
           const rawFirstY = stemYs[0];
           const rawLastY = stemYs[stemYs.length - 1];
@@ -3648,9 +3849,8 @@ export function NoteEditor({
             Math.min(MAX_BEAM_SLOPE, rawSlope),
           );
 
-          // Position beam so ALL stems can reach it (anchor at the extremity)
-          // For stems up: beam must be at or above all note positions
-          // For stems down: beam must be at or below all note positions
+          // Anchor beam at the extremity so ALL stems can reach it
+          // Stems up: beam at/above highest note; Stems down: beam at/below lowest note
           let firstY: number;
           let lastY: number;
 
