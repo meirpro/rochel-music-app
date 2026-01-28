@@ -20,8 +20,8 @@
 export const MIN_BEAT_WIDTH = 40; // Absolute minimum (fits note + small gap)
 export const BASE_BEAT_WIDTH = 60; // Reference width at 100% spacing
 export const LEFT_MARGIN = 100; // Space before first beat for clef and time sig
-export const STAFF_LEFT = 40; // Where staff lines start (left of clef)
-export const RIGHT_MARGIN = 60; // Space after last beat
+export const STAFF_LEFT = 10; // Where staff lines start (left of clef)
+export const RIGHT_MARGIN = 30; // Space after last beat
 export const LINE_SPACING = 32; // Vertical distance between staff lines (pixels)
 export const SYSTEM_HEIGHT = 200; // Vertical space between system centers
 export const SYSTEM_TOP_MARGIN = 100; // Top margin for first system (accommodates clef)
