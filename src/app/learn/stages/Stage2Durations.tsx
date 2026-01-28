@@ -3,7 +3,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ConceptCard } from "../components/ConceptCard";
 import { StageComplete } from "../components/StageComplete";
-import { NoteSVGFilled, NoteDuration } from "../components/NoteSVG";
+import {
+  StandaloneSingleNote,
+  NoteDuration,
+} from "@/components/NoteEditorRefactored/components/NoteElement";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { pitchToMidi } from "@/lib/constants";
 
@@ -167,7 +170,10 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                   `}
                   >
                     <div className="mb-2">
-                      <NoteSVGFilled duration={duration.duration} size={48} />
+                      <StandaloneSingleNote
+                        duration={duration.duration}
+                        size={48}
+                      />
                     </div>
                     <div className="font-bold text-purple-800">
                       {duration.name}

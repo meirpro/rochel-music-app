@@ -672,3 +672,207 @@ export function BeamGroupElement({
     </g>
   );
 }
+
+// ============================================================================
+// STANDALONE COMPONENTS (for Learn pages, icons, etc.)
+// ============================================================================
+
+/** Duration type for standalone components */
+export type NoteDuration = 0.25 | 0.5 | 0.75 | 1 | 1.5 | 2 | 3 | 4;
+
+interface StandaloneSingleNoteProps {
+  duration: NoteDuration;
+  size?: number;
+  color?: string;
+}
+
+/**
+ * Standalone SVG of a single note (for icons, Learn pages, etc.)
+ * Self-contained - doesn't need editor context
+ */
+export function StandaloneSingleNote({
+  duration,
+  size = 48,
+  color = "#7c3aed",
+}: StandaloneSingleNoteProps) {
+  const isWhole = duration === 4;
+  const isHalf = duration === 2 || duration === 3;
+  const isHollow = isWhole || isHalf;
+  const hasFlag = duration === 0.5 || duration === 0.75 || duration === 0.25;
+  const hasDoubleFlag = duration === 0.25;
+  const hasDot = duration === 0.75 || duration === 1.5 || duration === 3;
+
+  // Scaled values for standalone display (viewBox 50x72)
+  const noteX = 22;
+  const noteY = hasDot ? 48 : 50;
+  const rx = 8;
+  const ry = 6.5;
+  const stemHeight = 24;
+  const stemWidth = 2;
+  const strokeWidth = 1.5;
+  const flagStrokeWidth = 2;
+  const dotRadius = 2.5;
+
+  const stemX = noteX + 8;
+  const stemEndY = noteY - stemHeight;
+
+  const viewBoxWidth = hasDot ? 70 : 50;
+  const viewBoxHeight = 72;
+  const scaledWidth = (viewBoxWidth / 60) * size;
+  const scaledHeight = (viewBoxHeight / 60) * size;
+
+  const flagPath = `M ${stemX} ${stemEndY} Q ${stemX + 6} ${stemEndY + 6} ${stemX + 6} ${stemEndY + 13}`;
+  const secondFlagPath = `M ${stemX} ${stemEndY + 5} Q ${stemX + 6} ${stemEndY + 11} ${stemX + 6} ${stemEndY + 18}`;
+
+  return (
+    <svg
+      width={scaledWidth}
+      height={scaledHeight}
+      viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+      className="inline-block align-middle"
+    >
+      {/* Stem (not for whole notes) */}
+      {!isWhole && (
+        <line
+          x1={stemX}
+          y1={noteY}
+          x2={stemX}
+          y2={stemEndY}
+          stroke={color}
+          strokeWidth={stemWidth}
+        />
+      )}
+      {/* Flag for eighth notes */}
+      {hasFlag && !hasDoubleFlag && (
+        <path
+          d={flagPath}
+          stroke={color}
+          strokeWidth={flagStrokeWidth}
+          fill="none"
+        />
+      )}
+      {/* Double flag for sixteenth notes */}
+      {hasDoubleFlag && (
+        <>
+          <path
+            d={flagPath}
+            stroke={color}
+            strokeWidth={flagStrokeWidth}
+            fill="none"
+          />
+          <path
+            d={secondFlagPath}
+            stroke={color}
+            strokeWidth={flagStrokeWidth}
+            fill="none"
+          />
+        </>
+      )}
+      {/* Notehead */}
+      <ellipse
+        cx={noteX}
+        cy={noteY}
+        rx={rx}
+        ry={ry}
+        fill={isHollow ? "#ffffff" : color}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        transform={`rotate(-20 ${noteX} ${noteY})`}
+      />
+      {/* Dot for dotted notes */}
+      {hasDot && (
+        <circle cx={noteX + 14} cy={noteY - 4} r={dotRadius} fill={color} />
+      )}
+    </svg>
+  );
+}
+
+interface StandaloneBeamedNotesProps {
+  count?: number;
+  size?: number;
+  color?: string;
+}
+
+/**
+ * Standalone SVG of beamed eighth notes (for icons, Learn pages, etc.)
+ * Self-contained - doesn't need editor context
+ */
+export function StandaloneBeamedNotes({
+  count = 2,
+  size = 40,
+  color = "#7c3aed",
+}: StandaloneBeamedNotesProps) {
+  // Scaled values for standalone display
+  const rx = 8;
+  const ry = 6.5;
+  const stemWidth = 2;
+  const beamThickness = 4;
+  const strokeWidth = 1.5;
+  const stemXOffset = 8;
+
+  const beamY = 12;
+  const noteY = 48;
+  const noteSpacing = 28;
+  const padding = 16;
+
+  const viewBoxWidth = padding * 2 + (count - 1) * noteSpacing;
+  const viewBoxHeight = 60;
+
+  const noteXs = Array.from(
+    { length: count },
+    (_, i) => padding + i * noteSpacing,
+  );
+  const stemXs = noteXs.map((nx) => nx + stemXOffset);
+  const firstStemX = stemXs[0];
+  const lastStemX = stemXs[stemXs.length - 1];
+
+  const scaleFactor = size / 40;
+  const width = viewBoxWidth * scaleFactor;
+  const height = viewBoxHeight * scaleFactor;
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+      className="inline-block align-middle"
+    >
+      {/* Stems */}
+      {stemXs.map((stemX, i) => (
+        <line
+          key={`stem-${i}`}
+          x1={stemX}
+          y1={noteY}
+          x2={stemX}
+          y2={beamY + beamThickness}
+          stroke={color}
+          strokeWidth={stemWidth}
+        />
+      ))}
+      {/* Primary beam - extend by half stem width on each side to cover stems */}
+      <polygon
+        points={`
+          ${firstStemX - stemWidth / 2},${beamY}
+          ${lastStemX + stemWidth / 2},${beamY}
+          ${lastStemX + stemWidth / 2},${beamY + beamThickness}
+          ${firstStemX - stemWidth / 2},${beamY + beamThickness}
+        `}
+        fill={color}
+      />
+      {/* Noteheads */}
+      {noteXs.map((nx, i) => (
+        <ellipse
+          key={`notehead-${i}`}
+          cx={nx}
+          cy={noteY}
+          rx={rx}
+          ry={ry}
+          fill={color}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          transform={`rotate(-20 ${nx} ${noteY})`}
+        />
+      ))}
+    </svg>
+  );
+}

@@ -1511,7 +1511,7 @@ export function NoteEditor({
   } | null>(null);
 
   // Clear tool-specific state when tool changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     if (selectedTool !== "repeat") {
       setRepeatStart(null);
