@@ -14,11 +14,9 @@ import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import {
   LEFT_MARGIN,
-  LINE_SPACING,
   SYSTEM_HEIGHT,
   SYSTEM_TOP_MARGIN,
   getNoteOffset,
-  getStaffCenterY,
 } from "@/lib/layoutUtils";
 
 // Import extracted utilities
@@ -28,7 +26,6 @@ import {
   getLayoutForSystem,
   findBestSystemForX,
   getBeatFromXInSystem,
-  getSystemForAbsoluteBeat,
 } from "./utils/systemLayout";
 import { getPitchFromY, getSystemFromY } from "./utils/pitchUtils";
 import { snapX } from "./utils/beatUtils";
@@ -39,13 +36,15 @@ import { groupEighthNotes } from "./utils/beamingUtils";
 import { EditorNote, BeamGroup, NoteEditorProps } from "./types";
 
 // Import subcomponents
-import { MenuNoteIcon } from "./components/MenuNoteIcon";
 import { StaffSystem } from "./components/StaffSystem";
 import {
   NoteElement,
   DurationExtension,
   BeamGroupElement,
 } from "./components/NoteElement";
+import { NoteContextMenu, EmptyContextMenu } from "./components/ContextMenus";
+import { Playhead } from "./components/Playhead";
+import { LyricsLayer } from "./components/LyricsLayer";
 
 // Import hooks
 import { useContextMenu } from "./hooks/useContextMenu";
@@ -475,346 +474,44 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         ))}
 
         {/* Lyrics */}
-        {lyrics.map((lyric) => {
-          const lyricPosition = getSystemForAbsoluteBeat(
-            systemLayouts,
-            lyric.absoluteBeat,
-          );
-          if (!lyricPosition || lyricPosition.systemIndex >= systemCount)
-            return null;
-          const system = lyricPosition.systemIndex;
-          const lyricSysLayout = getLayoutForSystem(systemLayouts, system);
-          const beatInSystem = lyricPosition.beatInSystem;
-          const x =
-            LEFT_MARGIN +
-            beatInSystem * lyricSysLayout.beatWidth +
-            getNoteOffset(lyricSysLayout.beatWidth);
-          const staffCenterY = getStaffCenterY(system);
-          const lyricsY = staffCenterY + LINE_SPACING + 55;
-
-          return (
-            <text
-              key={`lyric-${lyric.absoluteBeat}`}
-              x={x}
-              y={lyricsY}
-              textAnchor="middle"
-              fontSize={12}
-              fontFamily="system-ui, sans-serif"
-              fill="#374151"
-              style={{ unicodeBidi: "isolate" }}
-            >
-              {lyric.text}
-            </text>
-          );
-        })}
+        <LyricsLayer
+          lyrics={lyrics}
+          systemLayouts={systemLayouts}
+          systemCount={systemCount}
+        />
 
         {/* Playhead - taller than beat shading to stick out on both ends */}
-        {playheadX !== null &&
-          (() => {
-            // Calculate staff extents
-            const staffTopOffset =
-              staffLines === 5
-                ? -2 * LINE_SPACING
-                : staffLines === 4
-                  ? -1 * LINE_SPACING
-                  : 0;
-            const staffBottomOffset = 2 * LINE_SPACING;
-            // Beat shading has 20px padding, playhead extends 35px to stick out 15px beyond
-            const playheadOverhang = 35;
-            const playheadTop =
-              getStaffCenterY(playheadSystem) +
-              staffTopOffset -
-              playheadOverhang;
-            const playheadBottom =
-              getStaffCenterY(playheadSystem) +
-              staffBottomOffset +
-              playheadOverhang;
-
-            const isDraggable = !!onPlayheadBeatChange;
-
-            return (
-              <g
-                onMouseDown={isDraggable ? handlePlayheadMouseDown : undefined}
-                style={{ cursor: isDraggable ? "ew-resize" : "default" }}
-              >
-                {/* Invisible hit area for easier dragging */}
-                {isDraggable && (
-                  <rect
-                    x={playheadX - 10}
-                    y={playheadTop}
-                    width={20}
-                    height={playheadBottom - playheadTop}
-                    fill="transparent"
-                  />
-                )}
-                <line
-                  x1={playheadX}
-                  y1={playheadTop}
-                  x2={playheadX}
-                  y2={playheadBottom}
-                  stroke="#f59e0b"
-                  strokeWidth={3}
-                  opacity={0.8}
-                />
-                {/* Triangle at top of playhead */}
-                <polygon
-                  points={`${playheadX - 8},${playheadTop} ${playheadX + 8},${playheadTop} ${playheadX},${playheadTop + 10}`}
-                  fill="#f59e0b"
-                  opacity={0.8}
-                />
-              </g>
-            );
-          })()}
+        {playheadX !== null && (
+          <Playhead
+            playheadX={playheadX}
+            playheadSystem={playheadSystem}
+            staffLines={staffLines}
+            isDraggable={!!onPlayheadBeatChange}
+            onMouseDown={handlePlayheadMouseDown}
+          />
+        )}
       </svg>
 
       {/* Context menu for note editing */}
       {contextMenu && contextMenu.type === "note" && (
-        <div
-          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px] overflow-y-auto"
-          style={{
-            left: contextMenu.x,
-            top: Math.min(
-              contextMenu.y,
-              typeof window !== "undefined"
-                ? window.innerHeight - 600
-                : contextMenu.y,
-            ),
-            maxHeight: "calc(100vh - 40px)",
-          }}
-        >
-          {/* Duration section */}
-          <button
-            onClick={() => toggleSection("duration")}
-            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-          >
-            <span>Duration</span>
-            <span className="text-gray-400">
-              {collapsedSections.duration ? "▸" : "▾"}
-            </span>
-          </button>
-          {!collapsedSections.duration && (
-            <>
-              <button
-                onClick={() => handleChangeDuration(0.25)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.25} /> Sixteenth
-              </button>
-              <button
-                onClick={() => handleChangeDuration(0.5)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.5} /> Eighth
-              </button>
-              <button
-                onClick={() => handleChangeDuration(0.75)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.75} /> Dotted Eighth
-              </button>
-              <button
-                onClick={() => handleChangeDuration(1)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={1} /> Quarter
-              </button>
-              <button
-                onClick={() => handleChangeDuration(1.5)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={1.5} /> Dotted Quarter
-              </button>
-              <button
-                onClick={() => handleChangeDuration(2)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={2} /> Half
-              </button>
-              <button
-                onClick={() => handleChangeDuration(3)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={3} /> Dotted Half
-              </button>
-              <button
-                onClick={() => handleChangeDuration(4)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={4} /> Whole
-              </button>
-            </>
-          )}
-
-          {/* Accidental section */}
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={() => toggleSection("accidental")}
-            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-          >
-            <span>Accidental</span>
-            <span className="text-gray-400">
-              {collapsedSections.accidental ? "▸" : "▾"}
-            </span>
-          </button>
-          {!collapsedSections.accidental && (
-            <div className="px-2 py-1 flex gap-1">
-              <button
-                onClick={() => handleChangeAccidental(null)}
-                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-                title="Natural"
-              >
-                ♮
-              </button>
-              <button
-                onClick={() => handleChangeAccidental("#")}
-                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-                title="Sharp"
-              >
-                ♯
-              </button>
-              <button
-                onClick={() => handleChangeAccidental("b")}
-                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-                title="Flat"
-              >
-                ♭
-              </button>
-            </div>
-          )}
-
-          {/* Change Note section */}
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={() => toggleSection("changeNote")}
-            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-          >
-            <span>Change Note</span>
-            <span className="text-gray-400">
-              {collapsedSections.changeNote ? "▸" : "▾"}
-            </span>
-          </button>
-          {!collapsedSections.changeNote && (
-            <div className="px-2 py-1 flex gap-0.5">
-              {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
-                <button
-                  key={letter}
-                  onClick={() => handleChangePitchLetter(letter)}
-                  className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Octave section */}
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={() => toggleSection("octave")}
-            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-          >
-            <span>Octave</span>
-            <span className="text-gray-400">
-              {collapsedSections.octave ? "▸" : "▾"}
-            </span>
-          </button>
-          {!collapsedSections.octave && (
-            <div className="px-2 py-1 flex gap-1">
-              <button
-                onClick={() => handleChangeOctave("up")}
-                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-                title="Octave Up"
-              >
-                <span>▲</span> Up
-              </button>
-              <button
-                onClick={() => handleChangeOctave("down")}
-                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-                title="Octave Down"
-              >
-                <span>▼</span> Down
-              </button>
-            </div>
-          )}
-
-          {/* Delete section */}
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={handleDeleteFromMenu}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
-          >
-            <span>🗑</span> Delete
-          </button>
-        </div>
+        <NoteContextMenu
+          contextMenu={contextMenu}
+          collapsedSections={collapsedSections}
+          onToggleSection={toggleSection}
+          onChangeDuration={handleChangeDuration}
+          onChangeAccidental={handleChangeAccidental}
+          onChangePitchLetter={handleChangePitchLetter}
+          onChangeOctave={handleChangeOctave}
+          onDelete={handleDeleteFromMenu}
+        />
       )}
 
       {/* Context menu for adding notes on empty space */}
       {contextMenu && contextMenu.type === "empty" && (
-        <div
-          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px] overflow-y-auto"
-          style={{
-            left: contextMenu.x,
-            top: Math.min(
-              contextMenu.y,
-              typeof window !== "undefined"
-                ? window.innerHeight - 370
-                : contextMenu.y,
-            ),
-            maxHeight: "calc(100vh - 40px)",
-          }}
-        >
-          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Add Note ({contextMenu.pitch})
-          </div>
-          <button
-            onClick={() => handleAddNoteFromMenu(0.25)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.25} /> Sixteenth
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(0.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.5} /> Eighth
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(0.75)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.75} /> Dotted Eighth
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(1)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1} /> Quarter
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(1.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1.5} /> Dotted Quarter
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(2)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={2} /> Half
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(3)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={3} /> Dotted Half
-          </button>
-          <button
-            onClick={() => handleAddNoteFromMenu(4)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={4} /> Whole
-          </button>
-        </div>
+        <EmptyContextMenu
+          contextMenu={contextMenu}
+          onAddNote={handleAddNoteFromMenu}
+        />
       )}
     </div>
   );
