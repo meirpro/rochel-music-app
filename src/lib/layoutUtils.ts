@@ -11,8 +11,8 @@ export const LEFT_MARGIN = 100;
 export const STAFF_LEFT = 40;
 export const RIGHT_MARGIN = 60;
 export const LINE_SPACING = 32;
-export const SYSTEM_HEIGHT = 180;
-export const SYSTEM_TOP_MARGIN = 60;
+export const SYSTEM_HEIGHT = 200; // Space between system centers
+export const SYSTEM_TOP_MARGIN = 100; // Top margin for first system (accommodates clef)
 export const STAFF_CENTER_OFFSET = 80;
 
 // Decoration widths for time signatures and repeat markers
