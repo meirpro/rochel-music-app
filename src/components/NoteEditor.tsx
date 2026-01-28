@@ -59,6 +59,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useLocalStorage } from "usehooks-ts";
 import { toast } from "sonner";
 import { Pitch, LyricSyllable, TimeSignatureChange } from "@/lib/types";
 import { getNoteColor, pitchToMidi } from "@/lib/constants";
@@ -1471,6 +1472,30 @@ export function NoteEditor({
       }
     | null
   >(null);
+
+  // Collapsed sections state for context menu (persisted in localStorage)
+  // SSR safe: initializeWithValue: false prevents hydration mismatch
+  const [collapsedSections, setCollapsedSections] = useLocalStorage<{
+    duration: boolean;
+    accidental: boolean;
+    changeNote: boolean;
+    octave: boolean;
+  }>(
+    "note-menu-collapsed",
+    { duration: false, accidental: false, changeNote: false, octave: false },
+    { initializeWithValue: false },
+  );
+
+  const toggleSection = useCallback(
+    (section: "duration" | "accidental" | "changeNote" | "octave") => {
+      setCollapsedSections((prev) => ({
+        ...prev,
+        [section]: !prev[section],
+      }));
+    },
+    [setCollapsedSections],
+  );
+
   const justDraggedRef = useRef(false);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
   // Hovered bar line for time signature ghost preview
@@ -4440,131 +4465,175 @@ export function NoteEditor({
       {/* Context menu for note editing or adding notes */}
       {contextMenu && contextMenu.type === "note" && (
         <div
-          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px] overflow-y-auto"
+          style={{
+            left: contextMenu.x,
+            // Constrain menu to viewport: menu is ~560px tall, keep 40px margin
+            top: Math.min(
+              contextMenu.y,
+              typeof window !== "undefined"
+                ? window.innerHeight - 600
+                : contextMenu.y,
+            ),
+            maxHeight: "calc(100vh - 40px)",
+          }}
         >
-          {/* Duration section */}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Duration
-          </div>
+          {/* Duration section - collapsible */}
           <button
-            onClick={() => handleChangeDuration(0.25)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            onClick={() => toggleSection("duration")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
           >
-            <MenuNoteIcon duration={0.25} /> Sixteenth
+            <span>Duration</span>
+            <span className="text-gray-400">
+              {collapsedSections.duration ? "▸" : "▾"}
+            </span>
           </button>
-          <button
-            onClick={() => handleChangeDuration(0.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.5} /> Eighth
-          </button>
-          <button
-            onClick={() => handleChangeDuration(0.75)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.75} /> Dotted Eighth
-          </button>
-          <button
-            onClick={() => handleChangeDuration(1)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1} /> Quarter
-          </button>
-          <button
-            onClick={() => handleChangeDuration(1.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1.5} /> Dotted Quarter
-          </button>
-          <button
-            onClick={() => handleChangeDuration(2)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={2} /> Half
-          </button>
-          <button
-            onClick={() => handleChangeDuration(3)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={3} /> Dotted Half
-          </button>
-          <button
-            onClick={() => handleChangeDuration(4)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={4} /> Whole
-          </button>
-
-          {/* Accidental section */}
-          <div className="border-t border-gray-200 my-1" />
-          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Accidental
-          </div>
-          <div className="px-2 py-1 flex gap-1">
-            <button
-              onClick={() => handleChangeAccidental(null)}
-              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-              title="Natural"
-            >
-              ♮
-            </button>
-            <button
-              onClick={() => handleChangeAccidental("#")}
-              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-              title="Sharp"
-            >
-              ♯
-            </button>
-            <button
-              onClick={() => handleChangeAccidental("b")}
-              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-              title="Flat"
-            >
-              ♭
-            </button>
-          </div>
-
-          {/* Change Note section */}
-          <div className="border-t border-gray-200 my-1" />
-          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Change Note
-          </div>
-          <div className="px-2 py-1 flex gap-0.5">
-            {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
+          {!collapsedSections.duration && (
+            <>
               <button
-                key={letter}
-                onClick={() => handleChangePitchLetter(letter)}
-                className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                onClick={() => handleChangeDuration(0.25)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
               >
-                {letter}
+                <MenuNoteIcon duration={0.25} /> Sixteenth
               </button>
-            ))}
-          </div>
+              <button
+                onClick={() => handleChangeDuration(0.5)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.5} /> Eighth
+              </button>
+              <button
+                onClick={() => handleChangeDuration(0.75)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.75} /> Dotted Eighth
+              </button>
+              <button
+                onClick={() => handleChangeDuration(1)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={1} /> Quarter
+              </button>
+              <button
+                onClick={() => handleChangeDuration(1.5)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={1.5} /> Dotted Quarter
+              </button>
+              <button
+                onClick={() => handleChangeDuration(2)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={2} /> Half
+              </button>
+              <button
+                onClick={() => handleChangeDuration(3)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={3} /> Dotted Half
+              </button>
+              <button
+                onClick={() => handleChangeDuration(4)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={4} /> Whole
+              </button>
+            </>
+          )}
 
-          {/* Octave section */}
+          {/* Accidental section - collapsible */}
           <div className="border-t border-gray-200 my-1" />
-          <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Octave
-          </div>
-          <div className="px-2 py-1 flex gap-1">
-            <button
-              onClick={() => handleChangeOctave("up")}
-              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-              title="Octave Up"
-            >
-              <span>▲</span> Up
-            </button>
-            <button
-              onClick={() => handleChangeOctave("down")}
-              className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-              title="Octave Down"
-            >
-              <span>▼</span> Down
-            </button>
-          </div>
+          <button
+            onClick={() => toggleSection("accidental")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
+          >
+            <span>Accidental</span>
+            <span className="text-gray-400">
+              {collapsedSections.accidental ? "▸" : "▾"}
+            </span>
+          </button>
+          {!collapsedSections.accidental && (
+            <div className="px-2 py-1 flex gap-1">
+              <button
+                onClick={() => handleChangeAccidental(null)}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Natural"
+              >
+                ♮
+              </button>
+              <button
+                onClick={() => handleChangeAccidental("#")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Sharp"
+              >
+                ♯
+              </button>
+              <button
+                onClick={() => handleChangeAccidental("b")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Flat"
+              >
+                ♭
+              </button>
+            </div>
+          )}
 
-          {/* Delete section */}
+          {/* Change Note section - collapsible */}
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={() => toggleSection("changeNote")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
+          >
+            <span>Change Note</span>
+            <span className="text-gray-400">
+              {collapsedSections.changeNote ? "▸" : "▾"}
+            </span>
+          </button>
+          {!collapsedSections.changeNote && (
+            <div className="px-2 py-1 flex gap-0.5">
+              {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => handleChangePitchLetter(letter)}
+                  className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Octave section - collapsible */}
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={() => toggleSection("octave")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
+          >
+            <span>Octave</span>
+            <span className="text-gray-400">
+              {collapsedSections.octave ? "▸" : "▾"}
+            </span>
+          </button>
+          {!collapsedSections.octave && (
+            <div className="px-2 py-1 flex gap-1">
+              <button
+                onClick={() => handleChangeOctave("up")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+                title="Octave Up"
+              >
+                <span>▲</span> Up
+              </button>
+              <button
+                onClick={() => handleChangeOctave("down")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+                title="Octave Down"
+              >
+                <span>▼</span> Down
+              </button>
+            </div>
+          )}
+
+          {/* Delete section - always visible */}
           <div className="border-t border-gray-200 my-1" />
           <button
             onClick={handleDeleteFromMenu}
@@ -4578,8 +4647,18 @@ export function NoteEditor({
       {/* Context menu for adding notes on empty space */}
       {contextMenu && contextMenu.type === "empty" && (
         <div
-          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px] overflow-y-auto"
+          style={{
+            left: contextMenu.x,
+            // Constrain menu to viewport: estimate menu height ~350px, keep 20px margin
+            top: Math.min(
+              contextMenu.y,
+              typeof window !== "undefined"
+                ? window.innerHeight - 370
+                : contextMenu.y,
+            ),
+            maxHeight: "calc(100vh - 40px)",
+          }}
         >
           <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
             Add Note ({contextMenu.pitch})
