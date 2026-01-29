@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { LEFT_MARGIN } from "@/lib/layoutUtils";
 import { SystemLayout, getLayoutForSystem } from "../utils/systemLayout";
-import { RepeatMarker, NoteTool } from "../types";
+import { RepeatMarker, RenderedRepeatMarker, NoteTool } from "../types";
 
 // Repeat start state type
 export interface RepeatStartState {
@@ -15,8 +15,8 @@ export interface RepeatStartState {
 
 // Hook parameters
 export interface UseRepeatPlacementParams {
-  repeatMarkers: RepeatMarker[];
-  onRepeatMarkersChange?: (markers: RepeatMarker[]) => void;
+  repeatMarkers: RenderedRepeatMarker[]; // Rendered markers with system/measure for display
+  onRepeatMarkersChange?: (markers: RepeatMarker[]) => void; // Base markers with measureNumber
   systemLayouts: SystemLayout[];
   measuresPerSystem: number;
   beatsPerMeasure: number;
@@ -65,7 +65,7 @@ export interface UseRepeatPlacementReturn {
   clearRepeatHover: () => void; // Clear hover state
 
   // Drag handlers
-  handleMarkerDragStart: (marker: RepeatMarker, system: number) => void;
+  handleMarkerDragStart: (marker: RenderedRepeatMarker, system: number) => void;
   handleMarkerDrag: (x: number, y: number, system: number) => void;
   handleMarkerDragEnd: () => void;
 
@@ -181,10 +181,9 @@ export function useRepeatPlacement({
       const endAbsoluteMeasure = endSystem * measuresPerSystem + endMeasure;
 
       if (endAbsoluteMeasure > startAbsoluteMeasure) {
-        // Check for overlap with existing markers
+        // Check for overlap with existing markers (use measureNumber from markers)
         const hasOverlap = repeatMarkers.some((m) => {
-          const markerAbsoluteMeasure =
-            m.system * measuresPerSystem + m.measure;
+          const markerAbsoluteMeasure = m.measureNumber;
           if (
             m.type === "start" &&
             markerAbsoluteMeasure >= startAbsoluteMeasure &&
@@ -202,21 +201,28 @@ export function useRepeatPlacement({
 
         if (!hasOverlap) {
           const pairId = `pair-${Date.now()}`;
+          // Convert existing rendered markers to base format and add new ones
+          const existingBaseMarkers: RepeatMarker[] = repeatMarkers.map(
+            (m) => ({
+              id: m.id,
+              pairId: m.pairId,
+              type: m.type,
+              measureNumber: m.measureNumber,
+            }),
+          );
           const newMarkers: RepeatMarker[] = [
-            ...repeatMarkers,
+            ...existingBaseMarkers,
             {
               id: `start-${Date.now()}`,
               pairId,
               type: "start",
-              measure: startMeasure,
-              system: startSystem,
+              measureNumber: startAbsoluteMeasure,
             },
             {
               id: `end-${Date.now() + 1}`,
               pairId,
               type: "end",
-              measure: endMeasure,
-              system: endSystem,
+              measureNumber: endAbsoluteMeasure,
             },
           ];
           onRepeatMarkersChange(newMarkers);
@@ -268,7 +274,7 @@ export function useRepeatPlacement({
 
   // Start dragging a marker
   const handleMarkerDragStart = useCallback(
-    (marker: RepeatMarker, system: number) => {
+    (marker: RenderedRepeatMarker, system: number) => {
       setDraggedMarker({
         id: marker.id,
         type: marker.type,
@@ -318,8 +324,8 @@ export function useRepeatPlacement({
       if (pairedMarker) {
         const draggedAbsoluteMeasure =
           system * measuresPerSystem + clampedMeasure;
-        const pairedAbsoluteMeasure =
-          pairedMarker.system * measuresPerSystem + pairedMarker.measure;
+        // Use measureNumber from the paired marker (absolute measure)
+        const pairedAbsoluteMeasure = pairedMarker.measureNumber;
 
         if (
           draggedMarker.type === "start" &&
@@ -336,13 +342,24 @@ export function useRepeatPlacement({
       }
 
       if (isValid) {
-        onRepeatMarkersChange(
-          repeatMarkers.map((m) =>
-            m.id === draggedMarker.id
-              ? { ...m, system, measure: clampedMeasure }
-              : m,
-          ),
+        // Convert to base RepeatMarker format with measureNumber
+        const newAbsoluteMeasure = system * measuresPerSystem + clampedMeasure;
+        const updatedMarkers: RepeatMarker[] = repeatMarkers.map((m) =>
+          m.id === draggedMarker.id
+            ? {
+                id: m.id,
+                pairId: m.pairId,
+                type: m.type,
+                measureNumber: newAbsoluteMeasure,
+              }
+            : {
+                id: m.id,
+                pairId: m.pairId,
+                type: m.type,
+                measureNumber: m.measureNumber,
+              },
         );
+        onRepeatMarkersChange(updatedMarkers);
         // Update tracked system if changed
         if (system !== draggedMarker.system) {
           setDraggedMarker({ ...draggedMarker, system });

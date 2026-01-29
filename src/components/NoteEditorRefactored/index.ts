@@ -7,8 +7,10 @@ export { NoteEditorRefactored } from "./NoteEditorRefactored";
 // Types
 export type {
   EditorNote,
+  RenderedNote,
   BeamGroup,
   RepeatMarker,
+  RenderedRepeatMarker,
   NoteTool,
   NoteEditorProps,
   ContextMenuSection,
@@ -33,6 +35,11 @@ export {
   getMeasureAtBeat,
   getBeatXInSystem,
   getBeatFromXInSystem,
+  toRenderedNote,
+  toRenderedNotes,
+  toRenderedRepeatMarker,
+  toRenderedRepeatMarkers,
+  toAbsoluteBeat,
 } from "./utils/systemLayout";
 export type {
   SystemLayout,

@@ -105,10 +105,10 @@ import {
 } from "../utils/systemLayout";
 import { getYFromPitch } from "../utils/pitchUtils";
 import { getNoteLabel } from "../utils/durationUtils";
-import { EditorNote, BeamGroup, NoteTool } from "../types";
+import { RenderedNote, BeamGroup, NoteTool } from "../types";
 
 export interface NoteElementProps {
-  note: EditorNote;
+  note: RenderedNote;
   systemLayouts: SystemLayout[];
   beamGroups: BeamGroup[];
   beamedNoteIds: Set<string>;
@@ -131,9 +131,18 @@ export function DurationExtension({
   note,
   systemLayouts,
 }: {
-  note: EditorNote;
+  note: RenderedNote;
   systemLayouts: SystemLayout[];
 }) {
+  // Skip if note has invalid data
+  if (
+    !note.pitch ||
+    !Number.isFinite(note.system) ||
+    !Number.isFinite(note.beat)
+  ) {
+    return null;
+  }
+
   if (note.pitch === "REST") return null;
 
   // Shorten extension by one eighth note (0.5 beats) - eighth notes get no line
@@ -187,6 +196,16 @@ export function NoteElement({
   onMouseDown,
   onClick,
 }: NoteElementProps) {
+  // Skip rendering if note has invalid data
+  if (
+    !note.pitch ||
+    !Number.isFinite(note.system) ||
+    !Number.isFinite(note.beat)
+  ) {
+    console.warn("[NoteElement] Skipping note with invalid data:", note.id);
+    return null;
+  }
+
   const sysLayout = getLayoutForSystem(systemLayouts, note.system);
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysLayout.beatWidth);
@@ -445,6 +464,18 @@ export function BeamGroupElement({
 
   // Need at least 2 notes to form a beam
   if (groupNotes.length < 2) return null;
+
+  // Validate all notes have valid pitch, system, and beat
+  const hasInvalidNote = groupNotes.some(
+    (note) =>
+      !note.pitch ||
+      !Number.isFinite(note.system) ||
+      !Number.isFinite(note.beat),
+  );
+  if (hasInvalidNote) {
+    console.warn("[BeamGroupElement] Skipping beam group with invalid notes");
+    return null;
+  }
 
   // Constants for beam geometry
   const stemH = 40; // Standard stem height

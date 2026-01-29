@@ -18,7 +18,8 @@ import {
   changeOctave,
 } from "../utils/pitchUtils";
 import { snapX } from "../utils/beatUtils";
-import { EditorNote } from "../types";
+import { toAbsoluteBeat } from "../utils/systemLayout";
+import { EditorNote, RenderedNote } from "../types";
 
 // Context menu state type
 export type ContextMenuState =
@@ -48,8 +49,8 @@ export interface CollapsedSections {
 
 // Hook parameters
 export interface UseContextMenuParams {
-  notes: EditorNote[];
-  onNotesChange: (notes: EditorNote[]) => void;
+  notes: RenderedNote[]; // Rendered notes with system/beat for collision detection
+  onNotesChange: (notes: RenderedNote[]) => void; // Parent handles conversion to absoluteBeat
   systemLayouts: SystemLayout[];
   systemCount: number;
   staffLines: number;
@@ -342,10 +343,18 @@ export function useContextMenu({
         return;
       }
 
-      const newNote: EditorNote = {
+      // Calculate absoluteBeat from system and beat for storage
+      const absoluteBeat = toAbsoluteBeat(
+        systemLayouts,
+        contextMenu.system,
+        contextMenu.beat,
+      );
+
+      const newNote: RenderedNote = {
         id: String(Date.now()),
         pitch: contextMenu.pitch,
         duration,
+        absoluteBeat,
         beat: contextMenu.beat,
         system: contextMenu.system,
       };
@@ -365,6 +374,7 @@ export function useContextMenu({
       onDuplicateNote,
       playNoteSound,
       onContextMenuAction,
+      systemLayouts,
     ],
   );
 

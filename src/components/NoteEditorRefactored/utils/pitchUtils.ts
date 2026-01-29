@@ -26,7 +26,15 @@ export const NOTE_BASE_POSITIONS: Record<string, number> = {
 };
 
 // Calculate staff position for any pitch (e.g., "Bb4" -> position relative to C4)
-export function getPitchPosition(pitch: Pitch): number {
+export function getPitchPosition(pitch: Pitch | undefined | null): number {
+  // Guard against undefined/null pitch
+  if (!pitch) {
+    console.warn(
+      "[getPitchPosition] Undefined pitch, defaulting to position 0",
+    );
+    return 0;
+  }
+
   if (pitch === "REST") return -1;
 
   // Parse pitch: e.g., "Bb4" -> note="B", accidental="b", octave=4
@@ -155,6 +163,15 @@ export function getPitchFromY(
   const maxPosition = staffLines === 5 ? 11 : staffLines === 4 ? 9 : 7;
 
   const clamped = Math.max(0, Math.min(maxPosition, position));
+
+  // Guard against NaN or out-of-bounds (can happen with invalid mouse coordinates)
+  if (!Number.isFinite(clamped) || clamped >= POSITION_TO_PITCH.length) {
+    console.warn(
+      `[getPitchFromY] Invalid position calculated: y=${y}, system=${system}, position=${position}, clamped=${clamped}. Defaulting to C4.`,
+    );
+    return "C4"; // Default to middle C
+  }
+
   return POSITION_TO_PITCH[clamped];
 }
 
@@ -225,7 +242,16 @@ export function changeOctave(pitch: Pitch, direction: "up" | "down"): Pitch {
  *   Pos  4 = G4 → Line 4            Y = staffCenterY + 32
  *   Pos  2 = E4 → Line 5 (bottom)   Y = staffCenterY + 64
  */
-export function getYFromPitch(pitch: Pitch, system: number): number {
+export function getYFromPitch(
+  pitch: Pitch | undefined | null,
+  system: number,
+): number {
+  // Guard against undefined/null pitch
+  if (!pitch) {
+    console.warn("[getYFromPitch] Undefined pitch, defaulting to staff center");
+    return getStaffCenterY(system);
+  }
+
   const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;

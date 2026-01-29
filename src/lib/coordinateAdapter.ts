@@ -130,11 +130,22 @@ export function toLegacyNote(
   layout: LayoutConfig,
   timeSignatureChanges: TimeSignatureChange[] = [],
 ): LegacyEditorNote {
+  // Validate absoluteBeat - guard against undefined/NaN
+  const absoluteBeat = Number.isFinite(note.absoluteBeat)
+    ? note.absoluteBeat
+    : 0;
+  if (!Number.isFinite(note.absoluteBeat)) {
+    console.warn(
+      "[toLegacyNote] Note has invalid absoluteBeat, defaulting to 0:",
+      note.id,
+    );
+  }
+
   // If no time signature changes, use simple calculation
   if (timeSignatureChanges.length === 0) {
     const { beatsPerRow } = layout;
-    const system = Math.floor(note.absoluteBeat / beatsPerRow);
-    const beat = note.absoluteBeat % beatsPerRow;
+    const system = Math.floor(absoluteBeat / beatsPerRow);
+    const beat = absoluteBeat % beatsPerRow;
     return {
       id: note.id,
       pitch: note.pitch,
@@ -145,14 +156,14 @@ export function toLegacyNote(
   }
 
   // With time signature changes, calculate actual system boundaries
-  const maxSystems = Math.ceil(note.absoluteBeat / layout.beatsPerRow) + 2;
+  const maxSystems = Math.ceil(absoluteBeat / layout.beatsPerRow) + 2;
   const systemStartBeats = calculateSystemStartBeats(
     layout,
     timeSignatureChanges,
     maxSystems,
   );
   const { system, beatInSystem } = getSystemForAbsoluteBeat(
-    note.absoluteBeat,
+    absoluteBeat,
     systemStartBeats,
   );
 

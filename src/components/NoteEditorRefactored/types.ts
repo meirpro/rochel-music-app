@@ -12,28 +12,39 @@ export type ContextMenuSection =
   | "octave"
   | "delete";
 
-// Editor-specific note type
+// Editor-specific note type - uses absoluteBeat for layout-independent positioning
+// System/beat can be calculated on-the-fly from absoluteBeat based on current layout
 export interface EditorNote {
   id: string;
   pitch: Pitch;
   duration: number; // 0.5, 1, 2, or 4 beats
-  beat: number; // Position within system (0, 0.5, 1, 1.5, etc.)
-  system: number; // Which system/row (0-indexed)
+  absoluteBeat: number; // Position from composition start (0, 0.5, 1, 1.5, etc.)
 }
 
-// Beam group for rendering connected eighth notes
+// Rendered note with calculated system/beat positions (for display only)
+export interface RenderedNote extends EditorNote {
+  system: number; // Calculated from absoluteBeat + layout
+  beat: number; // Position within system (calculated)
+}
+
+// Beam group for rendering connected eighth notes (uses rendered notes with system/beat)
 export interface BeamGroup {
-  notes: EditorNote[];
+  notes: RenderedNote[];
   stemDirection: "up" | "down";
 }
 
-// Repeat sign marker - supports cross-system repeats
+// Repeat sign marker - uses absolute measure numbering (layout-independent)
 export interface RepeatMarker {
   id: string;
   pairId: string; // Links start and end markers together
   type: "start" | "end";
-  measure: number; // Measure number (0, 1, 2 for measures per system)
-  system: number;
+  measureNumber: number; // Absolute measure from composition start (0, 1, 2...)
+}
+
+// Rendered repeat marker with calculated system position (for display only)
+export interface RenderedRepeatMarker extends RepeatMarker {
+  system: number; // Calculated from measureNumber + layout
+  measure: number; // Position within system (calculated)
 }
 
 export type NoteTool =

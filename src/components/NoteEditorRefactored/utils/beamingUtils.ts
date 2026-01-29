@@ -1,7 +1,7 @@
 // src/components/NoteEditorRefactored/utils/beamingUtils.ts
 // Extracted from NoteEditor.tsx lines 1158-1310
 
-import { EditorNote, BeamGroup } from "../types";
+import { RenderedNote, BeamGroup } from "../types";
 import {
   getLayoutForSystem,
   getMeasureAtBeat,
@@ -27,7 +27,7 @@ import { getYFromPitch } from "./pitchUtils";
  * - A beat group is determined by the time signature's beamGroups array
  */
 export function groupEighthNotes(
-  allNotes: EditorNote[],
+  allNotes: RenderedNote[],
   systemLayouts: SystemLayout[],
 ): BeamGroup[] {
   // Include sixteenths (0.25), eighths (0.5), and dotted eighths (0.75) for beaming
@@ -48,7 +48,10 @@ export function groupEighthNotes(
   });
 
   // Helper to check if there's any note between two notes
-  const hasNoteBetween = (note1: EditorNote, note2: EditorNote): boolean => {
+  const hasNoteBetween = (
+    note1: RenderedNote,
+    note2: RenderedNote,
+  ): boolean => {
     if (note1.system !== note2.system) return true; // Different systems = don't beam
     const minBeat = Math.min(note1.beat, note2.beat);
     const maxBeat = Math.max(note1.beat, note2.beat);
@@ -63,7 +66,7 @@ export function groupEighthNotes(
   };
 
   const groups: BeamGroup[] = [];
-  let currentGroup: EditorNote[] = [];
+  let currentGroup: RenderedNote[] = [];
   let currentBeatGroup = -1;
 
   for (const note of sorted) {
@@ -146,7 +149,7 @@ export function groupEighthNotes(
  *
  * This ensures the beam doesn't collide with nearby staff lines.
  */
-export function createBeamGroup(notes: EditorNote[]): BeamGroup {
+export function createBeamGroup(notes: RenderedNote[]): BeamGroup {
   let maxDistance = 0;
   let stemDirection: "up" | "down" = "up";
 

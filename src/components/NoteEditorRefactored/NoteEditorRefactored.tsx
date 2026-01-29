@@ -28,6 +28,8 @@ import {
   getLayoutForSystem,
   findBestSystemForX,
   getBeatFromXInSystem,
+  toRenderedNotes,
+  toAbsoluteBeat,
 } from "./utils/systemLayout";
 import {
   getPitchFromY,
@@ -39,7 +41,7 @@ import { getDurationFromTool } from "./utils/durationUtils";
 import { groupEighthNotes } from "./utils/beamingUtils";
 
 // Import types
-import { EditorNote, BeamGroup, NoteEditorProps } from "./types";
+import { EditorNote, RenderedNote, BeamGroup, NoteEditorProps } from "./types";
 
 // Import subcomponents
 import { StaffSystem } from "./components/StaffSystem";
@@ -141,8 +143,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         timeSignatureChanges || [],
         measuresPerRow ?? 4,
         noteSpacing,
+        // repeatMarkers now use measureNumber directly (absolute measure numbering)
         repeatMarkers.map((m) => ({
-          measureNumber: m.system * (measuresPerRow ?? 4) + m.measure,
+          measureNumber: m.measureNumber,
           type: m.type,
         })),
       ),
@@ -157,6 +160,23 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     ],
   );
 
+  // Convert notes from absoluteBeat format to rendered format with system/beat
+  // This allows internal rendering logic to use system/beat while keeping
+  // the external interface using layout-independent absoluteBeat
+  const renderedNotes = useMemo(
+    () => toRenderedNotes(notes, systemLayouts),
+    [notes, systemLayouts],
+  );
+
+  // Convert repeat markers to rendered format with system/measure
+  const renderedRepeatMarkers = useMemo(() => {
+    return repeatMarkers.map((m) => {
+      const system = Math.floor(m.measureNumber / measuresPerSystem);
+      const measure = m.measureNumber % measuresPerSystem;
+      return { ...m, system, measure };
+    });
+  }, [repeatMarkers, measuresPerSystem]);
+
   // Get max SVG width
   const maxSvgWidth = useMemo(
     () =>
@@ -167,10 +187,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const svgWidth = maxSvgWidth;
   const svgHeight = SYSTEM_TOP_MARGIN + systemCount * SYSTEM_HEIGHT + 40;
 
-  // Group eighth notes for beaming
+  // Group eighth notes for beaming (uses rendered notes with system/beat)
   const beamGroups = useMemo(
-    () => groupEighthNotes(notes, systemLayouts),
-    [notes, systemLayouts],
+    () => groupEighthNotes(renderedNotes, systemLayouts),
+    [renderedNotes, systemLayouts],
   );
 
   // Get set of note IDs that are part of beam groups
@@ -197,6 +217,21 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     [tempo],
   );
 
+  // Wrapper to convert RenderedNote[] back to EditorNote[] for onNotesChange
+  // This allows internal operations to use system/beat while external interface uses absoluteBeat
+  const handleNotesChangeWithConversion = useCallback(
+    (newRenderedNotes: RenderedNote[]) => {
+      const editorNotes: EditorNote[] = newRenderedNotes.map((n) => ({
+        id: n.id,
+        pitch: n.pitch,
+        duration: n.duration,
+        absoluteBeat: toAbsoluteBeat(systemLayouts, n.system, n.beat),
+      }));
+      onNotesChange(editorNotes);
+    },
+    [onNotesChange, systemLayouts],
+  );
+
   // Get coordinates from mouse event
   // Note: svgRef is a stable ref object; we intentionally use [] because we only read .current
   // The viewBox starts at x=-15, so we need to account for this offset
@@ -215,7 +250,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     [],
   );
 
-  // Use extracted context menu hook
+  // Use extracted context menu hook (uses renderedNotes for rendering and finding notes)
   const {
     contextMenu,
     setContextMenu,
@@ -230,8 +265,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     handleChangeOctave,
     handleAddNoteFromMenu,
   } = useContextMenu({
-    notes,
-    onNotesChange,
+    notes: renderedNotes,
+    onNotesChange: handleNotesChangeWithConversion,
     systemLayouts,
     systemCount,
     staffLines,
@@ -249,13 +284,33 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const handleDeleteFromMenu = useCallback(() => {
     // Get the note being deleted before calling the handler
     if (learnMode && onNoteInteraction && contextMenu?.type === "note") {
-      const noteToDelete = notes.find((n) => n.id === contextMenu.noteId);
+      const noteToDelete = renderedNotes.find(
+        (n) => n.id === contextMenu.noteId,
+      );
       if (noteToDelete) {
-        onNoteInteraction(noteToDelete, "delete");
+        // Convert to EditorNote format for callback
+        const editorNote: EditorNote = {
+          id: noteToDelete.id,
+          pitch: noteToDelete.pitch,
+          duration: noteToDelete.duration,
+          absoluteBeat: toAbsoluteBeat(
+            systemLayouts,
+            noteToDelete.system,
+            noteToDelete.beat,
+          ),
+        };
+        onNoteInteraction(editorNote, "delete");
       }
     }
     _handleDeleteFromMenu();
-  }, [learnMode, onNoteInteraction, contextMenu, notes, _handleDeleteFromMenu]);
+  }, [
+    learnMode,
+    onNoteInteraction,
+    contextMenu,
+    renderedNotes,
+    systemLayouts,
+    _handleDeleteFromMenu,
+  ]);
 
   // Use extracted repeat placement hook
   const {
@@ -275,7 +330,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     handleMarkerDragEnd,
     isDraggingMarker,
   } = useRepeatPlacement({
-    repeatMarkers,
+    repeatMarkers: renderedRepeatMarkers,
     onRepeatMarkersChange,
     systemLayouts,
     measuresPerSystem,
@@ -333,27 +388,52 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const handleNoteClick = useCallback(
     (e: React.MouseEvent, noteId: string) => {
       // Handle delete tool
-      if (selectedTool === "delete" && onNotesChange) {
+      if (selectedTool === "delete") {
         e.stopPropagation();
-        const newNotes = notes.filter((n) => n.id !== noteId);
-        onNotesChange(newNotes);
+        const newNotes = renderedNotes.filter((n) => n.id !== noteId);
+        handleNotesChangeWithConversion(newNotes);
         // Also call interaction callback if in learn mode
         if (learnMode && onNoteInteraction) {
-          const note = notes.find((n) => n.id === noteId);
-          if (note) onNoteInteraction(note, "delete");
+          const note = renderedNotes.find((n) => n.id === noteId);
+          if (note) {
+            const editorNote: EditorNote = {
+              id: note.id,
+              pitch: note.pitch,
+              duration: note.duration,
+              absoluteBeat: toAbsoluteBeat(
+                systemLayouts,
+                note.system,
+                note.beat,
+              ),
+            };
+            onNoteInteraction(editorNote, "delete");
+          }
         }
         return;
       }
 
       // Handle learn mode click interaction
       if (learnMode && onNoteInteraction) {
-        const note = notes.find((n) => n.id === noteId);
+        const note = renderedNotes.find((n) => n.id === noteId);
         if (note) {
-          onNoteInteraction(note, "click");
+          const editorNote: EditorNote = {
+            id: note.id,
+            pitch: note.pitch,
+            duration: note.duration,
+            absoluteBeat: toAbsoluteBeat(systemLayouts, note.system, note.beat),
+          };
+          onNoteInteraction(editorNote, "click");
         }
       }
     },
-    [selectedTool, onNotesChange, notes, learnMode, onNoteInteraction],
+    [
+      selectedTool,
+      handleNotesChangeWithConversion,
+      renderedNotes,
+      systemLayouts,
+      learnMode,
+      onNoteInteraction,
+    ],
   );
 
   // Mouse move handler for dragging notes, playhead, or markers
@@ -411,7 +491,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       const pitch = getPitchFromY(y, bestSystem, staffLines);
 
       // Check for collision (excluding dragged note)
-      const existingNote = notes.find(
+      const existingNote = renderedNotes.find(
         (n) =>
           n.id !== draggedNote &&
           Math.abs(n.beat - beat) < 0.25 &&
@@ -420,8 +500,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       );
       if (existingNote) return;
 
-      onNotesChange(
-        notes.map((n) =>
+      handleNotesChangeWithConversion(
+        renderedNotes.map((n) =>
           n.id === draggedNote ? { ...n, beat, pitch, system: bestSystem } : n,
         ),
       );
@@ -439,9 +519,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       getCoords,
       systemCount,
       systemLayouts,
-      notes,
+      renderedNotes,
       allowChords,
-      onNotesChange,
+      handleNotesChangeWithConversion,
       staffLines,
     ],
   );
@@ -449,7 +529,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   // Mouse up handler for drag end
   const handleMouseUp = useCallback(() => {
     if (draggedNote) {
-      const note = notes.find((n) => n.id === draggedNote);
+      const note = renderedNotes.find((n) => n.id === draggedNote);
       if (note) playNoteSound(note.pitch, note.duration);
       setDraggedNote(null);
       justDraggedRef.current = true;
@@ -462,7 +542,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     }
   }, [
     draggedNote,
-    notes,
+    renderedNotes,
     playNoteSound,
     isDraggingPlayhead,
     draggedMarker,
@@ -532,8 +612,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       const pitch = getPitchFromY(y, system, staffLines);
       const duration = getDurationFromTool(selectedTool);
 
-      // Check for collision
-      const existingNote = notes.find(
+      // Check for collision using renderedNotes (which have system/beat for comparison)
+      const existingNote = renderedNotes.find(
         (n) =>
           Math.abs(n.beat - beat) < 0.25 &&
           n.system === system &&
@@ -544,12 +624,15 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         return;
       }
 
+      // Calculate absoluteBeat from system and beat
+      const snappedBeat = Math.round(beat * 2) / 2;
+      const absoluteBeat = toAbsoluteBeat(systemLayouts, system, snappedBeat);
+
       const newNote: EditorNote = {
         id: String(Date.now()),
         pitch,
         duration,
-        beat: Math.round(beat * 2) / 2,
-        system,
+        absoluteBeat,
       };
 
       onNotesChange([...notes, newNote]);
@@ -572,6 +655,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       handleRepeatClick,
       handleLyricsClick,
       notes,
+      renderedNotes,
       allowChords,
       onNotesChange,
       onDuplicateNote,
@@ -615,7 +699,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             timeSignature={timeSignature}
             readOnly={readOnly}
             onTimeSignatureClick={onTimeSignatureClick}
-            repeatMarkers={repeatMarkers}
+            repeatMarkers={renderedRepeatMarkers}
             onRepeatMarkersChange={onRepeatMarkersChange}
             hoveredMarker={hoveredMarker}
             setHoveredMarker={setHoveredMarker}
@@ -631,7 +715,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         ))}
 
         {/* Duration extensions (render behind notes) */}
-        {notes.map((note) => (
+        {renderedNotes.map((note) => (
           <DurationExtension
             key={`duration-${note.id}`}
             note={note}
@@ -640,7 +724,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         ))}
 
         {/* Render notes */}
-        {notes.map((note) => (
+        {renderedNotes.map((note) => (
           <NoteElement
             key={note.id}
             note={note}

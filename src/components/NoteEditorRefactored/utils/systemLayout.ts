@@ -241,6 +241,14 @@ export function getLayoutForSystem(
   systemLayouts: SystemLayout[],
   systemIndex: number,
 ): SystemLayout {
+  // Guard against NaN/undefined system index
+  if (!Number.isFinite(systemIndex) || systemIndex < 0) {
+    console.warn(
+      `[getLayoutForSystem] Invalid systemIndex: ${systemIndex}. Defaulting to 0.`,
+    );
+    systemIndex = 0;
+  }
+
   // Default fallback values for 8 beats at base width
   const defaultTotalBeats = 8;
   const defaultStaffRight = LEFT_MARGIN + defaultTotalBeats * BASE_BEAT_WIDTH;
@@ -447,6 +455,14 @@ export function getBeatXInSystem(
   sysLayout: SystemLayout,
   beatInSystem: number,
 ): number {
+  // Guard against NaN/undefined beat values (can happen with corrupted data)
+  if (!Number.isFinite(beatInSystem)) {
+    console.warn(
+      `[getBeatXInSystem] Invalid beatInSystem: ${beatInSystem}. Defaulting to 0.`,
+    );
+    beatInSystem = 0;
+  }
+
   const measure = getMeasureAtBeat(sysLayout, beatInSystem);
   if (!measure) {
     // Fallback if no measure found (shouldn't happen in normal use)
@@ -497,4 +513,103 @@ export function getBeatFromXInSystem(
   // Fallback: use simple calculation (should rarely reach here now)
   const rawBeat = (xWithoutOffset - LEFT_MARGIN) / sysLayout.beatWidth;
   return Math.round(rawBeat * 2) / 2;
+}
+
+// Import types needed for conversion functions
+import {
+  EditorNote,
+  RenderedNote,
+  RepeatMarker,
+  RenderedRepeatMarker,
+} from "../types";
+
+/**
+ * Convert a single note from absoluteBeat format to rendered format with system/beat
+ * Returns null if note has invalid data
+ */
+export function toRenderedNote(
+  note: EditorNote,
+  systemLayouts: SystemLayout[],
+): RenderedNote | null {
+  // Validate note data
+  if (!note.pitch || !Number.isFinite(note.absoluteBeat)) {
+    console.warn("[toRenderedNote] Invalid note data:", note.id);
+    return null;
+  }
+
+  const position = getSystemForAbsoluteBeat(systemLayouts, note.absoluteBeat);
+  if (!position) {
+    console.warn(
+      "[toRenderedNote] Could not find system for beat:",
+      note.absoluteBeat,
+    );
+    return null;
+  }
+
+  return {
+    ...note,
+    system: position.systemIndex,
+    beat: position.beatInSystem,
+  };
+}
+
+/**
+ * Convert an array of notes from absoluteBeat to rendered format
+ * Filters out notes with invalid data
+ */
+export function toRenderedNotes(
+  notes: EditorNote[],
+  systemLayouts: SystemLayout[],
+): RenderedNote[] {
+  const rendered: RenderedNote[] = [];
+  for (const note of notes) {
+    const renderedNote = toRenderedNote(note, systemLayouts);
+    if (renderedNote) {
+      rendered.push(renderedNote);
+    }
+  }
+  return rendered;
+}
+
+/**
+ * Convert a repeat marker from absolute measureNumber to rendered format with system/measure
+ */
+export function toRenderedRepeatMarker(
+  marker: RepeatMarker,
+  measuresPerRow: number,
+): RenderedRepeatMarker {
+  const system = Math.floor(marker.measureNumber / measuresPerRow);
+  const measure = marker.measureNumber % measuresPerRow;
+  return {
+    ...marker,
+    system,
+    measure,
+  };
+}
+
+/**
+ * Convert an array of repeat markers to rendered format
+ */
+export function toRenderedRepeatMarkers(
+  markers: RepeatMarker[],
+  measuresPerRow: number,
+): RenderedRepeatMarker[] {
+  return markers.map((m) => toRenderedRepeatMarker(m, measuresPerRow));
+}
+
+/**
+ * Convert system/beat position back to absoluteBeat
+ */
+export function toAbsoluteBeat(
+  systemLayouts: SystemLayout[],
+  system: number,
+  beat: number,
+): number {
+  const layout = systemLayouts[system];
+  if (!layout) {
+    // Fallback: estimate based on typical layout
+    console.warn("[toAbsoluteBeat] System layout not found:", system);
+    return system * 8 + beat; // Assume 8 beats per system as fallback
+  }
+  return layout.startBeat + beat;
 }

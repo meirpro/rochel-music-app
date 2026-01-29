@@ -16,7 +16,7 @@ import {
   SystemLayout,
 } from "../utils/systemLayout";
 import { TimeSignature } from "../utils/timeSigConfig";
-import { RepeatMarker, NoteTool } from "../types";
+import { RepeatMarker, RenderedRepeatMarker, NoteTool } from "../types";
 import { TimeSignatureChange } from "@/lib/types";
 import { HoveredTimeSigBarState } from "../hooks/useTimeSigPicker";
 
@@ -27,9 +27,9 @@ export interface StaffSystemProps {
   timeSignature: TimeSignature;
   readOnly: boolean;
   onTimeSignatureClick?: () => void;
-  /** Repeat markers to render */
-  repeatMarkers?: RepeatMarker[];
-  /** Callback when repeat markers change (for deletion) */
+  /** Repeat markers to render (rendered format with system/measure) */
+  repeatMarkers?: RenderedRepeatMarker[];
+  /** Callback when repeat markers change (for deletion) - uses base RepeatMarker format */
   onRepeatMarkersChange?: (markers: RepeatMarker[]) => void;
   /** Currently hovered marker ID */
   hoveredMarker?: string | null;
@@ -48,7 +48,7 @@ export interface StaffSystemProps {
   /** Open time sig picker at a bar line */
   onTimeSigPickerOpen?: (measureNumber: number, x: number, y: number) => void;
   /** Callback when marker drag starts */
-  onMarkerDragStart?: (marker: RepeatMarker, system: number) => void;
+  onMarkerDragStart?: (marker: RenderedRepeatMarker, system: number) => void;
   /** Whether a marker is currently being dragged */
   isDraggingMarker?: boolean;
 }
