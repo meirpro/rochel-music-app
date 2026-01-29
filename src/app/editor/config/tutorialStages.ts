@@ -131,7 +131,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Listen to Your Music",
     instruction:
       "Press the Play button to hear your melody! You can adjust the tempo later.",
-    hint: "Press spacebar as a shortcut for play/pause.",
+    hint: "Click the ▶ Play button at the top of the screen, or press Spacebar as a shortcut.",
     allowedTools: ["quarter", "half", "eighth", "whole", "delete"],
     hidePaletteSections: ["markup"],
     showHeader: true,
@@ -150,7 +150,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Expand Your Composition",
     instruction:
       "Now you have access to measure controls. Add more measures to create a longer piece.",
-    hint: "Right-click notes for more options like accidentals (sharps/flats) and octave changes.",
+    hint: "Use the + button in the top header to add measures. Select note durations (whole, half, quarter, eighth) from the left panel. Right-click notes for more options.",
     allowedTools: [
       "quarter",
       "half",
@@ -183,7 +183,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Add Repeat Signs",
     instruction:
       "Select the Repeat tool (highlighted in the side panel), then click on a bar line to add repeat signs. Once you place a repeat, click Next to continue.",
-    hint: "Click the highlighted button, then click any bar line on the staff.",
+    hint: "Click the Repeat button (𝄆) in the Markup section of the left panel (it's highlighted). Then click any bar line on the staff.",
     allowedTools: [
       "quarter",
       "half",
@@ -218,7 +218,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Add Lyrics to Your Music",
     instruction:
       "Select the Lyrics tool (highlighted), then click on any note to add a syllable. Once you add lyrics, click Next to continue.",
-    hint: "Type a syllable and press Enter. Use hyphens (di-dan) to split words across notes.",
+    hint: "Click the Lyrics button (Aa) in the Markup section of the left panel (it's highlighted). Then click a note and type a syllable.",
     allowedTools: [
       "quarter",
       "half",
@@ -254,7 +254,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "You're Ready!",
     instruction:
       "Congratulations! You now have access to all editor features including the piano keyboard. Keep creating!",
-    hint: "The piano shows which notes are playing and helps you learn note names.",
+    hint: "All tools are now available in the left panel: note durations, repeats, lyrics, and time signature. The piano at the bottom shows which notes are playing.",
     allowedTools: [
       "sixteenth",
       "eighth",
