@@ -4,6 +4,14 @@
 import { Pitch, LyricSyllable, TimeSignatureChange } from "@/lib/types";
 import { TimeSignature } from "./utils/timeSigConfig";
 
+// Context menu sections that can be shown/hidden for progressive disclosure
+export type ContextMenuSection =
+  | "duration"
+  | "accidental"
+  | "changeNote"
+  | "octave"
+  | "delete";
+
 // Editor-specific note type
 export interface EditorNote {
   id: string;
@@ -88,4 +96,10 @@ export interface NoteEditorProps {
     note: EditorNote,
     action: "click" | "place" | "delete",
   ) => void; // Callback for note interactions in learn mode
+
+  // Context menu visibility for progressive tutorial
+  visibleContextMenuSections?: ContextMenuSection[]; // Which sections to show (undefined = all)
+
+  // Context menu action callback for tutorial tracking
+  onContextMenuAction?: () => void; // Called when any context menu action is performed
 }

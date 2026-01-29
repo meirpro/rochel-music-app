@@ -27,7 +27,7 @@ export function SongLibraryModal({
   onSaveSong,
   onUpdateCurrentSong,
   onRestoreDefaults,
-  onExport,
+  onExport: _onExport,
   onExportSelected,
 }: SongLibraryModalProps) {
   const [newSongName, setNewSongName] = useState("");

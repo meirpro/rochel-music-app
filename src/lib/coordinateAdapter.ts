@@ -235,7 +235,7 @@ export function toLegacyRepeatMarker(
   marker: NewRepeatMarker,
   layout: LayoutConfig,
 ): LegacyRepeatMarker {
-  const { beatsPerMeasure, measuresPerRow } = layout;
+  const { beatsPerMeasure: _beatsPerMeasure, measuresPerRow } = layout;
   const system = Math.floor(marker.measureNumber / measuresPerRow);
   const measure = marker.measureNumber % measuresPerRow;
 

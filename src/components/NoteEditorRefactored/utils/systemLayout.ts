@@ -145,7 +145,9 @@ export function calculateSystemLayouts(
       const isFirstInRow = m === 0;
       const showTimeSig = shouldShowTimeSig(measureIndex, isFirstInRow);
       const hasRepeatStart = repeatStartMeasures.has(measureIndex);
-      const hasRepeatEnd = repeatEndMeasures.has(measureIndex);
+      // END marker at measureNumber N means it's at the START of measure N,
+      // which is visually at the END of measure N-1. So check measureIndex + 1.
+      const hasRepeatEnd = repeatEndMeasures.has(measureIndex + 1);
 
       // Calculate prefix and suffix widths
       // Note: For first measure of row, time sig is rendered in the preamble area

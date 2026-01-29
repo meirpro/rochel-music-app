@@ -60,7 +60,6 @@ export function migrateLegacyNote(
  */
 export function migrateLegacyRepeatMarker(
   legacyMarker: LegacyRepeatMarker,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _timeSignature: TimeSignature,
 ): RepeatMarker {
   const MEASURES_PER_SYSTEM = 2; // Default from old system

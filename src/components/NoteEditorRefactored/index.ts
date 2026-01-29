@@ -11,6 +11,7 @@ export type {
   RepeatMarker,
   NoteTool,
   NoteEditorProps,
+  ContextMenuSection,
 } from "./types";
 
 // Time signature utilities
