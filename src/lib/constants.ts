@@ -77,7 +77,12 @@ export function getNoteInfo(pitch: Pitch): NotePosition {
 }
 
 // Get color for a pitch
-export function getNoteColor(pitch: Pitch): string {
+export function getNoteColor(pitch: Pitch | undefined | null): string {
+  // Guard against undefined/null pitch
+  if (!pitch) {
+    console.warn("[getNoteColor] Undefined pitch, defaulting to gray");
+    return "#eaeef6";
+  }
   if (pitch === "REST") return "transparent";
   // Extract just the base note letter (A-G), ignoring accidentals and octave
   const baseName = pitch[0];
