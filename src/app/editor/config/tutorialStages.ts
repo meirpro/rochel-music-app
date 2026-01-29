@@ -51,13 +51,25 @@ export interface TutorialStage {
   showMeasureControls: boolean;
   showPlayButton: boolean;
   showPiano: boolean;
+  showUndo: boolean; // Show undo/redo buttons in toolbar
   maxMeasures: number;
+
+  // Header control visibility (progressive disclosure)
+  showTempo?: boolean;
+  showDownload?: boolean;
+  showSettings?: boolean;
+  showHelp?: boolean;
+  showSongLibrary?: boolean;
 
   // Context menu visibility (undefined = show all)
   visibleContextMenuSections?: ContextMenuSection[];
 
   // Tool to highlight in the palette (draws attention to a specific tool)
   highlightTool?: NoteTool;
+
+  // Hint to show when the highlighted tool IS selected (guides the next action)
+  // If not set, the tooltip disappears when the tool is selected
+  highlightToolSelectedHint?: string;
 
   // Advancement
   advanceOn: TutorialAdvanceCondition;
@@ -82,7 +94,10 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: false,
     showPlayButton: false,
     showPiano: false,
+    showUndo: false,
     maxMeasures: 4,
+    highlightTool: "quarter",
+    highlightToolSelectedHint: "Click on any staff line to place a note",
     advanceOn: { type: "note-placed", count: 1 },
     canRepeat: true,
   },
@@ -100,7 +115,10 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: false,
     showPlayButton: false,
     showPiano: false,
+    showUndo: false,
     maxMeasures: 4,
+    highlightTool: "half",
+    highlightToolSelectedHint: "Now click on the staff to place a half note",
     advanceOn: { type: "manual", minActions: 2 },
     canRepeat: true,
     minActionsRequired: 2,
@@ -111,16 +129,18 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     id: "edit-notes",
     title: "Edit Your Notes",
     instruction:
-      "Right-click on any note to open the editing menu. Try changing the duration of a note, or delete it.",
-    hint: "Right-click a note to see options. You can also select the Delete tool [delete] in the left panel and click notes to delete them.",
+      "Right-click on any note to open the editing menu, then change its duration or delete it.",
+    hint: "Right-click (or long-press on mobile) on any note to see editing options. You can change the note's duration or delete it. Try it now! Tip: The Delete tool [delete] in the left panel lets you click notes to delete them quickly.",
     allowedTools: ["quarter", "half", "eighth", "delete"],
     hidePaletteSections: ["markup"],
     showHeader: false,
     showMeasureControls: false,
     showPlayButton: false,
     showPiano: false,
+    showUndo: true, // Undo/redo unlocked for editing
     maxMeasures: 4,
     visibleContextMenuSections: ["duration", "delete"], // Start simple
+    // No highlightTool - the main action is right-clicking, not selecting a tool
     advanceOn: { type: "context-menu-used" },
     canRepeat: true,
   },
@@ -138,13 +158,35 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: false,
     showPlayButton: true,
     showPiano: false,
+    showUndo: true,
     maxMeasures: 4,
     visibleContextMenuSections: ["duration", "changeNote", "delete"], // Add pitch changing
     advanceOn: { type: "play-started" },
     canRepeat: true,
   },
 
-  // Stage 5: Expand - Full controls
+  // Stage 5: Tempo - Control playback speed
+  {
+    id: "tempo",
+    title: "Control the Tempo",
+    instruction:
+      "Adjust how fast your melody plays using the tempo control in the header.",
+    hint: "Click on the BPM number in the header to edit it. Try a slower tempo (60-80 BPM) for practice, or faster (120+ BPM) for upbeat music.",
+    allowedTools: ["quarter", "half", "eighth", "whole", "delete"],
+    hidePaletteSections: ["markup"],
+    showHeader: true,
+    showMeasureControls: false,
+    showPlayButton: true,
+    showPiano: false,
+    showUndo: true,
+    maxMeasures: 4,
+    showTempo: true,
+    visibleContextMenuSections: ["duration", "changeNote", "delete"],
+    advanceOn: { type: "manual" },
+    canRepeat: true,
+  },
+
+  // Stage 6: Expand - Measure controls
   {
     id: "expand",
     title: "Expand Your Composition",
@@ -165,7 +207,9 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: true,
     showPlayButton: true,
     showPiano: false,
+    showUndo: true,
     maxMeasures: 8,
+    showTempo: true,
     visibleContextMenuSections: [
       "duration",
       "accidental",
@@ -177,7 +221,42 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     canRepeat: true,
   },
 
-  // Stage 6: Repeat Markers - Learn to add repeats
+  // Stage 7: Download - Save your work
+  {
+    id: "download",
+    title: "Save Your Work",
+    instruction: "Download your composition as an image to share or print.",
+    hint: "Click the download button (↓) in the header to save as PNG or SVG. PNG is best for sharing, SVG is best for editing or printing.",
+    allowedTools: [
+      "quarter",
+      "half",
+      "eighth",
+      "whole",
+      "dotted-quarter",
+      "dotted-half",
+      "delete",
+    ],
+    hidePaletteSections: ["markup"],
+    showHeader: true,
+    showMeasureControls: true,
+    showPlayButton: true,
+    showPiano: false,
+    showUndo: true,
+    maxMeasures: 8,
+    showTempo: true,
+    showDownload: true,
+    visibleContextMenuSections: [
+      "duration",
+      "accidental",
+      "changeNote",
+      "octave",
+      "delete",
+    ],
+    advanceOn: { type: "manual" },
+    canRepeat: true,
+  },
+
+  // Stage 8: Repeat Markers - Learn to add repeats
   {
     id: "repeat-markers",
     title: "Add Repeat Signs",
@@ -199,7 +278,10 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: true,
     showPlayButton: true,
     showPiano: false,
+    showUndo: true,
     maxMeasures: 8,
+    showTempo: true,
+    showDownload: true,
     visibleContextMenuSections: [
       "duration",
       "accidental",
@@ -208,11 +290,12 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
       "delete",
     ],
     highlightTool: "repeat",
+    highlightToolSelectedHint: "Click on any bar line to place a repeat sign",
     advanceOn: { type: "repeat-changed" },
     canRepeat: true,
   },
 
-  // Stage 7: Lyrics - Learn to add lyrics
+  // Stage 9: Lyrics - Learn to add lyrics
   {
     id: "lyrics",
     title: "Add Lyrics to Your Music",
@@ -235,7 +318,10 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: true,
     showPlayButton: true,
     showPiano: false,
+    showUndo: true,
     maxMeasures: 8,
+    showTempo: true,
+    showDownload: true,
     visibleContextMenuSections: [
       "duration",
       "accidental",
@@ -244,17 +330,95 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
       "delete",
     ],
     highlightTool: "lyrics",
+    highlightToolSelectedHint: "Click below any note to add a syllable",
     advanceOn: { type: "lyrics-changed" },
     canRepeat: true,
   },
 
-  // Stage 8: Complete - Full UI unlocked
+  // Stage 10: Piano Keyboard - Preview notes
+  {
+    id: "piano",
+    title: "Piano Preview",
+    instruction:
+      "Use the piano keyboard at the bottom to see which notes are playing during playback.",
+    hint: "Click the piano button (🎹) in the header to toggle the keyboard. The keys light up to show which notes are playing. You can also click keys to hear individual notes.",
+    allowedTools: [
+      "quarter",
+      "half",
+      "eighth",
+      "whole",
+      "dotted-quarter",
+      "dotted-half",
+      "delete",
+      "repeat",
+      "lyrics",
+    ],
+    hidePaletteSections: [],
+    showHeader: true,
+    showMeasureControls: true,
+    showPlayButton: true,
+    showPiano: true,
+    showUndo: true,
+    maxMeasures: 8,
+    showTempo: true,
+    showDownload: true,
+    visibleContextMenuSections: [
+      "duration",
+      "accidental",
+      "changeNote",
+      "octave",
+      "delete",
+    ],
+    advanceOn: { type: "manual" },
+    canRepeat: true,
+  },
+
+  // Stage 11: Song Library - Manage compositions
+  {
+    id: "song-library",
+    title: "Manage Your Songs",
+    instruction:
+      "Save and organize multiple compositions in your song library.",
+    hint: "Click the song title in the header to open the library. You can save your current work, load other songs, and export your collection.",
+    allowedTools: [
+      "quarter",
+      "half",
+      "eighth",
+      "whole",
+      "dotted-quarter",
+      "dotted-half",
+      "delete",
+      "repeat",
+      "lyrics",
+    ],
+    hidePaletteSections: [],
+    showHeader: true,
+    showMeasureControls: true,
+    showPlayButton: true,
+    showPiano: true,
+    showUndo: true,
+    maxMeasures: 8,
+    showTempo: true,
+    showDownload: true,
+    showSongLibrary: true,
+    visibleContextMenuSections: [
+      "duration",
+      "accidental",
+      "changeNote",
+      "octave",
+      "delete",
+    ],
+    advanceOn: { type: "manual" },
+    canRepeat: true,
+  },
+
+  // Stage 12: Complete - Full UI unlocked
   {
     id: "complete",
     title: "You're Ready!",
     instruction:
-      "Congratulations! You now have access to all editor features including the piano keyboard. Keep creating!",
-    hint: "All tools are now available in the left panel: note durations, repeats, lyrics, and time signature. The piano at the bottom shows which notes are playing.",
+      "Congratulations! You now have access to all editor features. Explore the settings and help to learn more.",
+    hint: "All tools are unlocked: note durations, repeats, lyrics, and time signature. Use Settings (⚙️) to customize, and Help (?) for more information.",
     allowedTools: [
       "sixteenth",
       "eighth",
@@ -274,7 +438,13 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     showMeasureControls: true,
     showPlayButton: true,
     showPiano: true,
+    showUndo: true,
     maxMeasures: 99,
+    showTempo: true,
+    showDownload: true,
+    showSettings: true,
+    showHelp: true,
+    showSongLibrary: true,
     advanceOn: { type: "manual" },
     canRepeat: false,
   },

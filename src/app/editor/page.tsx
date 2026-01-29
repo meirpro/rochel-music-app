@@ -3,11 +3,12 @@
  *
  * A standalone editor page using NoteEditorRefactored with a progressive
  * tutorial system that gradually reveals UI elements as users learn.
+ * Now with full feature parity with the home page.
  */
 
 "use client";
 
-import { useRef, useMemo, useCallback, useEffect } from "react";
+import { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 // Components
@@ -16,10 +17,17 @@ import {
   EditorNote as RefactoredEditorNote,
   RepeatMarker as RefactoredRepeatMarker,
 } from "@/components/NoteEditorRefactored/types";
-import { LyricSyllable } from "@/lib/types";
+import { LyricSyllable, SavedSong } from "@/lib/types";
 import { ToolPalette } from "@/components/ToolPalette";
 import { Footer } from "@/components/Footer";
 import { PianoDrawer } from "@/components/PianoDrawer";
+import { EditorHeader } from "@/components/EditorHeader";
+import { SongLibraryModal } from "@/components/SongLibraryModal";
+import { SettingsModal } from "@/components/SettingsModal";
+import { HelpModal } from "@/components/HelpModal";
+import { LyricsModal } from "@/components/LyricsModal";
+import { MobileBanner } from "@/components/MobileBanner";
+import { InstrumentType } from "@/lib/audio/TonePlayer";
 
 // Hooks
 import { useProgressiveTutorial } from "./hooks/useProgressiveTutorial";
@@ -33,42 +41,8 @@ import { TutorialProgress } from "./components/TutorialProgress";
 // Types
 import { EditorNote as PlaybackEditorNote, RepeatMarker } from "@/lib/types";
 
-/**
- * Convert notes from beat/system format to absoluteBeat format
- */
-function toAbsoluteBeatFormat(
-  notes: RefactoredEditorNote[],
-  measuresPerRow: number,
-  beatsPerMeasure: number,
-): PlaybackEditorNote[] {
-  return notes.map((note) => ({
-    id: note.id,
-    pitch: note.pitch,
-    duration: note.duration,
-    absoluteBeat: note.system * measuresPerRow * beatsPerMeasure + note.beat,
-  }));
-}
-
-/**
- * Convert repeat markers from local format to absolute format
- */
-function toAbsoluteRepeatMarkers(
-  markers: {
-    id: string;
-    pairId: string;
-    type: "start" | "end";
-    measure: number;
-    system: number;
-  }[],
-  measuresPerRow: number,
-): RepeatMarker[] {
-  return markers.map((marker) => ({
-    id: marker.id,
-    pairId: marker.pairId,
-    type: marker.type,
-    measureNumber: marker.system * measuresPerRow + marker.measure,
-  }));
-}
+// Notes and repeat markers from useEditorState now use absoluteBeat/measureNumber format
+// No conversion needed - they're already compatible with playback format
 
 /**
  * Simple header for when full header is hidden
@@ -200,30 +174,56 @@ export default function EditorPage() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Convert notes for playback (absoluteBeat format)
-  const playbackNotes = useMemo(
-    () =>
-      toAbsoluteBeatFormat(
-        editor.notes,
-        editor.settings.measuresPerRow,
-        editor.settings.timeSignature.numerator,
-      ),
-    [
-      editor.notes,
-      editor.settings.measuresPerRow,
-      editor.settings.timeSignature.numerator,
-    ],
-  );
+  // Modal state
+  const [showSongLibrary, setShowSongLibrary] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
+  const [showRestartTutorialConfirm, setShowRestartTutorialConfirm] =
+    useState(false);
 
-  // Convert repeat markers
-  const absoluteRepeatMarkers = useMemo(
-    () =>
-      toAbsoluteRepeatMarkers(
-        editor.repeatMarkers,
-        editor.settings.measuresPerRow,
-      ),
-    [editor.repeatMarkers, editor.settings.measuresPerRow],
-  );
+  // Instrument state (separate from settings for modal compatibility)
+  const [instrument, setInstrument] = useState<InstrumentType>("piano");
+
+  // Keyboard shortcuts for undo/redo and lyrics modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z for redo
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          editor.handleRedo();
+        } else {
+          editor.handleUndo();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl+L for lyrics modal
+      if ((e.metaKey || e.ctrlKey) && e.key === "l") {
+        e.preventDefault();
+        setShowLyricsModal(true);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editor]);
+
+  // Notes already use absoluteBeat format - cast to PlaybackEditorNote for type compatibility
+  const playbackNotes = editor.notes as PlaybackEditorNote[];
+
+  // Repeat markers already use measureNumber format
+  const absoluteRepeatMarkers = editor.repeatMarkers;
 
   // Playback hook
   // disableSpacebarControl: true because this page handles spacebar conditionally
@@ -319,10 +319,123 @@ export default function EditorPage() {
     [editor, tutorial],
   );
 
+  // Handle playhead seek - deselect note tools to prevent accidental note placement
+  const handlePlayheadSeek = useCallback(
+    (absoluteBeat: number) => {
+      // Deselect any note placement tool to prevent accidental clicks
+      if (editor.selectedTool) {
+        editor.setSelectedTool(null);
+      }
+      playback.handleSeek(absoluteBeat);
+    },
+    [editor, playback],
+  );
+
+  // Handle loading a song - stop playback first
+  const handleLoadSong = useCallback(
+    (song: SavedSong) => {
+      playback.handleStop();
+      editor.loadSong(song);
+    },
+    [playback, editor],
+  );
+
+  // Restart tutorial with clean editor state
+  // Request to restart tutorial - shows confirmation if there are notes
+  const handleRestartTutorial = useCallback(() => {
+    if (editor.hasNotes || editor.lyrics.length > 0) {
+      // Show confirmation dialog if there's content to lose
+      setShowRestartTutorialConfirm(true);
+    } else {
+      // No content, restart directly
+      playback.handleStop();
+      editor.setSelectedTool("quarter");
+      tutorial.resetTutorial();
+    }
+  }, [editor, playback, tutorial]);
+
+  // Actually restart the tutorial (called after confirmation)
+  const confirmRestartTutorial = useCallback(() => {
+    // Stop any playback
+    playback.handleStop();
+    // Clear all editor content (notes, repeat markers, lyrics) in one call
+    editor.clearComposition();
+    // Reset the selected tool to quarter note (default)
+    editor.setSelectedTool("quarter");
+    // Reset the tutorial
+    tutorial.resetTutorial();
+    // Close the confirmation dialog
+    setShowRestartTutorialConfirm(false);
+  }, [playback, editor, tutorial]);
+
+  // Download as PNG
+  const handleDownloadPNG = useCallback(async () => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Create canvas at 2x resolution for better quality
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = 2;
+      canvas.width = svg.clientWidth * scale;
+      canvas.height = svg.clientHeight * scale;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const pngUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = pngUrl;
+          link.download = `${editor.currentSongTitle || "composition"}.png`;
+          link.click();
+          URL.revokeObjectURL(pngUrl);
+        }
+      }, "image/png");
+
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }, [editor.currentSongTitle]);
+
+  // Download as SVG
+  const handleDownloadSVG = useCallback(() => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${editor.currentSongTitle || "composition"}.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [editor.currentSongTitle]);
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Toast notifications */}
       <Toaster position="top-center" />
+
+      {/* Mobile banner */}
+      <MobileBanner />
 
       {/* Tutorial overlay */}
       {tutorial.isActive && tutorial.currentStage && (
@@ -341,19 +454,56 @@ export default function EditorPage() {
         />
       )}
 
-      {/* Header - simple or hidden based on tutorial stage */}
-      {visibility.showHeader ? (
-        <SimpleHeader
-          title="Rochel's Music Editor"
-          onRestartTutorial={
-            !tutorial.isActive ? tutorial.resetTutorial : undefined
+      {/* Header - EditorHeader with visibility controls, or SimpleHeader for early tutorial stages */}
+      {!tutorial.isActive || visibility.showHeader ? (
+        <EditorHeader
+          currentSongTitle={editor.currentSongTitle}
+          onSongTitleClick={() => setShowSongLibrary(true)}
+          tempo={editor.settings.tempo}
+          onTempoChange={editor.setTempo}
+          timeSignature={editor.settings.timeSignature}
+          measuresPerRow={editor.settings.measuresPerRow}
+          onMeasuresPerRowChange={editor.setMeasuresPerRow}
+          totalMeasures={editor.settings.totalMeasures}
+          onTotalMeasuresChange={editor.setTotalMeasures}
+          isPlaying={playback.isPlaying}
+          isPaused={playback.isPaused}
+          hasNotes={editor.hasNotes}
+          onPlay={playback.handlePlay}
+          onPause={playback.handlePause}
+          onStop={playback.handleStop}
+          onSettings={() => setShowSettings(true)}
+          onHelp={() => setShowHelp(true)}
+          showPiano={editor.settings.showPiano}
+          onTogglePiano={() => editor.setShowPiano(!editor.settings.showPiano)}
+          onDownloadPNG={handleDownloadPNG}
+          onDownloadSVG={handleDownloadSVG}
+          visibility={
+            tutorial.isActive
+              ? {
+                  showTempo: visibility.showTempo,
+                  showMeasureControls: visibility.showMeasureControls,
+                  showDownload: visibility.showDownload,
+                  showSettings: visibility.showSettings,
+                  showHelp: visibility.showHelp,
+                  showSongLibrary: visibility.showSongLibrary,
+                  showPianoToggle: visibility.showPiano,
+                  showPlayControls: false, // Use PlayControls component instead
+                }
+              : undefined
           }
+          editorTutorial={{
+            isActive: tutorial.isActive,
+            currentStageIndex: tutorial.currentStageIndex,
+            totalStages: tutorial.totalStages,
+            onRestart: handleRestartTutorial,
+          }}
         />
       ) : (
         <SimpleHeader title="Learn to Use the Editor" />
       )}
 
-      {/* Play controls - only when showPlayButton is true */}
+      {/* Play controls - shown when visibility allows (during tutorial or after completion) */}
       {visibility.showPlayButton && (
         <PlayControls
           onTogglePlayPause={handlePlayToggle}
@@ -407,10 +557,11 @@ export default function EditorPage() {
             playheadX={playback.playheadX}
             playheadSystem={playback.playheadSystem}
             activeNoteId={playback.activeNoteId}
+            onPlayheadBeatChange={handlePlayheadSeek}
           />
 
-          {/* Debug info in development */}
-          {process.env.NODE_ENV === "development" && (
+          {/* Debug info in development - only during active tutorial */}
+          {process.env.NODE_ENV === "development" && tutorial.isActive && (
             <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
               <div>Notes: {editor.notes.length}</div>
               <div>Repeat markers: {absoluteRepeatMarkers.length}</div>
@@ -433,6 +584,10 @@ export default function EditorPage() {
           hideSections={visibility.hidePaletteSections}
           isPianoOpen={visibility.showPiano && editor.settings.showPiano}
           highlightTool={visibility.highlightTool}
+          onUndo={visibility.showUndo ? editor.handleUndo : undefined}
+          onRedo={visibility.showUndo ? editor.handleRedo : undefined}
+          canUndo={visibility.showUndo && editor.canUndo}
+          canRedo={visibility.showUndo && editor.canRedo}
         />
       </div>
 
@@ -452,6 +607,114 @@ export default function EditorPage() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Song Library Modal */}
+      <SongLibraryModal
+        isOpen={showSongLibrary}
+        onClose={() => setShowSongLibrary(false)}
+        savedSongs={editor.savedSongs}
+        currentSongId={editor.currentSongId}
+        onLoadSong={handleLoadSong}
+        onDeleteSong={editor.deleteSong}
+        onSaveSong={editor.saveSong}
+        onUpdateCurrentSong={editor.updateCurrentSong}
+        onRestoreDefaults={editor.restoreDefaults}
+        onExport={editor.exportSongs}
+        onExportSelected={editor.exportSelectedSongs}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        tempo={editor.settings.tempo}
+        onTempoChange={editor.setTempo}
+        timeSignature={editor.settings.timeSignature}
+        onTimeSignatureChange={editor.setTimeSignature}
+        instrument={instrument}
+        onInstrumentChange={setInstrument}
+        showLabels={editor.settings.showLabels}
+        onShowLabelsChange={editor.setShowLabels}
+        showKidFaces={false}
+        onShowKidFacesChange={() => {}}
+        showGrid={true}
+        onShowGridChange={() => {}}
+        allowChords={true}
+        onAllowChordsChange={() => {}}
+        staffLines={editor.settings.staffLines}
+        onStaffLinesChange={editor.setStaffLines}
+        noteSpacing={editor.settings.noteSpacing}
+        onNoteSpacingChange={editor.setNoteSpacing}
+      />
+
+      {/* Help Modal */}
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Lyrics Modal */}
+      <LyricsModal
+        isOpen={showLyricsModal}
+        onClose={() => setShowLyricsModal(false)}
+        lyrics={editor.lyrics}
+        onLyricsChange={handleLyricsChange}
+        totalMeasures={editor.settings.totalMeasures}
+        beatsPerMeasure={editor.settings.timeSignature.numerator}
+        notes={playbackNotes}
+      />
+
+      {/* Restart Tutorial Confirmation Modal */}
+      {showRestartTutorialConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-amber-100 to-orange-100 border-b border-amber-200">
+              <h2 className="text-lg font-semibold text-amber-800 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                Restart Tutorial?
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className="text-gray-700">
+                Restarting the tutorial will clear all your current notes,
+                lyrics, and repeat markers.
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                This action cannot be undone. Make sure to save your work first
+                if you want to keep it.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowRestartTutorialConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRestartTutorial}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
+              >
+                Clear & Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

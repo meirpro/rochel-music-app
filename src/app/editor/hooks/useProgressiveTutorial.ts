@@ -47,11 +47,20 @@ export interface TutorialVisibility {
   showMeasureControls: boolean;
   showPlayButton: boolean;
   showPiano: boolean;
+  showUndo: boolean;
   maxMeasures: number;
   /** Which context menu sections to show (undefined = show all) */
   visibleContextMenuSections: ContextMenuSection[] | undefined;
   /** Tool to highlight in the palette (draws attention to it) */
   highlightTool: NoteTool | undefined;
+  /** Hint to show when the highlighted tool IS selected (guides the next action) */
+  highlightToolSelectedHint: string | undefined;
+  /** Header control visibility for progressive disclosure */
+  showTempo: boolean;
+  showDownload: boolean;
+  showSettings: boolean;
+  showHelp: boolean;
+  showSongLibrary: boolean;
 }
 
 // Action types that can be reported to advance the tutorial
@@ -250,9 +259,16 @@ export function useProgressiveTutorial(): UseProgressiveTutorialReturn {
         showMeasureControls: true,
         showPlayButton: true,
         showPiano: true,
+        showUndo: true,
         maxMeasures: 99,
         visibleContextMenuSections: undefined, // Show all sections
         highlightTool: undefined,
+        highlightToolSelectedHint: undefined,
+        showTempo: true,
+        showDownload: true,
+        showSettings: true,
+        showHelp: true,
+        showSongLibrary: true,
       };
     }
 
@@ -266,9 +282,16 @@ export function useProgressiveTutorial(): UseProgressiveTutorialReturn {
         showMeasureControls: true,
         showPlayButton: true,
         showPiano: true,
+        showUndo: true,
         maxMeasures: 99,
         visibleContextMenuSections: undefined,
         highlightTool: undefined,
+        highlightToolSelectedHint: undefined,
+        showTempo: true,
+        showDownload: true,
+        showSettings: true,
+        showHelp: true,
+        showSongLibrary: true,
       };
     }
 
@@ -279,9 +302,16 @@ export function useProgressiveTutorial(): UseProgressiveTutorialReturn {
       showMeasureControls: stage.showMeasureControls,
       showPlayButton: stage.showPlayButton,
       showPiano: stage.showPiano,
+      showUndo: stage.showUndo,
       maxMeasures: stage.maxMeasures,
       visibleContextMenuSections: stage.visibleContextMenuSections,
       highlightTool: stage.highlightTool,
+      highlightToolSelectedHint: stage.highlightToolSelectedHint,
+      showTempo: stage.showTempo ?? false,
+      showDownload: stage.showDownload ?? false,
+      showSettings: stage.showSettings ?? false,
+      showHelp: stage.showHelp ?? false,
+      showSongLibrary: stage.showSongLibrary ?? false,
     };
   }, [progress.completed, progress.currentStageIndex]);
 

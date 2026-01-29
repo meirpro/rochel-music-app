@@ -17,9 +17,20 @@ import {
 interface TutorialMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  // Optional editor tutorial props (for /editor page)
+  editorTutorial?: {
+    isActive: boolean;
+    currentStageIndex: number;
+    totalStages: number;
+    onRestart: () => void;
+  };
 }
 
-export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
+export function TutorialMenu({
+  isOpen,
+  onClose,
+  editorTutorial,
+}: TutorialMenuProps) {
   const {
     completedModules,
     markComplete,
@@ -341,6 +352,127 @@ export function TutorialMenu({ isOpen, onClose }: TutorialMenuProps) {
           </div>
         </button>
       </div>
+
+      {/* Editor Tutorial - Only shown on /editor page */}
+      {editorTutorial && (
+        <div className="p-2 border-b border-blue-200 bg-blue-50">
+          <button
+            onClick={() => {
+              editorTutorial.onRestart();
+              onClose();
+            }}
+            className={`w-full text-left px-3 py-3 rounded-lg transition-all border-2 ${
+              !editorTutorial.isActive
+                ? "bg-green-50 hover:bg-green-100 border-green-300"
+                : "bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 border-blue-300 hover:border-blue-400"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {/* Icon */}
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  !editorTutorial.isActive
+                    ? "bg-green-500 text-white"
+                    : "bg-blue-500 text-white"
+                }`}
+              >
+                {!editorTutorial.isActive ? (
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                )}
+              </div>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`font-semibold text-sm flex items-center gap-2 ${
+                    !editorTutorial.isActive
+                      ? "text-green-700"
+                      : "text-blue-800"
+                  }`}
+                >
+                  Editor Tutorial
+                  {editorTutorial.isActive && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded-full font-medium">
+                      {editorTutorial.currentStageIndex + 1}/
+                      {editorTutorial.totalStages}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`text-xs mt-0.5 ${
+                    !editorTutorial.isActive
+                      ? "text-green-600"
+                      : "text-blue-700"
+                  }`}
+                >
+                  {!editorTutorial.isActive
+                    ? "Completed! Click to restart from the beginning"
+                    : "Learn to use the music editor step by step"}
+                </div>
+                <div
+                  className={`text-xs mt-1 ${
+                    !editorTutorial.isActive
+                      ? "text-green-500"
+                      : "text-blue-600"
+                  }`}
+                >
+                  {editorTutorial.totalStages} stages
+                  {!editorTutorial.isActive && " • Restart"}
+                </div>
+              </div>
+              {/* Restart/Continue icon */}
+              <div
+                className={`flex-shrink-0 mt-1 ${
+                  !editorTutorial.isActive ? "text-green-400" : "text-blue-500"
+                }`}
+              >
+                {!editorTutorial.isActive ? (
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Detailed Tours list - excluding ui-overview since it's featured above */}
       <div className="px-2 pt-2 pb-1">

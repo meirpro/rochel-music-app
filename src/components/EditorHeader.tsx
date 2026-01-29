@@ -58,6 +58,26 @@ interface EditorHeaderProps {
   savedSongs?: SavedSongsMap;
   currentSongId?: string | null;
   onQuickLoadSong?: (song: SavedSong) => void;
+
+  // Tutorial visibility controls (all default to true if not specified)
+  visibility?: {
+    showTempo?: boolean;
+    showMeasureControls?: boolean;
+    showDownload?: boolean;
+    showSettings?: boolean;
+    showHelp?: boolean;
+    showSongLibrary?: boolean;
+    showPianoToggle?: boolean;
+    showPlayControls?: boolean;
+  };
+
+  // Editor tutorial state (for TutorialMenu integration)
+  editorTutorial?: {
+    isActive: boolean;
+    currentStageIndex: number;
+    totalStages: number;
+    onRestart: () => void;
+  };
 }
 
 export function EditorHeader({
@@ -87,7 +107,21 @@ export function EditorHeader({
   savedSongs,
   currentSongId,
   onQuickLoadSong,
+  visibility,
+  editorTutorial,
 }: EditorHeaderProps) {
+  // Derive visibility flags with defaults (all shown if not specified)
+  const vis = {
+    showTempo: visibility?.showTempo ?? true,
+    showMeasureControls: visibility?.showMeasureControls ?? true,
+    showDownload: visibility?.showDownload ?? true,
+    showSettings: visibility?.showSettings ?? true,
+    showHelp: visibility?.showHelp ?? true,
+    showSongLibrary: visibility?.showSongLibrary ?? true,
+    showPianoToggle: visibility?.showPianoToggle ?? true,
+    showPlayControls: visibility?.showPlayControls ?? true,
+  };
+
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [showTutorialMenu, setShowTutorialMenu] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
@@ -180,123 +214,127 @@ export function EditorHeader({
           </span>
         </div>
 
-        <div className="h-8 w-px bg-purple-300 hidden md:block flex-shrink-0" />
+        {vis.showSongLibrary && (
+          <div className="h-8 w-px bg-purple-300 hidden md:block flex-shrink-0" />
+        )}
 
         {/* Song Library Button / Mobile Dropdown */}
-        <div className="relative" ref={mobileSongMenuRef}>
-          <button
-            id={TOUR_ELEMENT_IDS.songSelector}
-            onClick={() => {
-              if (isMobile && savedSongs && onQuickLoadSong) {
-                setShowMobileSongMenu(!showMobileSongMenu);
-              } else {
-                onSongTitleClick();
-              }
-            }}
-            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm border group min-w-0 ${
-              showMobileSongMenu
-                ? "bg-purple-100 border-purple-300"
-                : "bg-white/70 hover:bg-white/90 border-purple-200 hover:border-purple-300"
-            }`}
-          >
-            {/* Folder/Library icon */}
-            <svg
-              className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-              />
-            </svg>
-            <div className="flex flex-col items-start min-w-0">
-              <span className="text-[10px] text-purple-400 leading-none hidden sm:block">
-                Current Song
-              </span>
-              <span className="text-purple-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
-                {currentSongTitle}
-              </span>
-            </div>
-            <svg
-              className={`w-3 h-3 sm:w-4 sm:h-4 text-purple-400 group-hover:text-purple-600 transition-all flex-shrink-0 ${
-                showMobileSongMenu ? "rotate-180" : ""
+        {vis.showSongLibrary && (
+          <div className="relative" ref={mobileSongMenuRef}>
+            <button
+              id={TOUR_ELEMENT_IDS.songSelector}
+              onClick={() => {
+                if (isMobile && savedSongs && onQuickLoadSong) {
+                  setShowMobileSongMenu(!showMobileSongMenu);
+                } else {
+                  onSongTitleClick();
+                }
+              }}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm border group min-w-0 ${
+                showMobileSongMenu
+                  ? "bg-purple-100 border-purple-300"
+                  : "bg-white/70 hover:bg-white/90 border-purple-200 hover:border-purple-300"
               }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-
-          {/* Mobile Song Dropdown */}
-          {showMobileSongMenu && isMobile && (
-            <div className="absolute left-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[200px] max-w-[280px] max-h-[60vh] overflow-y-auto">
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-100 to-purple-100 border-b border-purple-200">
-                <span className="text-xs font-semibold text-purple-700">
-                  Select a Song
+              {/* Folder/Library icon */}
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[10px] text-purple-400 leading-none hidden sm:block">
+                  Current Song
+                </span>
+                <span className="text-purple-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
+                  {currentSongTitle}
                 </span>
               </div>
-              {sortedSongs.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-gray-500">
-                  No songs saved
+              <svg
+                className={`w-3 h-3 sm:w-4 sm:h-4 text-purple-400 group-hover:text-purple-600 transition-all flex-shrink-0 ${
+                  showMobileSongMenu ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            {/* Mobile Song Dropdown */}
+            {showMobileSongMenu && isMobile && (
+              <div className="absolute left-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[200px] max-w-[280px] max-h-[60vh] overflow-y-auto">
+                <div className="px-3 py-2 bg-gradient-to-r from-blue-100 to-purple-100 border-b border-purple-200">
+                  <span className="text-xs font-semibold text-purple-700">
+                    Select a Song
+                  </span>
                 </div>
-              ) : (
-                sortedSongs.map((song) => {
-                  const isCurrent = song.id === currentSongId;
-                  return (
-                    <button
-                      key={song.id}
-                      onClick={() => {
-                        if (!isCurrent && onQuickLoadSong) {
-                          onQuickLoadSong(song);
-                        }
-                        setShowMobileSongMenu(false);
-                      }}
-                      className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between gap-2 ${
-                        isCurrent
-                          ? "bg-purple-50 text-purple-700"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">
-                          {song.name}
+                {sortedSongs.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-gray-500">
+                    No songs saved
+                  </div>
+                ) : (
+                  sortedSongs.map((song) => {
+                    const isCurrent = song.id === currentSongId;
+                    return (
+                      <button
+                        key={song.id}
+                        onClick={() => {
+                          if (!isCurrent && onQuickLoadSong) {
+                            onQuickLoadSong(song);
+                          }
+                          setShowMobileSongMenu(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between gap-2 ${
+                          isCurrent
+                            ? "bg-purple-50 text-purple-700"
+                            : "hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">
+                            {song.name}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {song.composition.notes.length} notes •{" "}
+                            {song.settings.tempo} BPM
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-400">
-                          {song.composition.notes.length} notes •{" "}
-                          {song.settings.tempo} BPM
-                        </div>
-                      </div>
-                      {isCurrent && (
-                        <svg
-                          className="w-4 h-4 text-purple-500 flex-shrink-0"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
+                        {isCurrent && (
+                          <svg
+                            className="w-4 h-4 text-purple-500 flex-shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Center section - Time sig, Tempo, and Measures (responsive) */}
@@ -325,74 +363,80 @@ export function EditorHeader({
           </button>
 
           {/* Tempo input/display */}
-          <div
-            id={TOUR_ELEMENT_IDS.tempoDisplay}
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 bg-white/60 rounded-lg shadow-sm"
-          >
-            {isEditingTempo ? (
-              <input
-                ref={tempoInputRef}
-                type="number"
-                min="40"
-                max="200"
-                value={tempoInputValue}
-                onChange={(e) => setTempoInputValue(e.target.value)}
-                onBlur={handleTempoBlur}
-                onKeyDown={handleTempoKeyDown}
-                className="w-10 sm:w-12 text-purple-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
-              />
-            ) : (
-              <button
-                onClick={() => setIsEditingTempo(true)}
-                className="text-purple-700 font-semibold text-sm hover:text-purple-800"
-              >
-                {tempo}
-              </button>
-            )}
-            <span className="text-purple-500 text-xs">BPM</span>
-            {/* Reset to song tempo button */}
-            {songTempo !== undefined && tempo !== songTempo && (
-              <button
-                onClick={() => onTempoChange(songTempo)}
-                className="ml-1 w-5 h-5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-600 flex items-center justify-center transition-colors"
-                title={`Reset to song tempo (${songTempo})`}
-              >
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+          {vis.showTempo && (
+            <div
+              id={TOUR_ELEMENT_IDS.tempoDisplay}
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 bg-white/60 rounded-lg shadow-sm"
+            >
+              {isEditingTempo ? (
+                <input
+                  ref={tempoInputRef}
+                  type="number"
+                  min="40"
+                  max="200"
+                  value={tempoInputValue}
+                  onChange={(e) => setTempoInputValue(e.target.value)}
+                  onBlur={handleTempoBlur}
+                  onKeyDown={handleTempoKeyDown}
+                  className="w-10 sm:w-12 text-purple-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
+                />
+              ) : (
+                <button
+                  onClick={() => setIsEditingTempo(true)}
+                  className="text-purple-700 font-semibold text-sm hover:text-purple-800"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+                  {tempo}
+                </button>
+              )}
+              <span className="text-purple-500 text-xs">BPM</span>
+              {/* Reset to song tempo button */}
+              {songTempo !== undefined && tempo !== songTempo && (
+                <button
+                  onClick={() => onTempoChange(songTempo)}
+                  className="ml-1 w-5 h-5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-600 flex items-center justify-center transition-colors"
+                  title={`Reset to song tempo (${songTempo})`}
+                >
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Measures per row control - only on xl screens */}
-          <div className="hidden xl:block">
-            <MeasuresControlCompact
-              value={measuresPerRow}
-              onChange={onMeasuresPerRowChange}
-              maxMeasures={totalMeasures}
-              label="Per row:"
-            />
-          </div>
+          {vis.showMeasureControls && (
+            <div className="hidden xl:block">
+              <MeasuresControlCompact
+                value={measuresPerRow}
+                onChange={onMeasuresPerRowChange}
+                maxMeasures={totalMeasures}
+                label="Per row:"
+              />
+            </div>
+          )}
 
           {/* Total measures control - only on xl screens */}
-          <div className="hidden xl:block ml-2 pl-2 border-l border-purple-300">
-            <MeasuresControlCompact
-              value={totalMeasures}
-              onChange={onTotalMeasuresChange}
-              maxMeasures={99}
-              label="Total measures:"
-            />
-          </div>
+          {vis.showMeasureControls && (
+            <div className="hidden xl:block ml-2 pl-2 border-l border-purple-300">
+              <MeasuresControlCompact
+                value={totalMeasures}
+                onChange={onTotalMeasuresChange}
+                maxMeasures={99}
+                label="Total measures:"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -637,46 +681,50 @@ export function EditorHeader({
           className="hidden lg:flex items-center gap-2"
         >
           {/* Piano toggle */}
-          <button
-            id={TOUR_ELEMENT_IDS.pianoToggle}
-            onClick={onTogglePiano}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-              showPiano
-                ? "bg-white text-purple-600 shadow-md ring-2 ring-purple-300"
-                : "bg-white/60 hover:bg-white/80 text-purple-600 shadow-sm"
-            }`}
-            title="Toggle Piano"
-          >
-            <LogoIcon className="w-5 h-5" />
-          </button>
+          {vis.showPianoToggle && (
+            <button
+              id={TOUR_ELEMENT_IDS.pianoToggle}
+              onClick={onTogglePiano}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                showPiano
+                  ? "bg-white text-purple-600 shadow-md ring-2 ring-purple-300"
+                  : "bg-white/60 hover:bg-white/80 text-purple-600 shadow-sm"
+              }`}
+              title="Toggle Piano"
+            >
+              <LogoIcon className="w-5 h-5" />
+            </button>
+          )}
 
           {/* Settings button */}
-          <button
-            id={TOUR_ELEMENT_IDS.settingsButton}
-            onClick={onSettings}
-            className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
-            title="Settings"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {vis.showSettings && (
+            <button
+              id={TOUR_ELEMENT_IDS.settingsButton}
+              onClick={onSettings}
+              className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
+              title="Settings"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </button>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </button>
+          )}
 
           {/* Learn/Tutorial button */}
           <div className="relative" ref={tutorialMenuRef}>
@@ -708,37 +756,17 @@ export function EditorHeader({
             <TutorialMenu
               isOpen={showTutorialMenu}
               onClose={() => setShowTutorialMenu(false)}
+              editorTutorial={editorTutorial}
             />
           </div>
 
           {/* Help button */}
-          <button
-            id={TOUR_ELEMENT_IDS.helpButton}
-            onClick={onHelp}
-            className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
-            title="Help"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </button>
-
-          {/* Download button with dropdown */}
-          <div className="relative" ref={downloadMenuRef}>
+          {vis.showHelp && (
             <button
-              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+              id={TOUR_ELEMENT_IDS.helpButton}
+              onClick={onHelp}
               className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
-              title="Download"
+              title="Help"
             >
               <svg
                 className="w-5 h-5"
@@ -750,127 +778,160 @@ export function EditorHeader({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
-              </svg>
-            </button>
-
-            {/* Dropdown menu */}
-            {showDownloadMenu && (
-              <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[140px]">
-                <button
-                  onClick={() => {
-                    onDownloadPNG();
-                    setShowDownloadMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span>PNG Image</span>
-                </button>
-                <button
-                  onClick={() => {
-                    onDownloadSVG();
-                    setShowDownloadMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2 border-t border-purple-100"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                    />
-                  </svg>
-                  <span>SVG Vector</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* End Utility Buttons Group */}
-
-        <div className="hidden lg:block h-8 w-px bg-purple-300" />
-
-        {/* Play Controls Section */}
-        <div
-          id={TOUR_ELEMENT_IDS.sectionPlayControls}
-          className="flex items-center gap-1"
-        >
-          {/* Stop/Reset button - shows when playing or paused */}
-          {(isPlaying || isPaused) && (
-            <button
-              onClick={onStop}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-all shadow-sm"
-              title="Stop and reset (rewind)"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" />
               </svg>
             </button>
           )}
 
-          {/* Play/Pause button - Large and prominent */}
-          <button
-            id={TOUR_ELEMENT_IDS.playButton}
-            onClick={isPlaying ? onPause : onPlay}
-            disabled={!hasNotes && !isPlaying && !isPaused}
-            className={`px-3 sm:px-6 py-2 rounded-xl font-semibold text-sm sm:text-base shadow-md transition-all flex items-center gap-1 sm:gap-2 ${
-              isPlaying
-                ? "bg-amber-200 hover:bg-amber-300 text-amber-700"
-                : isPaused
-                  ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
-                  : hasNotes
-                    ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {isPlaying ? (
-              <>
+          {/* Download button with dropdown */}
+          {vis.showDownload && (
+            <div className="relative" ref={downloadMenuRef}>
+              <button
+                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
+                title="Download"
+              >
                 <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
                 </svg>
-                <span className="hidden sm:inline">Pause</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                <span className="hidden sm:inline">
-                  {isPaused ? "Resume" : "Play"}
-                </span>
-              </>
-            )}
-          </button>
+              </button>
+
+              {/* Dropdown menu */}
+              {showDownloadMenu && (
+                <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[140px]">
+                  <button
+                    onClick={() => {
+                      onDownloadPNG();
+                      setShowDownloadMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span>PNG Image</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDownloadSVG();
+                      setShowDownloadMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2 border-t border-purple-100"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                      />
+                    </svg>
+                    <span>SVG Vector</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+        {/* End Utility Buttons Group */}
+
+        {vis.showPlayControls && (
+          <div className="hidden lg:block h-8 w-px bg-purple-300" />
+        )}
+
+        {/* Play Controls Section */}
+        {vis.showPlayControls && (
+          <div
+            id={TOUR_ELEMENT_IDS.sectionPlayControls}
+            className="flex items-center gap-1"
+          >
+            {/* Stop/Reset button - shows when playing or paused */}
+            {(isPlaying || isPaused) && (
+              <button
+                onClick={onStop}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-all shadow-sm"
+                title="Stop and reset (rewind)"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <rect x="6" y="6" width="12" height="12" />
+                </svg>
+              </button>
+            )}
+
+            {/* Play/Pause button - Large and prominent */}
+            <button
+              id={TOUR_ELEMENT_IDS.playButton}
+              onClick={isPlaying ? onPause : onPlay}
+              disabled={!hasNotes && !isPlaying && !isPaused}
+              className={`px-3 sm:px-6 py-2 rounded-xl font-semibold text-sm sm:text-base shadow-md transition-all flex items-center gap-1 sm:gap-2 ${
+                isPlaying
+                  ? "bg-amber-200 hover:bg-amber-300 text-amber-700"
+                  : isPaused
+                    ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
+                    : hasNotes
+                      ? "bg-teal-200 hover:bg-teal-300 text-teal-700"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {isPlaying ? (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                  <span className="hidden sm:inline">Pause</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  <span className="hidden sm:inline">
+                    {isPaused ? "Resume" : "Play"}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
