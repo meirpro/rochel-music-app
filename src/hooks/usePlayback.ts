@@ -101,6 +101,7 @@ interface UsePlaybackReturn {
   handlePause: () => void;
   handleStop: () => void;
   handleTogglePlayPause: () => void;
+  handleSeek: (absoluteBeat: number) => void;
 }
 
 export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
@@ -576,6 +577,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       timeline,
       totalPlaybackSeconds,
       totalPlaybackBeats,
+      systemLayouts,
     };
   }, [
     composition,
@@ -835,6 +837,95 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     }
   }, [handlePause, handlePlay]);
 
+  // Seek to an absolute beat position (used for playhead dragging)
+  const handleSeek = useCallback(
+    (absoluteBeat: number) => {
+      // Build playback data to get system layouts and timeline
+      const { systemLayouts, timeline } = buildPlaybackData();
+
+      if (systemLayouts.length === 0) return;
+
+      // Find which system this beat belongs to
+      let targetSystem = 0;
+      for (let i = 0; i < systemLayouts.length; i++) {
+        const sys = systemLayouts[i];
+        if (
+          absoluteBeat >= sys.startBeat &&
+          absoluteBeat < sys.startBeat + sys.totalBeats
+        ) {
+          targetSystem = i;
+          break;
+        }
+      }
+
+      // Get the X position for the playhead
+      const sys = systemLayouts[targetSystem] || systemLayouts[0];
+      const beatInSystem = absoluteBeat - sys.startBeat;
+
+      // Find measure containing this beat
+      let measureXOffset = 0;
+      let beatInMeasure = beatInSystem;
+      for (const measure of sys.measures) {
+        if (
+          beatInSystem >= measure.startBeatInSystem &&
+          beatInSystem < measure.startBeatInSystem + measure.beatsInMeasure
+        ) {
+          measureXOffset = measure.xOffset;
+          beatInMeasure = beatInSystem - measure.startBeatInSystem;
+          break;
+        }
+      }
+
+      const x = LEFT_MARGIN + measureXOffset + beatInMeasure * sys.beatWidth;
+
+      // Update playhead position visually
+      setPlayheadX(x);
+      setPlayheadSystem(targetSystem);
+
+      // Find the corresponding playback beat from the timeline
+      // This handles repeat sections correctly - we find the first occurrence
+      // of this visual position in the timeline
+      let playbackBeat = absoluteBeat; // Default: 1:1 mapping if no repeats
+      for (const segment of timeline) {
+        if (segment.system === targetSystem) {
+          // Check if our X position falls within this segment
+          if (x >= segment.startX && x <= segment.endX) {
+            // Interpolate to find the playback beat
+            const progress =
+              segment.endX > segment.startX
+                ? (x - segment.startX) / (segment.endX - segment.startX)
+                : 0;
+            playbackBeat =
+              segment.startBeat +
+              progress * (segment.endBeat - segment.startBeat);
+            break;
+          }
+        }
+      }
+
+      // Update Transport position so resume starts from here
+      const transport = getTransportInstance();
+      const seekTimeSeconds = beatsToSeconds(playbackBeat, tempo);
+      transport.seconds = seekTimeSeconds;
+
+      // Store timeline for playhead animation on resume
+      timelineRef.current = timeline;
+
+      // If playing, pause (user can resume from new position)
+      if (isPlayingRef.current) {
+        handlePause();
+      }
+
+      // Mark as paused so resume works (even if we weren't playing)
+      // This ensures the playhead stays visible and resume will work
+      if (!isPlayingRef.current && !isPausedRef.current) {
+        setIsPaused(true);
+        isPausedRef.current = true;
+      }
+    },
+    [buildPlaybackData, handlePause, getTransportInstance, tempo],
+  );
+
   // Global spacebar listener - uses keyup to prevent repeated triggers when holding
   // Skip when disableSpacebarControl is true (caller handles spacebar)
   useEffect(() => {
@@ -877,5 +968,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     handlePause,
     handleStop,
     handleTogglePlayPause,
+    handleSeek,
   };
 }

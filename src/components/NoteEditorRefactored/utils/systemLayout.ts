@@ -573,13 +573,25 @@ export function toRenderedNotes(
 
 /**
  * Convert a repeat marker from absolute measureNumber to rendered format with system/measure
+ *
+ * For END markers: measureNumber indicates "after this measure number" which means
+ * the marker appears at the END of measure (measureNumber - 1). When measureNumber
+ * is a multiple of measuresPerRow, the marker belongs at the end of the previous system.
  */
 export function toRenderedRepeatMarker(
   marker: RepeatMarker,
   measuresPerRow: number,
 ): RenderedRepeatMarker {
-  const system = Math.floor(marker.measureNumber / measuresPerRow);
-  const measure = marker.measureNumber % measuresPerRow;
+  let system = Math.floor(marker.measureNumber / measuresPerRow);
+  let measure = marker.measureNumber % measuresPerRow;
+
+  // For END markers at system boundaries (measure would be 0), place at end of previous system
+  // e.g., measureNumber=8 with measuresPerRow=4 should be system=1, measure=4 (end of system 1)
+  if (marker.type === "end" && measure === 0 && marker.measureNumber > 0) {
+    system = system - 1;
+    measure = measuresPerRow; // This equals sysMeasures.length for that system
+  }
+
   return {
     ...marker,
     system,
