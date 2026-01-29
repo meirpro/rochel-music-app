@@ -3,6 +3,26 @@
  *
  * A floating instruction panel that displays the current tutorial stage
  * information with title, instruction, and optional hint.
+ *
+ * ## Icon Tokens in Hints
+ *
+ * Tutorial hint strings support inline icon tokens that render as SVG icons.
+ * This avoids Unicode rendering issues across different platforms.
+ *
+ * Available tokens:
+ * - [quarter] - Quarter note icon
+ * - [half]    - Half note icon
+ * - [eighth]  - Eighth note icon
+ * - [whole]   - Whole note icon
+ * - [repeat]  - Repeat sign icon
+ * - [delete]  - Delete/X icon
+ *
+ * Example hint: "Click the half note [half] or quarter note [quarter] button"
+ *
+ * To add a new icon token:
+ * 1. Create an Inline*Icon component below (12-14px wide for inline text)
+ * 2. Add the token mapping to ICON_MAP
+ * 3. Add the token pattern to the regex in renderHintWithIcons()
  */
 
 "use client";

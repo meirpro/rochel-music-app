@@ -205,3 +205,38 @@ Before adding a new song, verify:
 - [ ] Pitches are in valid range (typically C3-C6)
 - [ ] RepeatMarkers have matching start/end pairs
 - [ ] Lyrics align with note positions
+
+## Tutorial Icon Tokens
+
+Location: `/src/app/editor/components/TutorialOverlay.tsx`
+
+Tutorial hint strings in `/src/app/editor/config/tutorialStages.ts` support inline icon tokens that render as SVG icons. This avoids Unicode rendering issues (like ♩ or 𝅗𝅥 showing as boxes on some systems).
+
+### Available Tokens
+
+| Token | Renders As | Use For |
+|-------|-----------|---------|
+| `[quarter]` | Quarter note SVG | Quarter note tool |
+| `[half]` | Half note SVG | Half note tool |
+| `[eighth]` | Eighth note SVG | Eighth note tool |
+| `[whole]` | Whole note SVG | Whole note tool |
+| `[repeat]` | Repeat sign SVG | Repeat marker tool |
+| `[delete]` | X icon SVG | Delete tool |
+
+### Example Usage
+
+```typescript
+// In tutorialStages.ts
+{
+  id: "more-notes",
+  title: "Try Different Note Lengths",
+  hint: "Click the half note [half] or quarter note [quarter] button in the left panel.",
+  // ...
+}
+```
+
+### Adding New Icon Tokens
+
+1. Create an `Inline*Icon` component in `TutorialOverlay.tsx` (12-14px wide)
+2. Add the token to `ICON_MAP`: `"[newtoken]": InlineNewIcon`
+3. Add the pattern to the regex in `renderHintWithIcons()`
