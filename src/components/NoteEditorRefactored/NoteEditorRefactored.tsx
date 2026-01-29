@@ -199,12 +199,15 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   // Get coordinates from mouse event
   // Note: svgRef is a stable ref object; we intentionally use [] because we only read .current
+  // The viewBox starts at x=-15, so we need to account for this offset
+  const VIEWBOX_X_OFFSET = -15;
   const getCoords = useCallback(
     (e: React.MouseEvent<SVGSVGElement>): { x: number; y: number } => {
       if (!svgRef.current) return { x: 0, y: 0 };
       const rect = svgRef.current.getBoundingClientRect();
       return {
-        x: e.clientX - rect.left,
+        // Account for viewBox offset: pixel position maps to SVG coordinate + viewBoxMinX
+        x: e.clientX - rect.left + VIEWBOX_X_OFFSET,
         y: e.clientY - rect.top,
       };
     },
@@ -326,16 +329,31 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     [allowMove, readOnly],
   );
 
-  // Note click handler for learn mode interaction callback
+  // Note click handler for delete tool and learn mode interaction
   const handleNoteClick = useCallback(
     (e: React.MouseEvent, noteId: string) => {
-      if (!learnMode || !onNoteInteraction) return;
-      const note = notes.find((n) => n.id === noteId);
-      if (note) {
-        onNoteInteraction(note, "click");
+      // Handle delete tool
+      if (selectedTool === "delete" && onNotesChange) {
+        e.stopPropagation();
+        const newNotes = notes.filter((n) => n.id !== noteId);
+        onNotesChange(newNotes);
+        // Also call interaction callback if in learn mode
+        if (learnMode && onNoteInteraction) {
+          const note = notes.find((n) => n.id === noteId);
+          if (note) onNoteInteraction(note, "delete");
+        }
+        return;
+      }
+
+      // Handle learn mode click interaction
+      if (learnMode && onNoteInteraction) {
+        const note = notes.find((n) => n.id === noteId);
+        if (note) {
+          onNoteInteraction(note, "click");
+        }
       }
     },
-    [learnMode, onNoteInteraction, notes],
+    [selectedTool, onNotesChange, notes, learnMode, onNoteInteraction],
   );
 
   // Mouse move handler for dragging notes, playhead, or markers
@@ -483,11 +501,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       if (readOnly || !selectedTool) return;
       if (selectedTool === "delete" || selectedTool === "timesig") return;
 
-      // Get SVG coordinates from mouse event
-      if (!svgRef.current) return;
-      const rect = svgRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      // Get SVG coordinates from mouse event (uses getCoords which accounts for viewBox offset)
+      const { x, y } = getCoords(e);
 
       const system = getSystemFromY(y, systemCount);
       const sysLayout = getLayoutForSystem(systemLayouts, system);
@@ -638,9 +653,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             draggedNote={draggedNote}
             allowMove={allowMove}
             readOnly={readOnly}
+            selectedTool={selectedTool}
             onContextMenu={handleNoteContextMenu}
             onMouseDown={handleNoteMouseDown}
-            onClick={learnMode ? handleNoteClick : undefined}
+            onClick={handleNoteClick}
           />
         ))}
 
@@ -803,8 +819,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             const hoverMeasureInfo =
               hoverSysLayout.measures[hoveredRepeatMeasure.measure];
             if (!hoverMeasureInfo) return null;
-            // Calculate staff half-height based on visible staff lines
-            const staffHalfHeight = ((staffLines - 1) / 2) * LINE_SPACING;
+            // Calculate staff extents based on visible lines (same as StaffSystem)
+            const staffTopOffset =
+              staffLines === 5
+                ? -2 * LINE_SPACING
+                : staffLines === 4
+                  ? -1 * LINE_SPACING
+                  : 0;
+            const staffBottomOffset = 2 * LINE_SPACING;
             // xOffset points to where beats START (after prefix)
             // Subtract prefixWidth to start at the bar line
             const hoverMeasureX =
@@ -821,17 +843,17 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
               <g>
                 <rect
                   x={hoverMeasureX}
-                  y={hoverStaffCenterY - staffHalfHeight - 15}
+                  y={hoverStaffCenterY + staffTopOffset - 15}
                   width={hoverMeasureWidth}
-                  height={staffHalfHeight * 2 + 30}
+                  height={staffBottomOffset - staffTopOffset + 30}
                   fill="#8b5cf6"
                   opacity={0.15}
                   rx={4}
                 />
-                {/* Instructional text */}
+                {/* Instructional text - positioned above the highlight */}
                 <rect
                   x={hoverMeasureCenterX - 60}
-                  y={hoverStaffCenterY - staffHalfHeight - 32}
+                  y={hoverStaffCenterY + staffTopOffset - 47}
                   width={120}
                   height={24}
                   fill="#f3e8ff"
@@ -841,7 +863,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 />
                 <text
                   x={hoverMeasureCenterX}
-                  y={hoverStaffCenterY - staffHalfHeight - 16}
+                  y={hoverStaffCenterY + staffTopOffset - 31}
                   fontSize={12}
                   fontWeight="600"
                   fill="#6d28d9"
@@ -955,19 +977,35 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
               const rangeWidth = rangeEndX - rangeX;
               const sysStaffCenterY = getStaffCenterY(sys);
 
+              // Calculate staff extents based on visible lines (same as StaffSystem)
+              const sysStaffTopOffset =
+                staffLines === 5
+                  ? -2 * LINE_SPACING
+                  : staffLines === 4
+                    ? -1 * LINE_SPACING
+                    : 0;
+              const sysStaffBottomOffset = 2 * LINE_SPACING;
               rangeHighlights.push(
                 <rect
                   key={`range-highlight-${sys}`}
                   x={rangeX}
-                  y={sysStaffCenterY - LINE_SPACING - 15}
+                  y={sysStaffCenterY + sysStaffTopOffset - 15}
                   width={rangeWidth}
-                  height={LINE_SPACING * 2 + 30}
+                  height={sysStaffBottomOffset - sysStaffTopOffset + 30}
                   fill="#8b5cf6"
                   opacity={0.15}
                   rx={4}
                 />,
               );
             }
+
+            // Calculate staff top offset for text positioning
+            const textStaffTopOffset =
+              staffLines === 5
+                ? -2 * LINE_SPACING
+                : staffLines === 4
+                  ? -1 * LINE_SPACING
+                  : 0;
 
             return (
               <g>
@@ -979,7 +1017,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                     textMeasureCenterX -
                     (textToShow === "Click to set END" ? 55 : 60)
                   }
-                  y={textStaffCenterY - LINE_SPACING - 32}
+                  y={textStaffCenterY + textStaffTopOffset - 47}
                   width={textToShow === "Click to set END" ? 110 : 120}
                   height={24}
                   fill="#f3e8ff"
@@ -991,7 +1029,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 {/* Text on top */}
                 <text
                   x={textMeasureCenterX}
-                  y={textStaffCenterY - LINE_SPACING - 16}
+                  y={textStaffCenterY + textStaffTopOffset - 31}
                   fontSize={12}
                   fontWeight="600"
                   fill="#7c3aed"
@@ -1015,8 +1053,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             const dragStaffCenterY = getStaffCenterY(
               markerDragPosition.targetSystem,
             );
-            // Calculate staff half-height based on visible staff lines
-            const staffHalfHeight = ((staffLines - 1) / 2) * LINE_SPACING;
+            // Calculate staff extents based on visible lines (same as StaffSystem)
+            const dragStaffTopOffset =
+              staffLines === 5
+                ? -2 * LINE_SPACING
+                : staffLines === 4
+                  ? -1 * LINE_SPACING
+                  : 0;
+            const dragStaffBottomOffset = 2 * LINE_SPACING;
             // Calculate X position for the target measure boundary
             let dragPreviewX: number;
             if (
@@ -1044,9 +1088,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 {/* Vertical line at target position - extends from above staff to below lyrics */}
                 <line
                   x1={dragPreviewX}
-                  y1={dragStaffCenterY - staffHalfHeight - 25}
+                  y1={dragStaffCenterY + dragStaffTopOffset - 25}
                   x2={dragPreviewX}
-                  y2={dragStaffCenterY + LINE_SPACING * 4 + 20}
+                  y2={
+                    dragStaffCenterY +
+                    dragStaffBottomOffset +
+                    LINE_SPACING * 2 +
+                    20
+                  }
                   stroke="#8b5cf6"
                   strokeWidth={3}
                   strokeDasharray="6,4"
@@ -1056,8 +1105,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                   cx={dragPreviewX}
                   cy={
                     draggedMarker.type === "start"
-                      ? dragStaffCenterY - staffHalfHeight - 35
-                      : dragStaffCenterY + LINE_SPACING * 4 + 30
+                      ? dragStaffCenterY + dragStaffTopOffset - 35
+                      : dragStaffCenterY +
+                        dragStaffBottomOffset +
+                        LINE_SPACING * 2 +
+                        30
                   }
                   r={8}
                   fill="#8b5cf6"
@@ -1069,8 +1121,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                   x={dragPreviewX - 30}
                   y={
                     draggedMarker.type === "start"
-                      ? dragStaffCenterY - staffHalfHeight - 65
-                      : dragStaffCenterY + LINE_SPACING * 4 + 40
+                      ? dragStaffCenterY + dragStaffTopOffset - 65
+                      : dragStaffCenterY +
+                        dragStaffBottomOffset +
+                        LINE_SPACING * 2 +
+                        40
                   }
                   width={60}
                   height={20}
@@ -1081,8 +1136,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                   x={dragPreviewX}
                   y={
                     draggedMarker.type === "start"
-                      ? dragStaffCenterY - staffHalfHeight - 51
-                      : dragStaffCenterY + LINE_SPACING * 4 + 54
+                      ? dragStaffCenterY + dragStaffTopOffset - 51
+                      : dragStaffCenterY +
+                        dragStaffBottomOffset +
+                        LINE_SPACING * 2 +
+                        54
                   }
                   fontSize={11}
                   fontWeight="600"
