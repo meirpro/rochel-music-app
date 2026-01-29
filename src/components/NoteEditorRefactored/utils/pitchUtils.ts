@@ -146,7 +146,9 @@ export function getPitchFromY(
   staffLines: number = 3,
 ): Pitch {
   const staffCenterY = getStaffCenterY(system);
-  const bottomLineY = staffCenterY + LINE_SPACING;
+  // Line 5 (E4, position 2) is at staffCenterY + 2*LINE_SPACING (64px below center)
+  // Must match getYFromPitch calculation
+  const bottomLineY = staffCenterY + 2 * LINE_SPACING;
   const position = Math.round((bottomLineY - y) / (LINE_SPACING / 2)) + 2;
 
   // Max position depends on visible staff lines
