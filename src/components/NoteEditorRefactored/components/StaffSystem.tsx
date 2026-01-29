@@ -6,6 +6,7 @@ import {
   LEFT_MARGIN,
   STAFF_LEFT,
   LINE_SPACING,
+  TIME_SIG_DISPLAY_WIDTH,
   getNoteOffset,
   getStaffCenterY,
 } from "@/lib/layoutUtils";
@@ -15,6 +16,9 @@ import {
   SystemLayout,
 } from "../utils/systemLayout";
 import { TimeSignature } from "../utils/timeSigConfig";
+import { RepeatMarker, NoteTool } from "../types";
+import { TimeSignatureChange } from "@/lib/types";
+import { HoveredTimeSigBarState } from "../hooks/useTimeSigPicker";
 
 export interface StaffSystemProps {
   systemIndex: number;
@@ -23,6 +27,30 @@ export interface StaffSystemProps {
   timeSignature: TimeSignature;
   readOnly: boolean;
   onTimeSignatureClick?: () => void;
+  /** Repeat markers to render */
+  repeatMarkers?: RepeatMarker[];
+  /** Callback when repeat markers change (for deletion) */
+  onRepeatMarkersChange?: (markers: RepeatMarker[]) => void;
+  /** Currently hovered marker ID */
+  hoveredMarker?: string | null;
+  /** Callback to set hovered marker */
+  setHoveredMarker?: (id: string | null) => void;
+  /** Currently selected tool */
+  selectedTool?: NoteTool;
+  /** Whether move mode is enabled */
+  allowMove?: boolean;
+  /** Time signature changes for mid-row changes */
+  timeSignatureChanges?: TimeSignatureChange[];
+  /** Hovered bar for time sig tool preview */
+  hoveredTimeSigBar?: HoveredTimeSigBarState | null;
+  /** Set hovered bar for time sig tool */
+  setHoveredTimeSigBar?: (state: HoveredTimeSigBarState | null) => void;
+  /** Open time sig picker at a bar line */
+  onTimeSigPickerOpen?: (measureNumber: number, x: number, y: number) => void;
+  /** Callback when marker drag starts */
+  onMarkerDragStart?: (marker: RepeatMarker, system: number) => void;
+  /** Whether a marker is currently being dragged */
+  isDraggingMarker?: boolean;
 }
 
 // Treble clef SVG path data (optimized via Inkscape + SVGOMG)
@@ -39,6 +67,18 @@ export function StaffSystem({
   timeSignature,
   readOnly,
   onTimeSignatureClick,
+  repeatMarkers = [],
+  onRepeatMarkersChange,
+  hoveredMarker,
+  setHoveredMarker,
+  selectedTool,
+  allowMove = false,
+  timeSignatureChanges = [],
+  hoveredTimeSigBar,
+  setHoveredTimeSigBar,
+  onTimeSigPickerOpen,
+  onMarkerDragStart,
+  isDraggingMarker = false,
 }: StaffSystemProps) {
   const isFirstSystem = systemIndex === 0;
   const staffCenterY = getStaffCenterY(systemIndex);
@@ -150,6 +190,18 @@ export function StaffSystem({
         }
         const isEdge = measureIndex === 0 || isLastBarLine;
 
+        // Calculate absolute measure for time sig change check
+        const absoluteMeasure = sysLayout.startMeasure + measureIndex;
+        const hasTimeSigChange = timeSignatureChanges.some(
+          (c) => c.measureNumber === absoluteMeasure,
+        );
+        // Check if this is the hovered bar for time sig preview
+        const isTimeSigHovered =
+          selectedTool === "timesig" &&
+          hoveredTimeSigBar?.systemIndex === systemIndex &&
+          hoveredTimeSigBar?.measureIndex === measureIndex &&
+          !hasTimeSigChange;
+
         return (
           <g key={`bar-${systemIndex}-${measureIndex}`}>
             <line
@@ -165,7 +217,7 @@ export function StaffSystem({
             {measure?.showTimeSig && measureIndex !== 0 && (
               <g>
                 <text
-                  x={barX + 15}
+                  x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
                   y={staffCenterY + visibleCenterOffset - decorationSpread + 6}
                   fontSize={20}
                   fontWeight="bold"
@@ -175,7 +227,7 @@ export function StaffSystem({
                   {measure.timeSignature.numerator}
                 </text>
                 <text
-                  x={barX + 15}
+                  x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
                   y={staffCenterY + visibleCenterOffset + decorationSpread + 6}
                   fontSize={20}
                   fontWeight="bold"
@@ -186,9 +238,548 @@ export function StaffSystem({
                 </text>
               </g>
             )}
+
+            {/* Time signature tool hover zone - at any bar line (not last) */}
+            {selectedTool === "timesig" &&
+              !hasTimeSigChange &&
+              !isLastBarLine &&
+              !readOnly && (
+                <rect
+                  x={barX - 10}
+                  y={staffCenterY + staffTopOffset - 15}
+                  width={40}
+                  height={staffBottomOffset - staffTopOffset + 30}
+                  fill="transparent"
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() =>
+                    setHoveredTimeSigBar?.({ systemIndex, measureIndex })
+                  }
+                  onMouseLeave={() => setHoveredTimeSigBar?.(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTimeSigPickerOpen?.(absoluteMeasure, barX, staffCenterY);
+                  }}
+                />
+              )}
+
+            {/* Ghost time signature preview on hover - at any bar line (not last) */}
+            {isTimeSigHovered && !isLastBarLine && (
+              <g opacity={0.5} style={{ pointerEvents: "none" }}>
+                <rect
+                  x={barX + 5}
+                  y={staffCenterY + visibleCenterOffset - decorationSpread - 10}
+                  width={25}
+                  height={decorationSpread * 2 + 20}
+                  fill="#e0f2fe"
+                  rx={3}
+                />
+                <text
+                  x={barX + 17}
+                  y={staffCenterY + visibleCenterOffset - decorationSpread + 5}
+                  fontSize={14}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill="#0891b2"
+                >
+                  ?
+                </text>
+                <text
+                  x={barX + 17}
+                  y={staffCenterY + visibleCenterOffset + decorationSpread + 5}
+                  fontSize={14}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill="#0891b2"
+                >
+                  ?
+                </text>
+              </g>
+            )}
           </g>
         );
       })}
+
+      {/* Repeat markers at bar lines */}
+      {sysMeasures.map((measure, measureIndex) => {
+        // Calculate bar X position for this measure
+        const barX = LEFT_MARGIN + measure.xOffset - measure.prefixWidth;
+
+        // Check for start marker at this measure
+        const startMarker = repeatMarkers.find(
+          (m) =>
+            m.type === "start" &&
+            m.system === systemIndex &&
+            m.measure === measureIndex,
+        );
+
+        // Check for end marker at this measure
+        const endMarker = repeatMarkers.find(
+          (m) =>
+            m.type === "end" &&
+            m.system === systemIndex &&
+            m.measure === measureIndex,
+        );
+
+        if (!startMarker && !endMarker) return null;
+
+        return (
+          <g key={`repeat-markers-${systemIndex}-${measureIndex}`}>
+            {/* START repeat marker */}
+            {startMarker && (
+              <g
+                style={{
+                  cursor:
+                    selectedTool === "delete"
+                      ? "pointer"
+                      : isDraggingMarker
+                        ? "grabbing"
+                        : allowMove
+                          ? "grab"
+                          : "default",
+                }}
+                onMouseEnter={() => {
+                  if (
+                    (allowMove || selectedTool === "delete") &&
+                    setHoveredMarker
+                  ) {
+                    setHoveredMarker(startMarker.id);
+                  }
+                }}
+                onMouseLeave={() => setHoveredMarker?.(null)}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  // Only allow drag when move mode is enabled and NOT in delete mode
+                  if (
+                    allowMove &&
+                    selectedTool !== "delete" &&
+                    onMarkerDragStart
+                  ) {
+                    onMarkerDragStart(startMarker, systemIndex);
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTool === "delete" && onRepeatMarkersChange) {
+                    onRepeatMarkersChange(
+                      repeatMarkers.filter(
+                        (m) => m.pairId !== startMarker.pairId,
+                      ),
+                    );
+                  }
+                }}
+              >
+                {/* Hit box */}
+                <rect
+                  x={barX - 5}
+                  y={staffCenterY + staffTopOffset - 15}
+                  width={35}
+                  height={staffBottomOffset - staffTopOffset + 30}
+                  fill="transparent"
+                  stroke={
+                    hoveredMarker === startMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#8b5cf6"
+                      : "transparent"
+                  }
+                  strokeWidth={2}
+                  strokeDasharray={
+                    hoveredMarker === startMarker.id ? "4,2" : "0"
+                  }
+                  rx={4}
+                />
+                {/* Hover background */}
+                {hoveredMarker === startMarker.id && (
+                  <rect
+                    x={barX - 5}
+                    y={staffCenterY + staffTopOffset - 15}
+                    width={35}
+                    height={staffBottomOffset - staffTopOffset + 30}
+                    fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
+                    opacity={0.5}
+                    rx={4}
+                    style={{ pointerEvents: "none" }}
+                  />
+                )}
+                {/* Thick line */}
+                <line
+                  x1={barX + 6}
+                  y1={staffCenterY + staffTopOffset - 8}
+                  x2={barX + 6}
+                  y2={staffCenterY + staffBottomOffset + 8}
+                  stroke={
+                    hoveredMarker === startMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  strokeWidth={hoveredMarker === startMarker.id ? 4 : 3}
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Two circles on the right */}
+                <circle
+                  cx={barX + 18}
+                  cy={staffCenterY + visibleCenterOffset - decorationSpread}
+                  r={hoveredMarker === startMarker.id ? 7 : 5}
+                  fill={
+                    hoveredMarker === startMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  style={{ pointerEvents: "none" }}
+                />
+                <circle
+                  cx={barX + 18}
+                  cy={staffCenterY + visibleCenterOffset + decorationSpread}
+                  r={hoveredMarker === startMarker.id ? 7 : 5}
+                  fill={
+                    hoveredMarker === startMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Hover tooltip */}
+                {hoveredMarker === startMarker.id && (
+                  <g>
+                    <rect
+                      x={barX - 20}
+                      y={staffCenterY + staffTopOffset - 45}
+                      width={selectedTool === "delete" ? 90 : 80}
+                      height={22}
+                      fill="#1f2937"
+                      rx={4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                    <text
+                      x={barX + (selectedTool === "delete" ? 25 : 20)}
+                      y={staffCenterY + staffTopOffset - 30}
+                      fontSize={11}
+                      fill="white"
+                      textAnchor="middle"
+                      fontWeight="600"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {selectedTool === "delete"
+                        ? "Click to delete"
+                        : "Drag to move"}
+                    </text>
+                  </g>
+                )}
+              </g>
+            )}
+
+            {/* END repeat marker */}
+            {endMarker && (
+              <g
+                style={{
+                  cursor:
+                    selectedTool === "delete"
+                      ? "pointer"
+                      : isDraggingMarker
+                        ? "grabbing"
+                        : allowMove
+                          ? "grab"
+                          : "default",
+                }}
+                onMouseEnter={() => {
+                  if (
+                    (allowMove || selectedTool === "delete") &&
+                    setHoveredMarker
+                  ) {
+                    setHoveredMarker(endMarker.id);
+                  }
+                }}
+                onMouseLeave={() => setHoveredMarker?.(null)}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  // Only allow drag when move mode is enabled and NOT in delete mode
+                  if (
+                    allowMove &&
+                    selectedTool !== "delete" &&
+                    onMarkerDragStart
+                  ) {
+                    onMarkerDragStart(endMarker, systemIndex);
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTool === "delete" && onRepeatMarkersChange) {
+                    onRepeatMarkersChange(
+                      repeatMarkers.filter(
+                        (m) => m.pairId !== endMarker.pairId,
+                      ),
+                    );
+                  }
+                }}
+              >
+                {/* Hit box */}
+                <rect
+                  x={barX - 30}
+                  y={staffCenterY + staffTopOffset - 15}
+                  width={35}
+                  height={staffBottomOffset - staffTopOffset + 30}
+                  fill="transparent"
+                  stroke={
+                    hoveredMarker === endMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#8b5cf6"
+                      : "transparent"
+                  }
+                  strokeWidth={2}
+                  strokeDasharray={hoveredMarker === endMarker.id ? "4,2" : "0"}
+                  rx={4}
+                />
+                {/* Hover background */}
+                {hoveredMarker === endMarker.id && (
+                  <rect
+                    x={barX - 30}
+                    y={staffCenterY + staffTopOffset - 15}
+                    width={35}
+                    height={staffBottomOffset - staffTopOffset + 30}
+                    fill={selectedTool === "delete" ? "#fef2f2" : "#f3e8ff"}
+                    opacity={0.5}
+                    rx={4}
+                    style={{ pointerEvents: "none" }}
+                  />
+                )}
+                {/* Thick line */}
+                <line
+                  x1={barX - 6}
+                  y1={staffCenterY + staffTopOffset - 8}
+                  x2={barX - 6}
+                  y2={staffCenterY + staffBottomOffset + 8}
+                  stroke={
+                    hoveredMarker === endMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  strokeWidth={hoveredMarker === endMarker.id ? 4 : 3}
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Two circles on the left */}
+                <circle
+                  cx={barX - 18}
+                  cy={staffCenterY + visibleCenterOffset - decorationSpread}
+                  r={hoveredMarker === endMarker.id ? 7 : 5}
+                  fill={
+                    hoveredMarker === endMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  style={{ pointerEvents: "none" }}
+                />
+                <circle
+                  cx={barX - 18}
+                  cy={staffCenterY + visibleCenterOffset + decorationSpread}
+                  r={hoveredMarker === endMarker.id ? 7 : 5}
+                  fill={
+                    hoveredMarker === endMarker.id
+                      ? selectedTool === "delete"
+                        ? "#ef4444"
+                        : "#a855f7"
+                      : "#8b5cf6"
+                  }
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Hover tooltip */}
+                {hoveredMarker === endMarker.id && (
+                  <g>
+                    <rect
+                      x={barX - 90}
+                      y={staffCenterY + staffTopOffset - 45}
+                      width={selectedTool === "delete" ? 90 : 80}
+                      height={22}
+                      fill="#1f2937"
+                      rx={4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                    <text
+                      x={barX - (selectedTool === "delete" ? 45 : 50)}
+                      y={staffCenterY + staffTopOffset - 30}
+                      fontSize={11}
+                      fill="white"
+                      textAnchor="middle"
+                      fontWeight="600"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {selectedTool === "delete"
+                        ? "Click to delete"
+                        : "Drag to move"}
+                    </text>
+                  </g>
+                )}
+              </g>
+            )}
+          </g>
+        );
+      })}
+
+      {/* END marker at end of system (when measure index equals sysMeasures.length) */}
+      {(() => {
+        // Check for end marker at the boundary after the last measure
+        const endOfSystemMarker = repeatMarkers.find(
+          (m) =>
+            m.type === "end" &&
+            m.system === systemIndex &&
+            m.measure === sysMeasures.length,
+        );
+        if (!endOfSystemMarker) return null;
+
+        // Calculate position at end of last measure
+        const lastMeasure = sysMeasures[sysMeasures.length - 1];
+        const barX =
+          LEFT_MARGIN +
+          lastMeasure.xOffset +
+          lastMeasure.beatsInMeasure * sysBeatWidth +
+          lastMeasure.suffixWidth;
+
+        return (
+          <g
+            key={`repeat-end-of-system-${systemIndex}`}
+            style={{
+              cursor:
+                selectedTool === "delete"
+                  ? "pointer"
+                  : isDraggingMarker
+                    ? "grabbing"
+                    : allowMove
+                      ? "grab"
+                      : "default",
+            }}
+            onMouseEnter={() => {
+              if (
+                (allowMove || selectedTool === "delete") &&
+                setHoveredMarker
+              ) {
+                setHoveredMarker(endOfSystemMarker.id);
+              }
+            }}
+            onMouseLeave={() => setHoveredMarker?.(null)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              if (allowMove && selectedTool !== "delete" && onMarkerDragStart) {
+                onMarkerDragStart(endOfSystemMarker, systemIndex);
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (selectedTool === "delete" && onRepeatMarkersChange) {
+                onRepeatMarkersChange(
+                  repeatMarkers.filter(
+                    (m) => m.pairId !== endOfSystemMarker.pairId,
+                  ),
+                );
+              }
+            }}
+          >
+            {/* Hit box */}
+            <rect
+              x={barX - 30}
+              y={staffCenterY + staffTopOffset - 15}
+              width={35}
+              height={staffBottomOffset - staffTopOffset + 30}
+              fill="transparent"
+            />
+            {/* Thin line */}
+            <line
+              x1={barX - 2}
+              y1={staffCenterY + staffTopOffset - 8}
+              x2={barX - 2}
+              y2={staffCenterY + staffBottomOffset + 8}
+              stroke={
+                hoveredMarker === endOfSystemMarker.id
+                  ? selectedTool === "delete"
+                    ? "#ef4444"
+                    : "#a855f7"
+                  : "#8b5cf6"
+              }
+              strokeWidth={1}
+              style={{ pointerEvents: "none" }}
+            />
+            {/* Thick line */}
+            <line
+              x1={barX - 6}
+              y1={staffCenterY + staffTopOffset - 8}
+              x2={barX - 6}
+              y2={staffCenterY + staffBottomOffset + 8}
+              stroke={
+                hoveredMarker === endOfSystemMarker.id
+                  ? selectedTool === "delete"
+                    ? "#ef4444"
+                    : "#a855f7"
+                  : "#8b5cf6"
+              }
+              strokeWidth={hoveredMarker === endOfSystemMarker.id ? 4 : 3}
+              style={{ pointerEvents: "none" }}
+            />
+            {/* Two circles on the left */}
+            <circle
+              cx={barX - 18}
+              cy={staffCenterY + visibleCenterOffset - decorationSpread}
+              r={hoveredMarker === endOfSystemMarker.id ? 7 : 5}
+              fill={
+                hoveredMarker === endOfSystemMarker.id
+                  ? selectedTool === "delete"
+                    ? "#ef4444"
+                    : "#a855f7"
+                  : "#8b5cf6"
+              }
+              style={{ pointerEvents: "none" }}
+            />
+            <circle
+              cx={barX - 18}
+              cy={staffCenterY + visibleCenterOffset + decorationSpread}
+              r={hoveredMarker === endOfSystemMarker.id ? 7 : 5}
+              fill={
+                hoveredMarker === endOfSystemMarker.id
+                  ? selectedTool === "delete"
+                    ? "#ef4444"
+                    : "#a855f7"
+                  : "#8b5cf6"
+              }
+              style={{ pointerEvents: "none" }}
+            />
+            {/* Hover tooltip */}
+            {hoveredMarker === endOfSystemMarker.id && (
+              <g>
+                <rect
+                  x={barX - 90}
+                  y={staffCenterY + staffTopOffset - 45}
+                  width={selectedTool === "delete" ? 90 : 80}
+                  height={22}
+                  fill="#1f2937"
+                  rx={4}
+                  style={{ pointerEvents: "none" }}
+                />
+                <text
+                  x={barX - (selectedTool === "delete" ? 45 : 50)}
+                  y={staffCenterY + staffTopOffset - 30}
+                  fontSize={11}
+                  fill="white"
+                  textAnchor="middle"
+                  fontWeight="600"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {selectedTool === "delete"
+                    ? "Click to delete"
+                    : "Drag to move"}
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })()}
 
       {/* Treble Clef */}
       <g clipPath={`url(#system-clip-${systemIndex})`}>
@@ -248,7 +839,7 @@ export function StaffSystem({
           x={
             getBeatXInSystem(sysLayout, beatIndex) + getNoteOffset(sysBeatWidth)
           }
-          y={staffCenterY + staffBottomOffset + 25}
+          y={staffCenterY + staffBottomOffset + 14}
           fontSize={11}
           textAnchor="middle"
           fill="#64748b"

@@ -120,6 +120,7 @@ export interface NoteElementProps {
   readOnly: boolean;
   onContextMenu: (e: React.MouseEvent, noteId: string) => void;
   onMouseDown: (e: React.MouseEvent, noteId: string) => void;
+  onClick?: (e: React.MouseEvent, noteId: string) => void;
 }
 
 /**
@@ -182,6 +183,7 @@ export function NoteElement({
   readOnly,
   onContextMenu,
   onMouseDown,
+  onClick,
 }: NoteElementProps) {
   const sysLayout = getLayoutForSystem(systemLayouts, note.system);
   const x =
@@ -261,6 +263,7 @@ export function NoteElement({
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note.id)}
       onMouseDown={(e) => onMouseDown(e, note.id)}
+      onClick={(e) => onClick?.(e, note.id)}
       style={{ cursor: allowMove && !readOnly ? "move" : "pointer" }}
     >
       {/* Ledger lines */}

@@ -53,6 +53,14 @@ export interface EmptyContextMenuState {
   pitch: Pitch;
 }
 
+// Context menu section types for progressive disclosure
+export type ContextMenuSection =
+  | "duration"
+  | "accidental"
+  | "changeNote"
+  | "octave"
+  | "delete";
+
 export interface NoteContextMenuProps {
   contextMenu: NoteContextMenuState;
   collapsedSections: CollapsedSections;
@@ -64,6 +72,8 @@ export interface NoteContextMenuProps {
   onChangePitchLetter: (letter: string) => void;
   onChangeOctave: (direction: "up" | "down") => void;
   onDelete: () => void;
+  /** Which sections to show (undefined = show all) */
+  visibleSections?: ContextMenuSection[];
 }
 
 export interface EmptyContextMenuProps {
@@ -94,7 +104,12 @@ export function NoteContextMenu({
   onChangePitchLetter,
   onChangeOctave,
   onDelete,
+  visibleSections,
 }: NoteContextMenuProps) {
+  // Helper to check if a section should be shown
+  const showSection = (section: ContextMenuSection) =>
+    !visibleSections || visibleSections.includes(section);
+
   return (
     <div
       className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[180px] overflow-y-auto"
@@ -110,168 +125,188 @@ export function NoteContextMenu({
       }}
     >
       {/* Duration section */}
-      <button
-        onClick={() => onToggleSection("duration")}
-        className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-      >
-        <span>Duration</span>
-        <span className="text-gray-400">
-          {collapsedSections.duration ? "▸" : "▾"}
-        </span>
-      </button>
-      {!collapsedSections.duration && (
+      {showSection("duration") && (
         <>
           <button
-            onClick={() => onChangeDuration(0.25)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            onClick={() => onToggleSection("duration")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
           >
-            <MenuNoteIcon duration={0.25} /> Sixteenth
+            <span>Duration</span>
+            <span className="text-gray-400">
+              {collapsedSections.duration ? "▸" : "▾"}
+            </span>
           </button>
-          <button
-            onClick={() => onChangeDuration(0.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.5} /> Eighth
-          </button>
-          <button
-            onClick={() => onChangeDuration(0.75)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={0.75} /> Dotted Eighth
-          </button>
-          <button
-            onClick={() => onChangeDuration(1)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1} /> Quarter
-          </button>
-          <button
-            onClick={() => onChangeDuration(1.5)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={1.5} /> Dotted Quarter
-          </button>
-          <button
-            onClick={() => onChangeDuration(2)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={2} /> Half
-          </button>
-          <button
-            onClick={() => onChangeDuration(3)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={3} /> Dotted Half
-          </button>
-          <button
-            onClick={() => onChangeDuration(4)}
-            className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-          >
-            <MenuNoteIcon duration={4} /> Whole
-          </button>
+          {!collapsedSections.duration && (
+            <>
+              <button
+                onClick={() => onChangeDuration(0.25)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.25} /> Sixteenth
+              </button>
+              <button
+                onClick={() => onChangeDuration(0.5)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.5} /> Eighth
+              </button>
+              <button
+                onClick={() => onChangeDuration(0.75)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.75} /> Dotted Eighth
+              </button>
+              <button
+                onClick={() => onChangeDuration(1)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={1} /> Quarter
+              </button>
+              <button
+                onClick={() => onChangeDuration(1.5)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={1.5} /> Dotted Quarter
+              </button>
+              <button
+                onClick={() => onChangeDuration(2)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={2} /> Half
+              </button>
+              <button
+                onClick={() => onChangeDuration(3)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={3} /> Dotted Half
+              </button>
+              <button
+                onClick={() => onChangeDuration(4)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={4} /> Whole
+              </button>
+            </>
+          )}
         </>
       )}
 
       {/* Accidental section */}
-      <div className="border-t border-gray-200 my-1" />
-      <button
-        onClick={() => onToggleSection("accidental")}
-        className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-      >
-        <span>Accidental</span>
-        <span className="text-gray-400">
-          {collapsedSections.accidental ? "▸" : "▾"}
-        </span>
-      </button>
-      {!collapsedSections.accidental && (
-        <div className="px-2 py-1 flex gap-1">
+      {showSection("accidental") && (
+        <>
+          <div className="border-t border-gray-200 my-1" />
           <button
-            onClick={() => onChangeAccidental(null)}
-            className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-            title="Natural"
+            onClick={() => onToggleSection("accidental")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
           >
-            ♮
+            <span>Accidental</span>
+            <span className="text-gray-400">
+              {collapsedSections.accidental ? "▸" : "▾"}
+            </span>
           </button>
-          <button
-            onClick={() => onChangeAccidental("#")}
-            className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-            title="Sharp"
-          >
-            ♯
-          </button>
-          <button
-            onClick={() => onChangeAccidental("b")}
-            className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-            title="Flat"
-          >
-            ♭
-          </button>
-        </div>
+          {!collapsedSections.accidental && (
+            <div className="px-2 py-1 flex gap-1">
+              <button
+                onClick={() => onChangeAccidental(null)}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Natural"
+              >
+                ♮
+              </button>
+              <button
+                onClick={() => onChangeAccidental("#")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Sharp"
+              >
+                ♯
+              </button>
+              <button
+                onClick={() => onChangeAccidental("b")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                title="Flat"
+              >
+                ♭
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Change Note section */}
-      <div className="border-t border-gray-200 my-1" />
-      <button
-        onClick={() => onToggleSection("changeNote")}
-        className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-      >
-        <span>Change Note</span>
-        <span className="text-gray-400">
-          {collapsedSections.changeNote ? "▸" : "▾"}
-        </span>
-      </button>
-      {!collapsedSections.changeNote && (
-        <div className="px-2 py-1 flex gap-0.5">
-          {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
-            <button
-              key={letter}
-              onClick={() => onChangePitchLetter(letter)}
-              className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
-            >
-              {letter}
-            </button>
-          ))}
-        </div>
+      {showSection("changeNote") && (
+        <>
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={() => onToggleSection("changeNote")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
+          >
+            <span>Change Note</span>
+            <span className="text-gray-400">
+              {collapsedSections.changeNote ? "▸" : "▾"}
+            </span>
+          </button>
+          {!collapsedSections.changeNote && (
+            <div className="px-2 py-1 flex gap-0.5">
+              {["C", "D", "E", "F", "G", "A", "B"].map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => onChangePitchLetter(letter)}
+                  className="flex-1 px-1 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 font-medium"
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Octave section */}
-      <div className="border-t border-gray-200 my-1" />
-      <button
-        onClick={() => onToggleSection("octave")}
-        className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-      >
-        <span>Octave</span>
-        <span className="text-gray-400">
-          {collapsedSections.octave ? "▸" : "▾"}
-        </span>
-      </button>
-      {!collapsedSections.octave && (
-        <div className="px-2 py-1 flex gap-1">
+      {showSection("octave") && (
+        <>
+          <div className="border-t border-gray-200 my-1" />
           <button
-            onClick={() => onChangeOctave("up")}
-            className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-            title="Octave Up"
+            onClick={() => onToggleSection("octave")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
           >
-            <span>▲</span> Up
+            <span>Octave</span>
+            <span className="text-gray-400">
+              {collapsedSections.octave ? "▸" : "▾"}
+            </span>
           </button>
-          <button
-            onClick={() => onChangeOctave("down")}
-            className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
-            title="Octave Down"
-          >
-            <span>▼</span> Down
-          </button>
-        </div>
+          {!collapsedSections.octave && (
+            <div className="px-2 py-1 flex gap-1">
+              <button
+                onClick={() => onChangeOctave("up")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+                title="Octave Up"
+              >
+                <span>▲</span> Up
+              </button>
+              <button
+                onClick={() => onChangeOctave("down")}
+                className="flex-1 px-2 py-1.5 text-sm hover:bg-gray-100 rounded border border-gray-200 flex items-center justify-center gap-1"
+                title="Octave Down"
+              >
+                <span>▼</span> Down
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete section */}
-      <div className="border-t border-gray-200 my-1" />
-      <button
-        onClick={onDelete}
-        className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
-      >
-        <span>🗑</span> Delete
-      </button>
+      {showSection("delete") && (
+        <>
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={onDelete}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+          >
+            <span>🗑</span> Delete
+          </button>
+        </>
+      )}
     </div>
   );
 }

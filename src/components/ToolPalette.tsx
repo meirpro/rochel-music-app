@@ -21,6 +21,8 @@ interface ToolPaletteProps {
   allowedTools?: NoteTool[];
   // Learn mode: hide entire sections
   hideSections?: ("notes" | "markup" | "actions")[];
+  // Tutorial: highlight a specific tool to draw attention
+  highlightTool?: NoteTool;
 }
 
 // SVG Note Icons - larger for better visibility
@@ -528,6 +530,7 @@ export function ToolPalette({
   isPianoOpen = false,
   allowedTools,
   hideSections = [],
+  highlightTool,
 }: ToolPaletteProps) {
   const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
 
@@ -546,10 +549,15 @@ export function ToolPalette({
   // Render a tool button with tooltip
   const renderToolButton = (tool: (typeof NOTE_TOOLS)[0]) => {
     const isSelected = selectedTool === tool.id;
+    const isHighlighted = highlightTool === tool.id;
     const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
 
     return (
-      <Tooltip.Root key={tool.id} delayDuration={300}>
+      <Tooltip.Root
+        key={tool.id}
+        delayDuration={isHighlighted ? 0 : 300}
+        defaultOpen={isHighlighted}
+      >
         <Tooltip.Trigger asChild>
           <button
             id={tourId}
@@ -560,7 +568,9 @@ export function ToolPalette({
               ${
                 isSelected
                   ? `${tool.color} shadow-lg scale-105 ring-2 ring-offset-1`
-                  : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
+                  : isHighlighted
+                    ? "bg-yellow-100 border-yellow-400 text-yellow-700 animate-pulse ring-2 ring-yellow-400 ring-offset-2"
+                    : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
               }
             `}
           >
@@ -569,13 +579,28 @@ export function ToolPalette({
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
-            className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm shadow-xl z-50"
+            className={`px-3 py-2 rounded-lg text-sm shadow-xl z-50 ${
+              isHighlighted
+                ? "bg-yellow-500 text-yellow-950"
+                : "bg-gray-900 text-white"
+            }`}
             side="left"
             sideOffset={8}
           >
-            <div className="font-semibold">{tool.label}</div>
-            <div className="text-gray-300 text-xs">{tool.description}</div>
-            <Tooltip.Arrow className="fill-gray-900" />
+            {isHighlighted ? (
+              <>
+                <div className="font-bold">👆 Click this tool!</div>
+                <div className="text-yellow-100 text-xs">{tool.label}</div>
+              </>
+            ) : (
+              <>
+                <div className="font-semibold">{tool.label}</div>
+                <div className="text-gray-300 text-xs">{tool.description}</div>
+              </>
+            )}
+            <Tooltip.Arrow
+              className={isHighlighted ? "fill-yellow-500" : "fill-gray-900"}
+            />
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>

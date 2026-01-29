@@ -4,14 +4,8 @@
 import { useState, useCallback } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { Pitch } from "@/lib/types";
+import { LEFT_MARGIN, LINE_SPACING, getStaffCenterY } from "@/lib/layoutUtils";
 import {
-  LEFT_MARGIN,
-  LINE_SPACING,
-  getNoteOffset,
-  getStaffCenterY,
-} from "@/lib/layoutUtils";
-import {
-  getLayoutForSystem,
   findBestSystemForX,
   getBeatFromXInSystem,
   SystemLayout,
@@ -66,6 +60,7 @@ export interface UseContextMenuParams {
   onDuplicateNote?: () => void;
   playNoteSound: (pitch: Pitch, duration: number) => void;
   getCoords: (e: React.MouseEvent<SVGSVGElement>) => { x: number; y: number };
+  onContextMenuAction?: () => void; // Called when any context menu action is performed
 }
 
 // Hook return type
@@ -104,6 +99,7 @@ export function useContextMenu({
   onDuplicateNote,
   playNoteSound,
   getCoords,
+  onContextMenuAction,
 }: UseContextMenuParams): UseContextMenuReturn {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -170,9 +166,17 @@ export function useContextMenu({
           n.id === contextMenu.noteId ? { ...n, duration } : n,
         ),
       );
+      onContextMenuAction?.();
       setContextMenu(null);
     },
-    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
   );
 
   // Handler for deleting note from menu
@@ -184,8 +188,16 @@ export function useContextMenu({
       return;
     }
     onNotesChange(notes.filter((n) => n.id !== contextMenu.noteId));
+    onContextMenuAction?.();
     setContextMenu(null);
-  }, [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock]);
+  }, [
+    contextMenu,
+    notes,
+    onNotesChange,
+    isPlaying,
+    onPlaybackBlock,
+    onContextMenuAction,
+  ]);
 
   // Handler for changing note accidental
   const handleChangeAccidental = useCallback(
@@ -210,9 +222,17 @@ export function useContextMenu({
           n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
         ),
       );
+      onContextMenuAction?.();
       setContextMenu(null);
     },
-    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
   );
 
   // Handler for changing note letter (C-B)
@@ -250,9 +270,17 @@ export function useContextMenu({
           ),
         );
       }
+      onContextMenuAction?.();
       setContextMenu(null);
     },
-    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
   );
 
   // Handler for changing octave
@@ -279,9 +307,17 @@ export function useContextMenu({
           n.id === contextMenu.noteId ? { ...n, pitch: newPitch } : n,
         ),
       );
+      onContextMenuAction?.();
       setContextMenu(null);
     },
-    [contextMenu, notes, onNotesChange, isPlaying, onPlaybackBlock],
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
   );
 
   // Handler for adding note from empty space menu
@@ -316,6 +352,7 @@ export function useContextMenu({
 
       onNotesChange([...notes, newNote]);
       playNoteSound(contextMenu.pitch, duration);
+      onContextMenuAction?.();
       setContextMenu(null);
     },
     [
@@ -327,6 +364,7 @@ export function useContextMenu({
       allowChords,
       onDuplicateNote,
       playNoteSound,
+      onContextMenuAction,
     ],
   );
 
