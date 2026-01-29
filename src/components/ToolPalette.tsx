@@ -1,9 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { NoteTool } from "./NoteEditor";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
+
+/**
+ * Wrapper for tutorial tooltips that reverses the normal tooltip behavior:
+ * - Shows tooltip by default when NOT hovering
+ * - Hides tooltip when hovering (so user can interact with the button)
+ */
+function TutorialTooltipWrapper({
+  showTutorialTooltip,
+  children,
+}: {
+  showTutorialTooltip: boolean;
+  children: React.ReactNode;
+}) {
+  const [isHovering, setIsHovering] = useState(false);
+
+  // For tutorial tooltips: show when NOT hovering, hide when hovering
+  // For normal tooltips: use default Radix behavior
+  const isOpen = showTutorialTooltip ? !isHovering : undefined;
+
+  return (
+    <Tooltip.Root
+      delayDuration={showTutorialTooltip ? 0 : 300}
+      open={isOpen}
+      onOpenChange={showTutorialTooltip ? undefined : undefined}
+    >
+      <div
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {children}
+      </div>
+    </Tooltip.Root>
+  );
+}
 
 interface ToolPaletteProps {
   selectedTool: NoteTool | null;
@@ -23,6 +58,8 @@ interface ToolPaletteProps {
   hideSections?: ("notes" | "markup" | "actions")[];
   // Tutorial: highlight a specific tool to draw attention
   highlightTool?: NoteTool;
+  // Tutorial: hint to show when the highlighted tool IS selected (guides next action)
+  highlightToolSelectedHint?: string;
 }
 
 // SVG Note Icons - larger for better visibility
@@ -531,6 +568,7 @@ export function ToolPalette({
   allowedTools,
   hideSections = [],
   highlightTool,
+  highlightToolSelectedHint,
 }: ToolPaletteProps) {
   const { reportAction, isActive: tutorialActive } = useInteractiveTutorial();
 
@@ -552,11 +590,16 @@ export function ToolPalette({
     const isHighlighted = highlightTool === tool.id;
     const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
 
+    // Determine if we should show the tutorial tooltip (highlighted and either not selected, or selected with hint)
+    const showTutorialTooltip =
+      isHighlighted && (!isSelected || !!highlightToolSelectedHint);
+
+    // For tutorial tooltips: show by default, hide on hover (reverse of normal behavior)
+    // We use a wrapper component to manage this state
     return (
-      <Tooltip.Root
+      <TutorialTooltipWrapper
         key={tool.id}
-        delayDuration={isHighlighted ? 0 : 300}
-        defaultOpen={isHighlighted}
+        showTutorialTooltip={showTutorialTooltip}
       >
         <Tooltip.Trigger asChild>
           <button
@@ -566,11 +609,13 @@ export function ToolPalette({
               w-12 h-12 rounded-xl border-2 flex items-center justify-center
               transition-all duration-150 hover:scale-105 active:scale-95
               ${
-                isSelected
-                  ? `${tool.color} shadow-lg scale-105 ring-2 ring-offset-1`
-                  : isHighlighted
-                    ? "bg-yellow-100 border-yellow-400 text-yellow-700 animate-pulse ring-2 ring-yellow-400 ring-offset-2"
-                    : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
+                isSelected && isHighlighted && highlightToolSelectedHint
+                  ? `${tool.color} shadow-lg scale-105 ring-2 ring-offset-1 ring-green-400`
+                  : isSelected
+                    ? `${tool.color} shadow-lg scale-105 ring-2 ring-offset-1`
+                    : isHighlighted
+                      ? "bg-yellow-100 border-yellow-400 text-yellow-700 animate-pulse ring-2 ring-yellow-400 ring-offset-2"
+                      : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
               }
             `}
           >
@@ -579,15 +624,24 @@ export function ToolPalette({
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
-            className={`px-3 py-2 rounded-lg text-sm shadow-xl z-50 ${
-              isHighlighted
-                ? "bg-yellow-500 text-yellow-950"
-                : "bg-gray-900 text-white"
+            className={`px-3 py-2 rounded-lg text-sm shadow-xl z-50 max-w-48 ${
+              isHighlighted && isSelected && highlightToolSelectedHint
+                ? "bg-green-600 text-white"
+                : isHighlighted
+                  ? "bg-yellow-500 text-yellow-950"
+                  : "bg-gray-900 text-white"
             }`}
             side="left"
             sideOffset={8}
           >
-            {isHighlighted ? (
+            {isHighlighted && isSelected && highlightToolSelectedHint ? (
+              <>
+                <div className="font-bold">✓ {tool.label} selected</div>
+                <div className="text-green-100 text-xs">
+                  {highlightToolSelectedHint}
+                </div>
+              </>
+            ) : isHighlighted ? (
               <>
                 <div className="font-bold">👆 Click this tool!</div>
                 <div className="text-yellow-100 text-xs">{tool.label}</div>
@@ -599,11 +653,17 @@ export function ToolPalette({
               </>
             )}
             <Tooltip.Arrow
-              className={isHighlighted ? "fill-yellow-500" : "fill-gray-900"}
+              className={
+                isHighlighted && isSelected && highlightToolSelectedHint
+                  ? "fill-green-600"
+                  : isHighlighted
+                    ? "fill-yellow-500"
+                    : "fill-gray-900"
+              }
             />
           </Tooltip.Content>
         </Tooltip.Portal>
-      </Tooltip.Root>
+      </TutorialTooltipWrapper>
     );
   };
 
@@ -750,9 +810,17 @@ export function ToolPalette({
                 const isMove = tool.id === "move";
                 const isActive = isMove ? allowMove : selectedTool === tool.id;
                 const tourId = tool.id ? TOOL_TOUR_IDS[tool.id] : undefined;
+                const isHighlighted = !isMove && highlightTool === tool.id;
+
+                // Determine if we should show the tutorial tooltip
+                const showTutorialTooltip =
+                  isHighlighted && (!isActive || !!highlightToolSelectedHint);
 
                 return (
-                  <Tooltip.Root key={tool.id} delayDuration={300}>
+                  <TutorialTooltipWrapper
+                    key={tool.id}
+                    showTutorialTooltip={showTutorialTooltip}
+                  >
                     <Tooltip.Trigger asChild>
                       <button
                         id={tourId}
@@ -767,9 +835,13 @@ export function ToolPalette({
                       w-12 h-12 rounded-xl border-2 flex items-center justify-center
                       transition-all duration-150 hover:scale-105 active:scale-95
                       ${
-                        isActive
-                          ? `${tool.activeColor} shadow-lg scale-105 ring-2 ring-offset-1`
-                          : `${tool.color} hover:bg-gray-200 hover:border-gray-400`
+                        isActive && isHighlighted && highlightToolSelectedHint
+                          ? `${tool.activeColor} shadow-lg scale-105 ring-2 ring-offset-1 ring-green-400`
+                          : isActive
+                            ? `${tool.activeColor} shadow-lg scale-105 ring-2 ring-offset-1`
+                            : isHighlighted
+                              ? "bg-yellow-100 border-yellow-400 text-yellow-700 animate-pulse ring-2 ring-yellow-400 ring-offset-2"
+                              : `${tool.color} hover:bg-gray-200 hover:border-gray-400`
                       }
                     `}
                       >
@@ -778,18 +850,56 @@ export function ToolPalette({
                     </Tooltip.Trigger>
                     <Tooltip.Portal>
                       <Tooltip.Content
-                        className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm shadow-xl z-50"
+                        className={`px-3 py-2 rounded-lg text-sm shadow-xl z-50 max-w-48 ${
+                          isHighlighted && isActive && highlightToolSelectedHint
+                            ? "bg-green-600 text-white"
+                            : isHighlighted
+                              ? "bg-yellow-500 text-yellow-950"
+                              : "bg-gray-900 text-white"
+                        }`}
                         side="left"
                         sideOffset={8}
                       >
-                        <div className="font-semibold">{tool.label}</div>
-                        <div className="text-gray-300 text-xs">
-                          {tool.description}
-                        </div>
-                        <Tooltip.Arrow className="fill-gray-900" />
+                        {isHighlighted &&
+                        isActive &&
+                        highlightToolSelectedHint ? (
+                          <>
+                            <div className="font-bold">
+                              ✓ {tool.label} selected
+                            </div>
+                            <div className="text-green-100 text-xs">
+                              {highlightToolSelectedHint}
+                            </div>
+                          </>
+                        ) : isHighlighted ? (
+                          <>
+                            <div className="font-bold">👆 Click this tool!</div>
+                            <div className="text-yellow-100 text-xs">
+                              {tool.label}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-semibold">{tool.label}</div>
+                            <div className="text-gray-300 text-xs">
+                              {tool.description}
+                            </div>
+                          </>
+                        )}
+                        <Tooltip.Arrow
+                          className={
+                            isHighlighted &&
+                            isActive &&
+                            highlightToolSelectedHint
+                              ? "fill-green-600"
+                              : isHighlighted
+                                ? "fill-yellow-500"
+                                : "fill-gray-900"
+                          }
+                        />
                       </Tooltip.Content>
                     </Tooltip.Portal>
-                  </Tooltip.Root>
+                  </TutorialTooltipWrapper>
                 );
               })}
             </div>

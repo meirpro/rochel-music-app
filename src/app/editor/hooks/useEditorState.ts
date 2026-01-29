@@ -112,8 +112,8 @@ export interface UseEditorStateReturn {
   setStaffLines: (lines: number) => void;
 
   // Tool state
-  selectedTool: NoteTool;
-  setSelectedTool: (tool: NoteTool) => void;
+  selectedTool: NoteTool | null;
+  setSelectedTool: (tool: NoteTool | null) => void;
   allowMove: boolean;
   setAllowMove: (allow: boolean) => void;
 
@@ -287,7 +287,7 @@ export function useEditorState(
   );
 
   // Tool state (not persisted)
-  const [selectedTool, setSelectedTool] = useState<NoteTool>("quarter");
+  const [selectedTool, setSelectedTool] = useState<NoteTool | null>("quarter");
   const [allowMove, setAllowMove] = useState(false);
 
   // Undo/Redo history (session-only, not persisted)

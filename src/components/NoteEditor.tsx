@@ -800,7 +800,15 @@ const NOTE_BASE_POSITIONS: Record<string, number> = {
 };
 
 // Calculate staff position for any pitch (e.g., "Bb4" -> position relative to C4)
-function getPitchPosition(pitch: Pitch): number {
+function getPitchPosition(pitch: Pitch | undefined | null): number {
+  // Guard against undefined/null pitch
+  if (!pitch) {
+    console.warn(
+      "[getPitchPosition] Undefined pitch, defaulting to position 0",
+    );
+    return 0;
+  }
+
   if (pitch === "REST") return -1;
 
   // Parse pitch: e.g., "Bb4" -> note="B", accidental="b", octave=4
@@ -971,7 +979,16 @@ function changeOctave(pitch: Pitch, direction: "up" | "down"): Pitch {
  *   Pos  4 = G4 → Line 4            Y = staffCenterY + 32
  *   Pos  2 = E4 → Line 5 (bottom)   Y = staffCenterY + 64
  */
-function getYFromPitch(pitch: Pitch, system: number): number {
+function getYFromPitch(
+  pitch: Pitch | undefined | null,
+  system: number,
+): number {
+  // Guard against undefined/null pitch
+  if (!pitch) {
+    console.warn("[getYFromPitch] Undefined pitch, defaulting to staff center");
+    return getStaffCenterY(system);
+  }
+
   const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
   const staffCenterY = getStaffCenterY(system);
   if (pos < 0) return staffCenterY;

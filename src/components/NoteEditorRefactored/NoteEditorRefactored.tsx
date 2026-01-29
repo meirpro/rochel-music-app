@@ -30,6 +30,7 @@ import {
   getBeatFromXInSystem,
   toRenderedNotes,
   toAbsoluteBeat,
+  toRenderedRepeatMarkers,
 } from "./utils/systemLayout";
 import {
   getPitchFromY,
@@ -169,13 +170,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   );
 
   // Convert repeat markers to rendered format with system/measure
-  const renderedRepeatMarkers = useMemo(() => {
-    return repeatMarkers.map((m) => {
-      const system = Math.floor(m.measureNumber / measuresPerSystem);
-      const measure = m.measureNumber % measuresPerSystem;
-      return { ...m, system, measure };
-    });
-  }, [repeatMarkers, measuresPerSystem]);
+  // Uses toRenderedRepeatMarkers which handles end markers at system boundaries correctly
+  const renderedRepeatMarkers = useMemo(
+    () => toRenderedRepeatMarkers(repeatMarkers, measuresPerSystem),
+    [repeatMarkers, measuresPerSystem],
+  );
 
   // Get max SVG width
   const maxSvgWidth = useMemo(
@@ -439,10 +438,12 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   // Mouse move handler for dragging notes, playhead, or markers
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
-      // Handle playhead dragging
+      // Handle playhead dragging - allows dragging across systems/rows
       if (isDraggingPlayhead && onPlayheadBeatChange) {
-        const { x } = getCoords(e);
-        const sysLayout = getLayoutForSystem(systemLayouts, playheadSystem);
+        const { x, y } = getCoords(e);
+        // Determine which system/row the mouse is over
+        const targetSystem = getSystemFromY(y, systemCount);
+        const sysLayout = getLayoutForSystem(systemLayouts, targetSystem);
         // Calculate beat from X position
         const rawBeat = getBeatFromXInSystem(
           sysLayout,
@@ -455,7 +456,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           0,
           Math.min(sysLayout.totalBeats - 0.5, snappedBeat),
         );
-        onPlayheadBeatChange(clampedBeat);
+        // Convert to absolute beat for seeking
+        const absoluteBeat = sysLayout.startBeat + clampedBeat;
+        onPlayheadBeatChange(absoluteBeat);
         return;
       }
 
@@ -509,7 +512,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     [
       isDraggingPlayhead,
       onPlayheadBeatChange,
-      playheadSystem,
       draggedMarker,
       handleMarkerDrag,
       selectedTool,
