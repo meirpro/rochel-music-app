@@ -7,18 +7,18 @@
  * utility modules for better organization and maintainability.
  */
 
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Pitch, LyricSyllable } from "@/lib/types";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { Pitch } from "@/lib/types";
 import { pitchToMidi } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
-import { toast } from "sonner";
 import {
   LEFT_MARGIN,
+  LINE_SPACING,
   SYSTEM_HEIGHT,
   SYSTEM_TOP_MARGIN,
-  LINE_SPACING,
   getNoteOffset,
+  getStaffCenterY,
 } from "@/lib/layoutUtils";
 
 // Import extracted utilities
@@ -29,7 +29,11 @@ import {
   findBestSystemForX,
   getBeatFromXInSystem,
 } from "./utils/systemLayout";
-import { getPitchFromY, getSystemFromY } from "./utils/pitchUtils";
+import {
+  getPitchFromY,
+  getSystemFromY,
+  getYFromPitch,
+} from "./utils/pitchUtils";
 import { snapX } from "./utils/beatUtils";
 import { getDurationFromTool } from "./utils/durationUtils";
 import { groupEighthNotes } from "./utils/beamingUtils";
@@ -50,6 +54,13 @@ import { LyricsLayer } from "./components/LyricsLayer";
 
 // Import hooks
 import { useContextMenu } from "./hooks/useContextMenu";
+import { useLyricsEditing } from "./hooks/useLyricsEditing";
+import { useRepeatPlacement } from "./hooks/useRepeatPlacement";
+import {
+  useTimeSigPicker,
+  TIME_SIG_NUMERATORS,
+  TIME_SIG_DENOMINATORS,
+} from "./hooks/useTimeSigPicker";
 
 // Import shared components
 import { InlineLyricInput } from "@/components/InlineLyricInput";
@@ -90,9 +101,16 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     staffLines = 3,
     noteSpacing = 1.0,
     timeSignatureChanges = [],
+    onTimeSignatureChangesChange,
     onTimeSignatureClick,
     visibleContextMenuSections,
     onContextMenuAction,
+    // Learn mode props
+    learnMode = false,
+    maxVisibleMeasures: _maxVisibleMeasures,
+    highlightPitchLine,
+    highlightBeatRange,
+    onNoteInteraction,
   } = props;
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -103,28 +121,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   // Playhead drag state
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
-
-  // Repeat tool state - tracks first click for two-click placement
-  const [repeatStart, setRepeatStart] = useState<{
-    system: number;
-    measure: number;
-  } | null>(null);
-
-  // Lyrics editing state
-  const [editingLyric, setEditingLyric] = useState<{
-    absoluteBeat: number;
-    initialText: string;
-  } | null>(null);
-
-  // Clear tool-specific state when tool changes
-  useEffect(() => {
-    if (selectedTool !== "repeat") {
-      setRepeatStart(null);
-    }
-    if (selectedTool !== "lyrics") {
-      setEditingLyric(null);
-    }
-  }, [selectedTool]);
 
   // Measures per system for calculations
   const measuresPerSystem = measuresPerRow ?? 4;
@@ -202,6 +198,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   );
 
   // Get coordinates from mouse event
+  // Note: svgRef is a stable ref object; we intentionally use [] because we only read .current
   const getCoords = useCallback(
     (e: React.MouseEvent<SVGSVGElement>): { x: number; y: number } => {
       if (!svgRef.current) return { x: 0, y: 0 };
@@ -211,7 +208,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         y: e.clientY - rect.top,
       };
     },
-    [svgRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- svgRef is stable
+    [],
   );
 
   // Use extracted context menu hook
@@ -223,7 +221,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     handleNoteContextMenu,
     handleEmptyContextMenu,
     handleChangeDuration,
-    handleDeleteFromMenu,
+    handleDeleteFromMenu: _handleDeleteFromMenu,
     handleChangeAccidental,
     handleChangePitchLetter,
     handleChangeOctave,
@@ -244,6 +242,80 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     onContextMenuAction,
   });
 
+  // Wrap delete handler with learn mode interaction callback
+  const handleDeleteFromMenu = useCallback(() => {
+    // Get the note being deleted before calling the handler
+    if (learnMode && onNoteInteraction && contextMenu?.type === "note") {
+      const noteToDelete = notes.find((n) => n.id === contextMenu.noteId);
+      if (noteToDelete) {
+        onNoteInteraction(noteToDelete, "delete");
+      }
+    }
+    _handleDeleteFromMenu();
+  }, [learnMode, onNoteInteraction, contextMenu, notes, _handleDeleteFromMenu]);
+
+  // Use extracted repeat placement hook
+  const {
+    repeatStart,
+    handleRepeatClick,
+    handleRepeatHover,
+    clearRepeatHover: _clearRepeatHover,
+    hoveredRepeatMeasure,
+    hoveredMarker,
+    setHoveredMarker,
+    isPlacingRepeat: _isPlacingRepeat,
+    // Drag state
+    draggedMarker,
+    markerDragPosition,
+    handleMarkerDragStart,
+    handleMarkerDrag,
+    handleMarkerDragEnd,
+    isDraggingMarker,
+  } = useRepeatPlacement({
+    repeatMarkers,
+    onRepeatMarkersChange,
+    systemLayouts,
+    measuresPerSystem,
+    beatsPerMeasure: defaultLayout.beatsPerMeasure,
+    selectedTool,
+  });
+
+  // Use extracted lyrics editing hook
+  const {
+    editingLyric,
+    handleLyricsClick,
+    handleSaveLyric,
+    handleCancelLyric,
+    handleNavigateLyric,
+    getInlineLyricPosition,
+  } = useLyricsEditing({
+    lyrics,
+    onLyricsChange,
+    systemLayouts,
+    systemCount,
+    measuresPerSystem,
+    beatsPerMeasure: defaultLayout.beatsPerMeasure,
+    selectedTool,
+    svgRef,
+  });
+
+  // Use extracted time signature picker hook
+  const {
+    timeSigPicker,
+    setTimeSigPicker,
+    hoveredTimeSigBar,
+    setHoveredTimeSigBar,
+    openTimeSigPicker,
+    handleSetTimeSig,
+    handleDeleteTimeSig,
+    hasChangeAtMeasure,
+  } = useTimeSigPicker({
+    timeSignatureChanges,
+    onTimeSignatureChangesChange,
+    initialTimeSignature: timeSignature,
+    selectedTool,
+  });
+
   // Note mouse down handler for drag
   const handleNoteMouseDown = useCallback(
     (e: React.MouseEvent, noteId: string) => {
@@ -254,7 +326,19 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     [allowMove, readOnly],
   );
 
-  // Mouse move handler for dragging notes or playhead
+  // Note click handler for learn mode interaction callback
+  const handleNoteClick = useCallback(
+    (e: React.MouseEvent, noteId: string) => {
+      if (!learnMode || !onNoteInteraction) return;
+      const note = notes.find((n) => n.id === noteId);
+      if (note) {
+        onNoteInteraction(note, "click");
+      }
+    },
+    [learnMode, onNoteInteraction, notes],
+  );
+
+  // Mouse move handler for dragging notes, playhead, or markers
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       // Handle playhead dragging
@@ -275,6 +359,21 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         );
         onPlayheadBeatChange(clampedBeat);
         return;
+      }
+
+      // Handle repeat marker dragging
+      if (draggedMarker) {
+        const { x, y } = getCoords(e);
+        const system = getSystemFromY(y, systemCount);
+        handleMarkerDrag(x, y, system);
+        return;
+      }
+
+      // Handle repeat tool hover tracking
+      if (selectedTool === "repeat" && !readOnly && !draggedMarker) {
+        const { x, y } = getCoords(e);
+        const system = getSystemFromY(y, systemCount);
+        handleRepeatHover(x, system);
       }
 
       if (!draggedNote) return;
@@ -313,6 +412,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       isDraggingPlayhead,
       onPlayheadBeatChange,
       playheadSystem,
+      draggedMarker,
+      handleMarkerDrag,
+      selectedTool,
+      readOnly,
+      handleRepeatHover,
       draggedNote,
       getCoords,
       systemCount,
@@ -335,7 +439,17 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     if (isDraggingPlayhead) {
       setIsDraggingPlayhead(false);
     }
-  }, [draggedNote, notes, playNoteSound, isDraggingPlayhead]);
+    if (draggedMarker) {
+      handleMarkerDragEnd();
+    }
+  }, [
+    draggedNote,
+    notes,
+    playNoteSound,
+    isDraggingPlayhead,
+    draggedMarker,
+    handleMarkerDragEnd,
+  ]);
 
   // Playhead drag handlers
   const handlePlayheadMouseDown = useCallback(
@@ -347,11 +461,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     },
     [onPlayheadBeatChange],
   );
-
-  // Calculate staff center Y for a system (used for lyrics zone)
-  const getStaffCenterY = useCallback((systemIndex: number): number => {
-    return SYSTEM_TOP_MARGIN + systemIndex * SYSTEM_HEIGHT + 80;
-  }, []);
 
   // Handle click on SVG
   const handleClick = useCallback(
@@ -383,149 +492,15 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       const system = getSystemFromY(y, systemCount);
       const sysLayout = getLayoutForSystem(systemLayouts, system);
 
-      // Handle repeat tool - two-click placement
+      // Handle repeat tool - delegate to hook
       if (selectedTool === "repeat") {
-        if (!onRepeatMarkersChange) return;
-
-        // Calculate beat position to determine measure
-        const beatInSystem = (x - LEFT_MARGIN) / sysLayout.beatWidth;
-        const measureContainingClick = Math.floor(
-          beatInSystem / defaultLayout.beatsPerMeasure,
-        );
-        const clampedMeasure = Math.max(
-          0,
-          Math.min(measuresPerSystem - 1, measureContainingClick),
-        );
-
-        if (!repeatStart) {
-          // First click - set start position
-          setRepeatStart({ system, measure: clampedMeasure });
-        } else {
-          // Second click - create repeat markers
-          const firstClickSystem = repeatStart.system;
-          const firstClickMeasure = repeatStart.measure;
-          const secondClickSystem = system;
-          const secondClickMeasure = clampedMeasure;
-
-          // Calculate absolute measures
-          const firstAbsolute =
-            firstClickSystem * measuresPerSystem + firstClickMeasure;
-          const secondAbsolute =
-            secondClickSystem * measuresPerSystem + secondClickMeasure;
-
-          // Auto-swap: earlier measure is start, later is end
-          let startSystem: number, startMeasure: number;
-          let endClickSystem: number, endClickMeasure: number;
-
-          if (firstAbsolute <= secondAbsolute) {
-            startSystem = firstClickSystem;
-            startMeasure = firstClickMeasure;
-            endClickSystem = secondClickSystem;
-            endClickMeasure = secondClickMeasure;
-          } else {
-            startSystem = secondClickSystem;
-            startMeasure = secondClickMeasure;
-            endClickSystem = firstClickSystem;
-            endClickMeasure = firstClickMeasure;
-          }
-
-          // Increment end marker to place at end of clicked measure
-          let endSystem = endClickSystem;
-          let endMeasure = endClickMeasure + 1;
-
-          // Handle system overflow
-          if (endMeasure >= measuresPerSystem) {
-            endMeasure = 0;
-            endSystem = endClickSystem + 1;
-          }
-
-          const startAbsoluteMeasure =
-            startSystem * measuresPerSystem + startMeasure;
-          const endAbsoluteMeasure = endSystem * measuresPerSystem + endMeasure;
-
-          if (endAbsoluteMeasure > startAbsoluteMeasure) {
-            // Check for overlap with existing markers
-            const hasOverlap = repeatMarkers.some((m) => {
-              const markerAbsoluteMeasure =
-                m.system * measuresPerSystem + m.measure;
-              if (
-                m.type === "start" &&
-                markerAbsoluteMeasure >= startAbsoluteMeasure &&
-                markerAbsoluteMeasure < endAbsoluteMeasure
-              )
-                return true;
-              if (
-                m.type === "end" &&
-                markerAbsoluteMeasure > startAbsoluteMeasure &&
-                markerAbsoluteMeasure <= endAbsoluteMeasure
-              )
-                return true;
-              return false;
-            });
-
-            if (!hasOverlap) {
-              const pairId = `pair-${Date.now()}`;
-              const newMarkers = [
-                ...repeatMarkers,
-                {
-                  id: `start-${Date.now()}`,
-                  pairId,
-                  type: "start" as const,
-                  measure: startMeasure,
-                  system: startSystem,
-                },
-                {
-                  id: `end-${Date.now() + 1}`,
-                  pairId,
-                  type: "end" as const,
-                  measure: endMeasure,
-                  system: endSystem,
-                },
-              ];
-              onRepeatMarkersChange(newMarkers);
-            } else {
-              toast.error(
-                "Cannot place repeat markers over existing repeat sections",
-              );
-            }
-          }
-          setRepeatStart(null);
-        }
+        handleRepeatClick(x, system);
         return;
       }
 
-      // Handle lyrics tool - click to add/edit lyrics
+      // Handle lyrics tool - delegate to hook
       if (selectedTool === "lyrics") {
-        if (!onLyricsChange) return;
-
-        const staffCenterY = getStaffCenterY(system);
-        const lyricsZoneTop = staffCenterY + LINE_SPACING + 40;
-        const lyricsZoneBottom = staffCenterY + LINE_SPACING + 70;
-
-        // Check if click is in the lyrics area
-        if (y >= lyricsZoneTop && y <= lyricsZoneBottom) {
-          // Calculate beat position
-          const beatInSystem =
-            (x - LEFT_MARGIN - getNoteOffset(sysLayout.beatWidth)) /
-            sysLayout.beatWidth;
-          const snappedBeatInSystem = Math.round(beatInSystem * 2) / 2;
-          const clampedBeatInSystem = Math.max(
-            0,
-            Math.min(sysLayout.totalBeats - 1, snappedBeatInSystem),
-          );
-          const absoluteBeat = sysLayout.startBeat + clampedBeatInSystem;
-
-          // Find existing lyric at this beat
-          const existingLyric = lyrics.find(
-            (l) => Math.abs(l.absoluteBeat - absoluteBeat) < 0.1,
-          );
-
-          // Open inline editor
-          setEditingLyric({
-            absoluteBeat,
-            initialText: existingLyric?.text || "",
-          });
-        }
+        handleLyricsClick(x, y, system);
         return;
       }
 
@@ -564,116 +539,33 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
       onNotesChange([...notes, newNote]);
       playNoteSound(pitch, duration);
+
+      // Learn mode: notify of note placement
+      if (learnMode && onNoteInteraction) {
+        onNoteInteraction(newNote, "place");
+      }
     },
     [
       contextMenu,
+      setContextMenu,
       draggedNote,
       readOnly,
       selectedTool,
       svgRef,
       systemCount,
       systemLayouts,
-      defaultLayout.beatsPerMeasure,
-      measuresPerSystem,
-      repeatStart,
-      repeatMarkers,
-      onRepeatMarkersChange,
-      lyrics,
-      onLyricsChange,
-      getStaffCenterY,
+      handleRepeatClick,
+      handleLyricsClick,
       notes,
       allowChords,
       onNotesChange,
       onDuplicateNote,
       playNoteSound,
       staffLines,
+      learnMode,
+      onNoteInteraction,
     ],
   );
-
-  // Calculate total beats per system for navigation
-  const beatsPerSystem = useMemo(() => {
-    return defaultLayout.beatsPerMeasure * measuresPerSystem;
-  }, [defaultLayout.beatsPerMeasure, measuresPerSystem]);
-
-  // Handle saving lyrics
-  const handleSaveLyric = useCallback(
-    (text: string) => {
-      if (!editingLyric || !onLyricsChange) return;
-
-      const { absoluteBeat } = editingLyric;
-      const newLyrics = lyrics.filter(
-        (l) => Math.abs(l.absoluteBeat - absoluteBeat) >= 0.1,
-      );
-
-      if (text) {
-        newLyrics.push({ text, absoluteBeat });
-        newLyrics.sort((a, b) => a.absoluteBeat - b.absoluteBeat);
-      }
-
-      onLyricsChange(newLyrics);
-      setEditingLyric(null);
-    },
-    [editingLyric, lyrics, onLyricsChange],
-  );
-
-  // Handle navigating to next/prev lyric position
-  const handleNavigateLyric = useCallback(
-    (direction: "next" | "prev") => {
-      if (!editingLyric) return;
-
-      const totalBeats = systemCount * beatsPerSystem;
-      const currentBeat = editingLyric.absoluteBeat;
-      const nextBeat =
-        direction === "next"
-          ? Math.min(totalBeats - 1, currentBeat + 0.5)
-          : Math.max(0, currentBeat - 0.5);
-
-      const existingLyric = lyrics.find(
-        (l) => Math.abs(l.absoluteBeat - nextBeat) < 0.1,
-      );
-
-      setEditingLyric({
-        absoluteBeat: nextBeat,
-        initialText: existingLyric?.text || "",
-      });
-    },
-    [editingLyric, systemCount, beatsPerSystem, lyrics],
-  );
-
-  // Calculate inline input position for editing lyric
-  const getInlineLyricPosition = useCallback(() => {
-    if (!editingLyric || !svgRef.current) return null;
-
-    const { absoluteBeat } = editingLyric;
-
-    // Find the system containing this beat
-    let targetSystem = 0;
-    for (let i = 0; i < systemLayouts.length; i++) {
-      const layout = systemLayouts[i];
-      if (
-        absoluteBeat >= layout.startBeat &&
-        absoluteBeat < layout.startBeat + layout.totalBeats
-      ) {
-        targetSystem = i;
-        break;
-      }
-    }
-
-    const sysLayout = getLayoutForSystem(systemLayouts, targetSystem);
-    const beatInSystem = absoluteBeat - sysLayout.startBeat;
-    const x =
-      LEFT_MARGIN +
-      getNoteOffset(sysLayout.beatWidth) +
-      beatInSystem * sysLayout.beatWidth;
-    const staffCenterY = getStaffCenterY(targetSystem);
-    const y = staffCenterY + LINE_SPACING + 55;
-
-    const svgRect = svgRef.current.getBoundingClientRect();
-    return {
-      x: svgRect.left + x,
-      y: svgRect.top + y,
-    };
-  }, [editingLyric, systemLayouts, svgRef, getStaffCenterY]);
 
   return (
     <div className="flex flex-col gap-2 relative">
@@ -708,6 +600,18 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             timeSignature={timeSignature}
             readOnly={readOnly}
             onTimeSignatureClick={onTimeSignatureClick}
+            repeatMarkers={repeatMarkers}
+            onRepeatMarkersChange={onRepeatMarkersChange}
+            hoveredMarker={hoveredMarker}
+            setHoveredMarker={setHoveredMarker}
+            selectedTool={selectedTool}
+            allowMove={allowMove}
+            timeSignatureChanges={timeSignatureChanges}
+            hoveredTimeSigBar={hoveredTimeSigBar}
+            setHoveredTimeSigBar={setHoveredTimeSigBar}
+            onTimeSigPickerOpen={openTimeSigPicker}
+            onMarkerDragStart={handleMarkerDragStart}
+            isDraggingMarker={isDraggingMarker}
           />
         ))}
 
@@ -736,6 +640,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             readOnly={readOnly}
             onContextMenu={handleNoteContextMenu}
             onMouseDown={handleNoteMouseDown}
+            onClick={learnMode ? handleNoteClick : undefined}
           />
         ))}
 
@@ -749,12 +654,446 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           />
         ))}
 
+        {/* Lyrics zone highlight when lyrics tool is active */}
+        {selectedTool === "lyrics" &&
+          !readOnly &&
+          !isPlaying &&
+          Array.from({ length: systemCount }, (_, systemIndex) => {
+            const staffCenterY = getStaffCenterY(systemIndex);
+            const lyricsZoneY = staffCenterY + LINE_SPACING * 3 + 15;
+            const lyricsZoneLayout = getLayoutForSystem(
+              systemLayouts,
+              systemIndex,
+            );
+            const lyricsZoneWidth = lyricsZoneLayout.staffRight - LEFT_MARGIN;
+            return (
+              <rect
+                key={`lyrics-zone-${systemIndex}`}
+                x={LEFT_MARGIN}
+                y={lyricsZoneY}
+                width={lyricsZoneWidth}
+                height={30}
+                fill="#fef3c7"
+                opacity={0.5}
+                rx={4}
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          })}
+
         {/* Lyrics */}
         <LyricsLayer
           lyrics={lyrics}
           systemLayouts={systemLayouts}
           systemCount={systemCount}
+          selectedTool={selectedTool}
+          readOnly={readOnly}
+          isPlaying={isPlaying}
+          editingLyric={editingLyric}
         />
+
+        {/* Learn mode: Pitch line highlight */}
+        {highlightPitchLine &&
+          learnMode &&
+          Array.from({ length: systemCount }, (_, systemIndex) => {
+            const pitchY = getYFromPitch(
+              highlightPitchLine as Pitch,
+              systemIndex,
+            );
+            const sysLayout = getLayoutForSystem(systemLayouts, systemIndex);
+            return (
+              <g key={`pitch-highlight-${systemIndex}`}>
+                {/* Horizontal highlight line across the staff */}
+                <rect
+                  x={LEFT_MARGIN - 5}
+                  y={pitchY - 4}
+                  width={sysLayout.staffRight - LEFT_MARGIN + 10}
+                  height={8}
+                  fill="#bfdbfe"
+                  opacity={0.6}
+                  rx={2}
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Small indicator on the left showing the pitch */}
+                <rect
+                  x={LEFT_MARGIN - 35}
+                  y={pitchY - 10}
+                  width={28}
+                  height={20}
+                  fill="#3b82f6"
+                  rx={4}
+                  style={{ pointerEvents: "none" }}
+                />
+                <text
+                  x={LEFT_MARGIN - 21}
+                  y={pitchY + 4}
+                  fontSize={11}
+                  fontWeight="600"
+                  fill="white"
+                  textAnchor="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {highlightPitchLine}
+                </text>
+              </g>
+            );
+          })}
+
+        {/* Learn mode: Beat range highlight */}
+        {highlightBeatRange &&
+          learnMode &&
+          (() => {
+            const [startBeat, endBeat] = highlightBeatRange;
+            const highlights: React.ReactNode[] = [];
+
+            // Iterate through systems to find beats in range
+            for (let sys = 0; sys < systemCount; sys++) {
+              const sysLayout = getLayoutForSystem(systemLayouts, sys);
+              const sysBeatStart = sysLayout.startBeat;
+              const sysBeatEnd = sysLayout.startBeat + sysLayout.totalBeats;
+
+              // Check if this system contains any beats in the range
+              if (startBeat >= sysBeatEnd || endBeat <= sysBeatStart) continue;
+
+              // Calculate which beats in this system to highlight
+              const localStartBeat = Math.max(0, startBeat - sysBeatStart);
+              const localEndBeat = Math.min(
+                sysLayout.totalBeats,
+                endBeat - sysBeatStart,
+              );
+
+              // Calculate X positions
+              const highlightStartX =
+                LEFT_MARGIN + localStartBeat * sysLayout.beatWidth;
+              const highlightEndX =
+                LEFT_MARGIN + localEndBeat * sysLayout.beatWidth;
+              const staffCenterY = getStaffCenterY(sys);
+
+              highlights.push(
+                <rect
+                  key={`beat-highlight-${sys}`}
+                  x={highlightStartX}
+                  y={staffCenterY - LINE_SPACING * 2 - 15}
+                  width={highlightEndX - highlightStartX}
+                  height={LINE_SPACING * 4 + 30}
+                  fill="#bbf7d0"
+                  opacity={0.4}
+                  rx={4}
+                  style={{ pointerEvents: "none" }}
+                />,
+              );
+            }
+
+            return highlights;
+          })()}
+
+        {/* Repeat marker placement preview - before first click */}
+        {!repeatStart &&
+          selectedTool === "repeat" &&
+          hoveredRepeatMeasure &&
+          !readOnly &&
+          (() => {
+            const hoverStaffCenterY = getStaffCenterY(
+              hoveredRepeatMeasure.system,
+            );
+            const hoverSysLayout = getLayoutForSystem(
+              systemLayouts,
+              hoveredRepeatMeasure.system,
+            );
+            const hoverMeasureInfo =
+              hoverSysLayout.measures[hoveredRepeatMeasure.measure];
+            if (!hoverMeasureInfo) return null;
+            // Calculate staff half-height based on visible staff lines
+            const staffHalfHeight = ((staffLines - 1) / 2) * LINE_SPACING;
+            // xOffset points to where beats START (after prefix)
+            // Subtract prefixWidth to start at the bar line
+            const hoverMeasureX =
+              LEFT_MARGIN +
+              hoverMeasureInfo.xOffset -
+              (hoverMeasureInfo.prefixWidth || 0);
+            // Full width = prefix + beats + suffix
+            const hoverMeasureWidth =
+              (hoverMeasureInfo.prefixWidth || 0) +
+              hoverMeasureInfo.beatsInMeasure * hoverSysLayout.beatWidth +
+              (hoverMeasureInfo.suffixWidth || 0);
+            const hoverMeasureCenterX = hoverMeasureX + hoverMeasureWidth / 2;
+            return (
+              <g>
+                <rect
+                  x={hoverMeasureX}
+                  y={hoverStaffCenterY - staffHalfHeight - 15}
+                  width={hoverMeasureWidth}
+                  height={staffHalfHeight * 2 + 30}
+                  fill="#8b5cf6"
+                  opacity={0.15}
+                  rx={4}
+                />
+                {/* Instructional text */}
+                <rect
+                  x={hoverMeasureCenterX - 60}
+                  y={hoverStaffCenterY - staffHalfHeight - 32}
+                  width={120}
+                  height={24}
+                  fill="#f3e8ff"
+                  stroke="#8b5cf6"
+                  strokeWidth={1.5}
+                  rx={6}
+                />
+                <text
+                  x={hoverMeasureCenterX}
+                  y={hoverStaffCenterY - staffHalfHeight - 16}
+                  fontSize={12}
+                  fontWeight="600"
+                  fill="#6d28d9"
+                  textAnchor="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  Click to set START
+                </text>
+              </g>
+            );
+          })()}
+
+        {/* Repeat marker placement preview - after first click (range highlight) */}
+        {repeatStart &&
+          selectedTool === "repeat" &&
+          !readOnly &&
+          (() => {
+            // Calculate absolute measures for start and end of range
+            const clickedAbsoluteMeasure =
+              repeatStart.system * measuresPerSystem + repeatStart.measure;
+            const hoveredAbsoluteMeasure = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.system * measuresPerSystem +
+                hoveredRepeatMeasure.measure
+              : clickedAbsoluteMeasure;
+
+            // Determine range bounds (swap if hovered comes before clicked)
+            const isHoveredBefore =
+              hoveredAbsoluteMeasure < clickedAbsoluteMeasure;
+            const rangeStartAbsolute = isHoveredBefore
+              ? hoveredAbsoluteMeasure
+              : clickedAbsoluteMeasure;
+            const rangeEndAbsolute = isHoveredBefore
+              ? clickedAbsoluteMeasure
+              : hoveredAbsoluteMeasure;
+
+            // Convert back to system/measure coordinates
+            const rangeStartSystem = Math.floor(
+              rangeStartAbsolute / measuresPerSystem,
+            );
+            const rangeStartMeasure = rangeStartAbsolute % measuresPerSystem;
+            const rangeEndSystem = Math.floor(
+              rangeEndAbsolute / measuresPerSystem,
+            );
+            const rangeEndMeasure = rangeEndAbsolute % measuresPerSystem;
+
+            // Determine where to show the text (on hovered measure)
+            const showTextSystem = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.system
+              : repeatStart.system;
+            const showTextMeasure = hoveredRepeatMeasure
+              ? hoveredRepeatMeasure.measure
+              : repeatStart.measure;
+            const textStaffCenterY = getStaffCenterY(showTextSystem);
+
+            const textToShow = hoveredRepeatMeasure
+              ? isHoveredBefore
+                ? "Click to set START"
+                : "Click to set END"
+              : "Click to set END";
+
+            // Calculate text position
+            const textSysLayout = getLayoutForSystem(
+              systemLayouts,
+              showTextSystem,
+            );
+            const textMeasureInfo = textSysLayout.measures[showTextMeasure];
+            if (!textMeasureInfo) return null;
+            const textMeasureX =
+              LEFT_MARGIN +
+              textMeasureInfo.xOffset -
+              (textMeasureInfo.prefixWidth || 0);
+            const textMeasureWidth =
+              (textMeasureInfo.prefixWidth || 0) +
+              textMeasureInfo.beatsInMeasure * textSysLayout.beatWidth +
+              (textMeasureInfo.suffixWidth || 0);
+            const textMeasureCenterX = textMeasureX + textMeasureWidth / 2;
+
+            // Build range highlight rectangles for each system in the range
+            const rangeHighlights: React.ReactNode[] = [];
+            for (
+              let sys = rangeStartSystem;
+              sys <= rangeEndSystem && sys < systemCount;
+              sys++
+            ) {
+              const sysLayout = getLayoutForSystem(systemLayouts, sys);
+              if (!sysLayout.measures.length) continue;
+
+              // Determine which measures to highlight in this system
+              const startMeasureInSys =
+                sys === rangeStartSystem ? rangeStartMeasure : 0;
+              const endMeasureInSys =
+                sys === rangeEndSystem
+                  ? rangeEndMeasure
+                  : sysLayout.measures.length - 1;
+
+              // Get first and last measure info
+              const firstMeasureInfo = sysLayout.measures[startMeasureInSys];
+              const lastMeasureInfo = sysLayout.measures[endMeasureInSys];
+              if (!firstMeasureInfo || !lastMeasureInfo) continue;
+
+              // Calculate range rectangle X and width
+              const rangeX =
+                LEFT_MARGIN +
+                firstMeasureInfo.xOffset -
+                (firstMeasureInfo.prefixWidth || 0);
+              const rangeEndX =
+                LEFT_MARGIN +
+                lastMeasureInfo.xOffset +
+                lastMeasureInfo.beatsInMeasure * sysLayout.beatWidth +
+                (lastMeasureInfo.suffixWidth || 0);
+              const rangeWidth = rangeEndX - rangeX;
+              const sysStaffCenterY = getStaffCenterY(sys);
+
+              rangeHighlights.push(
+                <rect
+                  key={`range-highlight-${sys}`}
+                  x={rangeX}
+                  y={sysStaffCenterY - LINE_SPACING - 15}
+                  width={rangeWidth}
+                  height={LINE_SPACING * 2 + 30}
+                  fill="#8b5cf6"
+                  opacity={0.15}
+                  rx={4}
+                />,
+              );
+            }
+
+            return (
+              <g>
+                {/* Highlight range across all affected systems */}
+                {hoveredRepeatMeasure && rangeHighlights}
+                {/* Background rectangle for text visibility */}
+                <rect
+                  x={
+                    textMeasureCenterX -
+                    (textToShow === "Click to set END" ? 55 : 60)
+                  }
+                  y={textStaffCenterY - LINE_SPACING - 32}
+                  width={textToShow === "Click to set END" ? 110 : 120}
+                  height={24}
+                  fill="#f3e8ff"
+                  stroke="#8b5cf6"
+                  strokeWidth={1.5}
+                  rx={6}
+                  style={{ pointerEvents: "none" }}
+                />
+                {/* Text on top */}
+                <text
+                  x={textMeasureCenterX}
+                  y={textStaffCenterY - LINE_SPACING - 16}
+                  fontSize={12}
+                  fontWeight="600"
+                  fill="#7c3aed"
+                  textAnchor="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {textToShow}
+                </text>
+              </g>
+            );
+          })()}
+
+        {/* Marker drag preview - shows drop zone when dragging repeat markers */}
+        {draggedMarker &&
+          markerDragPosition &&
+          (() => {
+            const dragSysLayout = getLayoutForSystem(
+              systemLayouts,
+              markerDragPosition.targetSystem,
+            );
+            const dragStaffCenterY = getStaffCenterY(
+              markerDragPosition.targetSystem,
+            );
+            // Calculate staff half-height based on visible staff lines
+            const staffHalfHeight = ((staffLines - 1) / 2) * LINE_SPACING;
+            // Calculate X position for the target measure boundary
+            let dragPreviewX: number;
+            if (
+              markerDragPosition.targetMeasure < dragSysLayout.measures.length
+            ) {
+              const targetMeasureInfo =
+                dragSysLayout.measures[markerDragPosition.targetMeasure];
+              dragPreviewX =
+                LEFT_MARGIN +
+                targetMeasureInfo.xOffset -
+                (targetMeasureInfo.prefixWidth || 0);
+            } else {
+              // Past the last measure - show at end of system
+              const lastMeasure =
+                dragSysLayout.measures[dragSysLayout.measures.length - 1];
+              dragPreviewX =
+                LEFT_MARGIN +
+                lastMeasure.xOffset +
+                lastMeasure.beatsInMeasure * dragSysLayout.beatWidth +
+                (lastMeasure.suffixWidth || 0);
+            }
+
+            return (
+              <g style={{ pointerEvents: "none" }}>
+                {/* Vertical line at target position - extends from above staff to below lyrics */}
+                <line
+                  x1={dragPreviewX}
+                  y1={dragStaffCenterY - staffHalfHeight - 25}
+                  x2={dragPreviewX}
+                  y2={dragStaffCenterY + LINE_SPACING * 4 + 20}
+                  stroke="#8b5cf6"
+                  strokeWidth={3}
+                  strokeDasharray="6,4"
+                />
+                {/* Indicator circle */}
+                <circle
+                  cx={dragPreviewX}
+                  cy={
+                    draggedMarker.type === "start"
+                      ? dragStaffCenterY - staffHalfHeight - 35
+                      : dragStaffCenterY + LINE_SPACING * 4 + 30
+                  }
+                  r={8}
+                  fill="#8b5cf6"
+                  stroke="white"
+                  strokeWidth={2}
+                />
+                {/* Label */}
+                <rect
+                  x={dragPreviewX - 30}
+                  y={
+                    draggedMarker.type === "start"
+                      ? dragStaffCenterY - staffHalfHeight - 65
+                      : dragStaffCenterY + LINE_SPACING * 4 + 40
+                  }
+                  width={60}
+                  height={20}
+                  fill="#8b5cf6"
+                  rx={4}
+                />
+                <text
+                  x={dragPreviewX}
+                  y={
+                    draggedMarker.type === "start"
+                      ? dragStaffCenterY - staffHalfHeight - 51
+                      : dragStaffCenterY + LINE_SPACING * 4 + 54
+                  }
+                  fontSize={11}
+                  fontWeight="600"
+                  fill="white"
+                  textAnchor="middle"
+                >
+                  {draggedMarker.type === "start" ? "START" : "END"}
+                </text>
+              </g>
+            );
+          })()}
 
         {/* Playhead - taller than beat shading to stick out on both ends */}
         {playheadX !== null && (
@@ -800,8 +1139,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             <InlineLyricInput
               initialText={editingLyric.initialText}
               position={position}
+              absoluteBeat={editingLyric.absoluteBeat}
               onSave={handleSaveLyric}
-              onCancel={() => setEditingLyric(null)}
+              onCancel={handleCancelLyric}
               onNavigate={handleNavigateLyric}
             />
           );
@@ -811,6 +1151,82 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       {repeatStart && selectedTool === "repeat" && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm shadow-lg z-10">
           Click another measure to complete the repeat section
+        </div>
+      )}
+
+      {/* Time signature change picker modal */}
+      {timeSigPicker && (
+        <div
+          className="absolute bg-white rounded-lg shadow-lg border border-cyan-200 p-3 z-50"
+          style={{
+            left: timeSigPicker.x - 60,
+            top: timeSigPicker.y + LINE_SPACING * 2 + 20,
+          }}
+        >
+          <div className="text-xs font-semibold text-cyan-600 mb-2">
+            Time Signature at M{timeSigPicker.measureNumber + 1}
+          </div>
+          <div className="flex gap-2 items-center">
+            <select
+              className="border rounded px-2 py-1 text-sm w-14"
+              defaultValue={timeSignature.numerator}
+              id="timesig-numerator"
+            >
+              {TIME_SIG_NUMERATORS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <span className="text-gray-500">/</span>
+            <select
+              className="border rounded px-2 py-1 text-sm w-14"
+              defaultValue={timeSignature.denominator}
+              id="timesig-denominator"
+            >
+              {TIME_SIG_DENOMINATORS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              className="flex-1 px-3 py-1 text-sm bg-cyan-500 text-white rounded hover:bg-cyan-600"
+              onClick={() => {
+                const numEl = document.getElementById(
+                  "timesig-numerator",
+                ) as HTMLSelectElement;
+                const denEl = document.getElementById(
+                  "timesig-denominator",
+                ) as HTMLSelectElement;
+                if (numEl && denEl) {
+                  handleSetTimeSig(
+                    parseInt(numEl.value, 10),
+                    parseInt(denEl.value, 10),
+                  );
+                }
+              }}
+            >
+              Set
+            </button>
+            <button
+              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
+              onClick={() => setTimeSigPicker(null)}
+            >
+              Cancel
+            </button>
+            {/* Delete button if there's an existing change at this measure */}
+            {hasChangeAtMeasure(timeSigPicker.measureNumber) && (
+              <button
+                className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200"
+                onClick={handleDeleteTimeSig}
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
