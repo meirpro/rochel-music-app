@@ -105,7 +105,7 @@ import {
 } from "../utils/systemLayout";
 import { getYFromPitch } from "../utils/pitchUtils";
 import { getNoteLabel } from "../utils/durationUtils";
-import { EditorNote, BeamGroup } from "../types";
+import { EditorNote, BeamGroup, NoteTool } from "../types";
 
 export interface NoteElementProps {
   note: EditorNote;
@@ -118,6 +118,7 @@ export interface NoteElementProps {
   draggedNote: string | null;
   allowMove: boolean;
   readOnly: boolean;
+  selectedTool?: NoteTool;
   onContextMenu: (e: React.MouseEvent, noteId: string) => void;
   onMouseDown: (e: React.MouseEvent, noteId: string) => void;
   onClick?: (e: React.MouseEvent, noteId: string) => void;
@@ -181,6 +182,7 @@ export function NoteElement({
   draggedNote,
   allowMove,
   readOnly,
+  selectedTool,
   onContextMenu,
   onMouseDown,
   onClick,
@@ -264,7 +266,14 @@ export function NoteElement({
       onContextMenu={(e) => onContextMenu(e, note.id)}
       onMouseDown={(e) => onMouseDown(e, note.id)}
       onClick={(e) => onClick?.(e, note.id)}
-      style={{ cursor: allowMove && !readOnly ? "move" : "pointer" }}
+      style={{
+        cursor:
+          selectedTool === "delete"
+            ? "pointer"
+            : allowMove && !readOnly
+              ? "move"
+              : "pointer",
+      }}
     >
       {/* Ledger lines */}
       {ledgerLines.map((ly, i) => (
