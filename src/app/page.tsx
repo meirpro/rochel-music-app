@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useLocalStorage, useDocumentTitle } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
 import { NoteEditor, NoteTool, TimeSignature } from "@/components/NoteEditor";
@@ -20,6 +20,7 @@ import {
   EditorNote,
   RepeatMarker,
   TimeSignatureChange,
+  Pitch,
 } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
 import {
@@ -104,13 +105,77 @@ const DEFAULT_UI: EditorUI = {
 // Options to prevent SSR hydration mismatch - load from localStorage after mount
 const SSR_SAFE = { initializeWithValue: false };
 
+/**
+ * Validates if a pitch string is in the correct format (e.g., "C4", "F#5", "Bb3")
+ */
+function isValidPitch(pitch: unknown): pitch is Pitch {
+  if (typeof pitch !== "string") return false;
+  if (pitch === "REST") return true;
+  return /^[A-G](#|b)?[0-9]$/.test(pitch);
+}
+
+/**
+ * Filter out invalid notes from a composition (corrupted localStorage data)
+ */
+function validateComposition(comp: EditorComposition): EditorComposition {
+  const validNotes = comp.notes.filter((note) => {
+    // Validate pitch
+    if (!isValidPitch(note.pitch)) {
+      console.warn(
+        "[validateComposition] Filtering note with invalid pitch:",
+        note,
+      );
+      return false;
+    }
+    // Validate duration
+    if (
+      typeof note.duration !== "number" ||
+      !Number.isFinite(note.duration) ||
+      note.duration <= 0
+    ) {
+      console.warn(
+        "[validateComposition] Filtering note with invalid duration:",
+        note,
+      );
+      return false;
+    }
+    // Validate absoluteBeat (for new format notes)
+    if ("absoluteBeat" in note && !Number.isFinite(note.absoluteBeat)) {
+      console.warn(
+        "[validateComposition] Filtering note with invalid absoluteBeat:",
+        note,
+      );
+      return false;
+    }
+    return true;
+  });
+
+  if (validNotes.length !== comp.notes.length) {
+    console.warn(
+      `[validateComposition] Filtered out ${comp.notes.length - validNotes.length} invalid notes`,
+    );
+  }
+
+  return {
+    ...comp,
+    notes: validNotes,
+  } as EditorComposition;
+}
+
 export default function Home() {
   // Persistent state (SSR safe to prevent hydration mismatch)
-  const [composition, setComposition] = useLocalStorage<EditorComposition>(
+  const [rawComposition, setComposition] = useLocalStorage<EditorComposition>(
     "rochel-editor-composition",
     DEFAULT_COMPOSITION,
     SSR_SAFE,
   );
+
+  // Validate composition to filter out corrupted notes from localStorage
+  const composition = useMemo(
+    () => validateComposition(rawComposition),
+    [rawComposition],
+  );
+
   const [settings, setSettings] = useLocalStorage<EditorSettings>(
     "rochel-editor-settings",
     DEFAULT_SETTINGS,
