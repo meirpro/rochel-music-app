@@ -503,8 +503,8 @@ export default function EditorPage() {
         <SimpleHeader title="Learn to Use the Editor" />
       )}
 
-      {/* Play controls - shown when visibility allows (during tutorial or after completion) */}
-      {visibility.showPlayButton && (
+      {/* Standalone play controls - only during tutorial (after tutorial, use header controls) */}
+      {tutorial.isActive && visibility.showPlayButton && (
         <PlayControls
           onTogglePlayPause={handlePlayToggle}
           onStop={playback.handleStop}
