@@ -9,6 +9,185 @@
 
 import { TutorialStage, ContextMenuSection } from "../config/tutorialStages";
 
+// Inline SVG note icons for rendering in hints (smaller size for inline text)
+const InlineQuarterNote = () => (
+  <svg
+    width="12"
+    height="18"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <ellipse
+      cx="14"
+      cy="26"
+      rx="7"
+      ry="5"
+      fill="currentColor"
+      transform="rotate(-15 14 26)"
+    />
+    <line
+      x1="20"
+      y1="24"
+      x2="20"
+      y2="8"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
+const InlineHalfNote = () => (
+  <svg
+    width="12"
+    height="18"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <ellipse
+      cx="14"
+      cy="26"
+      rx="7"
+      ry="5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      transform="rotate(-15 14 26)"
+    />
+    <line
+      x1="20"
+      y1="24"
+      x2="20"
+      y2="8"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
+const InlineEighthNote = () => (
+  <svg
+    width="12"
+    height="18"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <ellipse
+      cx="14"
+      cy="26"
+      rx="7"
+      ry="5"
+      fill="currentColor"
+      transform="rotate(-15 14 26)"
+    />
+    <line
+      x1="20"
+      y1="24"
+      x2="20"
+      y2="8"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <path
+      d="M 20 8 Q 26 12 24 20"
+      stroke="currentColor"
+      strokeWidth="2"
+      fill="none"
+    />
+  </svg>
+);
+
+const InlineWholeNote = () => (
+  <svg
+    width="14"
+    height="18"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <ellipse
+      cx="14"
+      cy="24"
+      rx="7"
+      ry="5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      transform="rotate(-15 14 24)"
+    />
+  </svg>
+);
+
+const InlineRepeatSign = () => (
+  <svg
+    width="14"
+    height="18"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <g transform="translate(6, 10)">
+      <rect x="0" y="0" width="3" height="16" fill="currentColor" />
+      <rect x="5" y="0" width="3" height="16" fill="currentColor" />
+      <circle cx="12" cy="4" r="3" fill="currentColor" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" />
+    </g>
+  </svg>
+);
+
+const InlineDeleteIcon = () => (
+  <svg
+    width="12"
+    height="14"
+    viewBox="0 0 28 36"
+    className="inline-block align-middle mx-0.5"
+  >
+    <line
+      x1="8"
+      y1="12"
+      x2="20"
+      y2="24"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+    />
+    <line
+      x1="20"
+      y1="12"
+      x2="8"
+      y2="24"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+// Mapping of tokens to icon components
+const ICON_MAP: Record<string, React.FC> = {
+  "[quarter]": InlineQuarterNote,
+  "[half]": InlineHalfNote,
+  "[eighth]": InlineEighthNote,
+  "[whole]": InlineWholeNote,
+  "[repeat]": InlineRepeatSign,
+  "[delete]": InlineDeleteIcon,
+};
+
+/**
+ * Parse hint text and replace icon tokens with actual SVG components
+ */
+function renderHintWithIcons(hint: string): React.ReactNode {
+  // Split by icon tokens while keeping the tokens
+  const tokenPattern =
+    /(\[quarter\]|\[half\]|\[eighth\]|\[whole\]|\[repeat\]|\[delete\])/g;
+  const parts = hint.split(tokenPattern);
+
+  return parts.map((part, index) => {
+    const IconComponent = ICON_MAP[part];
+    if (IconComponent) {
+      return <IconComponent key={index} />;
+    }
+    return part;
+  });
+}
+
 interface TutorialOverlayProps {
   stage: TutorialStage;
   onSkip: () => void;
@@ -62,9 +241,9 @@ export function TutorialOverlay({
           </p>
 
           {stage.hint && (
-            <p className="mt-2 text-purple-500 text-xs italic flex items-start gap-1">
-              <span className="flex-shrink-0">Hint:</span>
-              <span>{stage.hint}</span>
+            <p className="mt-2 text-purple-500 text-xs italic">
+              <span>Hint: </span>
+              {renderHintWithIcons(stage.hint)}
             </p>
           )}
 

@@ -75,7 +75,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     id: "welcome",
     title: "Welcome! Place Your First Note",
     instruction: "Click anywhere on the staff lines to place a quarter note.",
-    hint: "The quarter note tool (♩) is already selected for you in the left panel.",
+    hint: "The quarter note tool [quarter] is already selected for you in the left panel.",
     allowedTools: ["quarter"],
     hidePaletteSections: ["markup", "actions"],
     showHeader: false,
@@ -93,7 +93,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Try Different Note Lengths",
     instruction:
       "Select half notes or quarter notes from the palette and add more notes to your melody.",
-    hint: "Click the half note (𝅗𝅥) or quarter note (♩) button in the left panel to switch note types. Half notes last twice as long as quarter notes.",
+    hint: "Click the half note [half] or quarter note [quarter] button in the left panel to switch note types. Half notes last twice as long as quarter notes.",
     allowedTools: ["quarter", "half"],
     hidePaletteSections: ["markup", "actions"],
     showHeader: false,
@@ -112,7 +112,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Edit Your Notes",
     instruction:
       "Right-click on any note to open the editing menu. Try changing the duration of a note, or delete it.",
-    hint: "Right-click a note to see options. You can also select the Eraser tool (🗑️) in the left panel and click notes to delete them.",
+    hint: "Right-click a note to see options. You can also select the Delete tool [delete] in the left panel and click notes to delete them.",
     allowedTools: ["quarter", "half", "eighth", "delete"],
     hidePaletteSections: ["markup"],
     showHeader: false,
@@ -131,7 +131,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Listen to Your Music",
     instruction:
       "Press the Play button to hear your melody! You can adjust the tempo later.",
-    hint: "Click the ▶ Play button at the top of the screen, or press Spacebar as a shortcut.",
+    hint: "Click the Play button at the top of the screen, or press Spacebar as a shortcut.",
     allowedTools: ["quarter", "half", "eighth", "whole", "delete"],
     hidePaletteSections: ["markup"],
     showHeader: true,
@@ -150,7 +150,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Expand Your Composition",
     instruction:
       "Now you have access to measure controls. Add more measures to create a longer piece.",
-    hint: "Use the + button in the top header to add measures. Select note durations (whole, half, quarter, eighth) from the left panel. Right-click notes for more options.",
+    hint: "Use the + button in the top header to add measures. Select note durations ([whole] [half] [quarter] [eighth]) from the left panel. Right-click notes for more options.",
     allowedTools: [
       "quarter",
       "half",
@@ -183,7 +183,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Add Repeat Signs",
     instruction:
       "Select the Repeat tool (highlighted in the side panel), then click on a bar line to add repeat signs. Once you place a repeat, click Next to continue.",
-    hint: "Click the Repeat button (𝄆) in the Markup section of the left panel (it's highlighted). Then click any bar line on the staff.",
+    hint: "Click the Repeat button [repeat] in the Markup section of the left panel (it's highlighted). Then click any bar line on the staff.",
     allowedTools: [
       "quarter",
       "half",
@@ -218,7 +218,7 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
     title: "Add Lyrics to Your Music",
     instruction:
       "Select the Lyrics tool (highlighted), then click on any note to add a syllable. Once you add lyrics, click Next to continue.",
-    hint: "Click the Lyrics button (Aa) in the Markup section of the left panel (it's highlighted). Then click a note and type a syllable.",
+    hint: "Click the Lyrics button (labeled 'Aa') in the Markup section of the left panel (it's highlighted). Then click a note and type a syllable.",
     allowedTools: [
       "quarter",
       "half",
