@@ -69,6 +69,7 @@ interface UsePlaybackOptions {
   containerHeight?: number;
   onScrollTo?: (scrollLeft: number, scrollTop: number) => void;
   noteSpacing?: number; // 1.0 to 2.0, default 1.0
+  disableSpacebarControl?: boolean; // When true, caller handles spacebar
 }
 
 // Measure info for playback cursor positioning
@@ -114,6 +115,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     containerHeight,
     onScrollTo,
     noteSpacing = 1.0,
+    disableSpacebarControl = false,
   } = options;
 
   // Playback state
@@ -834,7 +836,10 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
   }, [handlePause, handlePlay]);
 
   // Global spacebar listener - uses keyup to prevent repeated triggers when holding
+  // Skip when disableSpacebarControl is true (caller handles spacebar)
   useEffect(() => {
+    if (disableSpacebarControl) return;
+
     const handleKeyUp = (e: KeyboardEvent) => {
       // Only trigger if spacebar and not in an input/textarea
       if (
@@ -850,7 +855,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
     window.addEventListener("keyup", handleKeyUp);
     return () => window.removeEventListener("keyup", handleKeyUp);
-  }, [handleTogglePlayPause]);
+  }, [handleTogglePlayPause, disableSpacebarControl]);
 
   // Cleanup on unmount
   useEffect(() => {
