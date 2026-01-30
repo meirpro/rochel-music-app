@@ -12,6 +12,7 @@ interface SongLibraryModalProps {
   onDeleteSong: (songId: string) => void;
   onSaveSong: (name: string) => void;
   onUpdateCurrentSong: () => void;
+  onNewSong?: () => void; // Creates a new blank song (parent handles unsaved warning)
   onRestoreDefaults: () => void;
   onExport: () => void;
   onExportSelected: (songIds: string[]) => void;
@@ -26,6 +27,7 @@ export function SongLibraryModal({
   onDeleteSong,
   onSaveSong,
   onUpdateCurrentSong,
+  onNewSong,
   onRestoreDefaults,
   onExport: _onExport,
   onExportSelected,
@@ -147,6 +149,19 @@ export function SongLibraryModal({
             </button>
           </div>
         </div>
+
+        {/* New Song Button */}
+        {onNewSong && (
+          <div className="px-3 py-2 border-b border-gray-200">
+            <button
+              onClick={onNewSong}
+              className="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-lg leading-none">+</span>
+              New Song
+            </button>
+          </div>
+        )}
 
         {/* Song List */}
         <div className="flex-1 overflow-y-auto p-3">

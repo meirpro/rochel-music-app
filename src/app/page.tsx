@@ -3,7 +3,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useLocalStorage, useDocumentTitle } from "usehooks-ts";
 import { toast, Toaster } from "sonner";
-import { NoteEditor, NoteTool, TimeSignature } from "@/components/NoteEditor";
+import {
+  NoteEditorRefactored,
+  NoteTool,
+} from "@/components/NoteEditorRefactored";
+import { TimeSignature } from "@/components/NoteEditor";
 import { PianoDrawer } from "@/components/PianoDrawer";
 import { EditorHeader } from "@/components/EditorHeader";
 import { ToolPalette } from "@/components/ToolPalette";
@@ -36,12 +40,7 @@ import { usePlayback } from "@/hooks/usePlayback";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileBanner } from "@/components/MobileBanner";
 import { Footer } from "@/components/Footer";
-import {
-  toLegacyNotes,
-  fromLegacyNotes,
-  toLegacyRepeatMarkers,
-  fromLegacyRepeatMarkers,
-} from "@/lib/coordinateAdapter";
+// Note: coordinateAdapter is no longer needed - NoteEditorRefactored uses new format directly
 import { InstrumentType, setInstrument } from "@/lib/audio/TonePlayer";
 
 // Types for localStorage persistence
@@ -349,6 +348,9 @@ export default function Home() {
   // Undo/Redo state
   const [history, setHistory] = useState<EditorComposition[]>([composition]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // New Song confirmation dialog state
+  const [showNewSongConfirm, setShowNewSongConfirm] = useState(false);
 
   // Current song title
   const currentSongTitle =
@@ -710,6 +712,56 @@ export default function Home() {
     [savedSongs, currentSongId, setSavedSongs, setCurrentSongId],
   );
 
+  // New Song handler - opens confirmation dialog if there are unsaved changes
+  const handleNewSong = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setShowNewSongConfirm(true);
+    } else {
+      // No unsaved changes, create new song directly
+      confirmNewSong();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges]);
+
+  // Confirm new song - clears the editor for a fresh start
+  const confirmNewSong = useCallback(() => {
+    // Stop playback if playing
+    playback.handleStop();
+
+    // Clear composition
+    setComposition(DEFAULT_COMPOSITION);
+
+    // Reset to default settings (preserve some user preferences)
+    setSettings((prev) => ({
+      ...prev,
+      timeSignature: { numerator: 4, denominator: 4 },
+      selectedTool: null,
+    }));
+
+    // Clear current song reference
+    setCurrentSongId(null);
+
+    // Reset measures
+    setTotalMeasures(4);
+
+    // Reset history for undo/redo
+    setHistory([DEFAULT_COMPOSITION]);
+    setHistoryIndex(0);
+
+    // Close dialogs
+    setShowNewSongConfirm(false);
+    setUI((prev) => ({ ...prev, showSongLibrary: false }));
+
+    toast.success("New song started");
+  }, [
+    playback.handleStop,
+    setComposition,
+    setSettings,
+    setCurrentSongId,
+    setTotalMeasures,
+    setUI,
+  ]);
+
   // Restore defaults handler
   const handleRestoreDefaults = useCallback(() => {
     setSavedSongs(getDefaultSongs());
@@ -864,29 +916,13 @@ export default function Home() {
         <div ref={editorContainerRef} className="flex-1 overflow-auto">
           <div className="py-4">
             <div className="mx-auto w-fit">
-              <NoteEditor
-                notes={toLegacyNotes(
-                  composition.notes as EditorNote[],
-                  layout,
-                  timeSignatureChanges,
-                )}
-                onNotesChange={(legacyNotes) => {
-                  const newNotes = fromLegacyNotes(
-                    legacyNotes,
-                    layout,
-                    timeSignatureChanges,
-                  );
+              <NoteEditorRefactored
+                notes={composition.notes as EditorNote[]}
+                onNotesChange={(newNotes) => {
                   updateComposition({ notes: newNotes });
                 }}
-                repeatMarkers={toLegacyRepeatMarkers(
-                  composition.repeatMarkers as RepeatMarker[],
-                  layout,
-                )}
-                onRepeatMarkersChange={(legacyMarkers) => {
-                  const newMarkers = fromLegacyRepeatMarkers(
-                    legacyMarkers,
-                    layout,
-                  );
+                repeatMarkers={composition.repeatMarkers as RepeatMarker[]}
+                onRepeatMarkersChange={(newMarkers) => {
                   updateComposition({ repeatMarkers: newMarkers });
                 }}
                 lyrics={(composition as Composition).lyrics || []}
@@ -895,36 +931,22 @@ export default function Home() {
                 }}
                 selectedTool={settings.selectedTool}
                 showLabels={settings.showLabels}
-                showKidFaces={settings.showKidFaces}
-                showGrid={settings.showGrid}
-                allowChords={settings.allowChords}
                 allowMove={settings.allowMove}
                 timeSignature={settings.timeSignature}
                 measuresPerRow={measuresPerRow}
                 systemCount={systemCount}
                 totalMeasures={totalMeasures}
-                onSystemCountChange={(count) => {
-                  // System count is now calculated dynamically from layout
-                  // This callback is kept for compatibility but does nothing
-                  console.log(
-                    "System count is now dynamic based on layout:",
-                    count,
-                  );
-                }}
+                onSystemCountChange={() => {}}
                 tempo={settings.tempo}
                 isPlaying={playback.isPlaying}
                 playheadX={playback.playheadX}
                 playheadSystem={playback.playheadSystem}
                 activeNoteId={playback.activeNoteId}
+                onPlayheadBeatChange={playback.handleSeek}
                 svgRef={svgRef}
                 readOnly={isMobile}
                 staffLines={settings.staffLines ?? 3}
                 noteSpacing={settings.noteSpacing ?? 1.0}
-                timeSignatureChanges={timeSignatureChanges}
-                onTimeSignatureChangesChange={handleTimeSignatureChangesChange}
-                onTimeSignatureClick={() =>
-                  setUI({ ...ui, showSettings: true })
-                }
               />
             </div>
           </div>
@@ -991,6 +1013,7 @@ export default function Home() {
         onRestoreDefaults={handleRestoreDefaults}
         onExport={handleExport}
         onExportSelected={handleExportSelected}
+        onNewSong={handleNewSong}
       />
 
       <SettingsModal
@@ -1010,10 +1033,6 @@ export default function Home() {
         showLabels={settings.showLabels}
         onShowLabelsChange={(show) =>
           setSettings({ ...settings, showLabels: show })
-        }
-        showKidFaces={settings.showKidFaces}
-        onShowKidFacesChange={(show) =>
-          setSettings({ ...settings, showKidFaces: show })
         }
         showGrid={settings.showGrid}
         onShowGridChange={(show) =>
@@ -1049,6 +1068,39 @@ export default function Home() {
         beatsPerMeasure={beatsPerMeasure}
         notes={composition.notes as EditorNote[]}
       />
+
+      {/* New Song Confirmation Dialog */}
+      {showNewSongConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowNewSongConfirm(false)}
+          />
+          <div className="relative bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Unsaved Changes
+            </h3>
+            <p className="text-gray-600 mb-4">
+              You have unsaved changes that will be lost if you start a new
+              song. Do you want to continue?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowNewSongConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmNewSong}
+                className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                Start New Song
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* First visit tour */}
       <FirstVisitTour />

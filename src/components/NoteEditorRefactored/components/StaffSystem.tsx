@@ -26,6 +26,7 @@ export interface StaffSystemProps {
   staffLines: number;
   timeSignature: TimeSignature;
   readOnly: boolean;
+  showGrid?: boolean;
   onTimeSignatureClick?: () => void;
   /** Repeat markers to render (rendered format with system/measure) */
   repeatMarkers?: RenderedRepeatMarker[];
@@ -66,6 +67,7 @@ export function StaffSystem({
   staffLines,
   timeSignature,
   readOnly,
+  showGrid = true,
   onTimeSignatureClick,
   repeatMarkers = [],
   onRepeatMarkersChange,
@@ -81,7 +83,8 @@ export function StaffSystem({
   isDraggingMarker = false,
 }: StaffSystemProps) {
   const isFirstSystem = systemIndex === 0;
-  const staffCenterY = getStaffCenterY(systemIndex);
+  // Use dynamic system height based on staff lines
+  const staffCenterY = getStaffCenterY(systemIndex, staffLines);
 
   // Dynamic staff extents based on visible lines
   const staffTopOffset =
@@ -145,6 +148,31 @@ export function StaffSystem({
           );
         }),
       )}
+
+      {/* Grid lines - dashed vertical lines at each beat position */}
+      {showGrid &&
+        sysMeasures.flatMap((measure) =>
+          Array.from({ length: measure.beatsInMeasure }, (_, beatInMeasure) => {
+            const beatX =
+              LEFT_MARGIN +
+              measure.xOffset +
+              beatInMeasure * sysBeatWidth +
+              getNoteOffset(sysBeatWidth);
+            return (
+              <line
+                key={`grid-${systemIndex}-${measure.startBeatInSystem + beatInMeasure}`}
+                x1={beatX}
+                y1={staffCenterY + staffTopOffset - staffPadding + 5}
+                x2={beatX}
+                y2={staffCenterY + staffBottomOffset + staffPadding - 5}
+                stroke="#cbd5e1"
+                strokeWidth={1}
+                strokeDasharray="3,3"
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          }),
+        )}
 
       {/* Staff lines */}
       {(() => {

@@ -54,6 +54,8 @@ export interface LyricsLayerProps {
   isPlaying?: boolean;
   /** Currently editing lyric state (to hide the original text) */
   editingLyric?: EditingLyricState | null;
+  /** Number of visible staff lines (for dynamic system height) */
+  staffLines?: number;
 }
 
 // ============================================================================
@@ -82,6 +84,7 @@ export function LyricsLayer({
   readOnly = false,
   isPlaying = false,
   editingLyric,
+  staffLines,
 }: LyricsLayerProps) {
   const isLyricToolActive =
     selectedTool === "lyrics" && !readOnly && !isPlaying;
@@ -119,7 +122,8 @@ export function LyricsLayer({
           getNoteOffset(lyricSysLayout.beatWidth);
 
         // Calculate Y position: below the staff (after beat numbers)
-        const staffCenterY = getStaffCenterY(system);
+        // Pass staffLines for dynamic system height calculation
+        const staffCenterY = getStaffCenterY(system, staffLines);
         const lyricsY = staffCenterY + LINE_SPACING * 3 + 30;
 
         return (

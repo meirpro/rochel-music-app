@@ -103,15 +103,16 @@ export const STAFF_CONFIG = {
   noteRadius: 14, // Larger notes
   padding: 30,
   leftStart: 100, // Where notes start (after clef and time sig)
-  systemGap: 200, // Distance between staff systems (increased for label/lyric spacing)
+  systemGap: 200, // Base distance (use getEffectiveSystemHeight for dynamic adjustment)
   targetMeasureWidth: 200, // Target width per measure
   minMeasuresPerSystem: 2,
   maxMeasuresPerSystem: 6,
 };
 
 // Staff layout constants (shared with NoteEditor)
-export const SYSTEM_HEIGHT = 180;
-export const SYSTEM_TOP_MARGIN = 60;
+// NOTE: Primary source of truth is now in src/lib/layoutUtils.ts
+export const SYSTEM_HEIGHT = 200; // Base height (use getEffectiveSystemHeight for dynamic)
+export const SYSTEM_TOP_MARGIN = 60; // Match layoutUtils.ts
 
 // Theme colors (light mode for kids)
 export const THEME = {

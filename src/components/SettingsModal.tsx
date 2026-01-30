@@ -24,9 +24,6 @@ interface SettingsModalProps {
   showLabels: boolean;
   onShowLabelsChange: (show: boolean) => void;
 
-  showKidFaces: boolean;
-  onShowKidFacesChange: (show: boolean) => void;
-
   showGrid: boolean;
   onShowGridChange: (show: boolean) => void;
 
@@ -51,8 +48,6 @@ export function SettingsModal({
   onInstrumentChange,
   showLabels,
   onShowLabelsChange,
-  showKidFaces,
-  onShowKidFacesChange,
   showGrid,
   onShowGridChange,
   allowChords,
@@ -294,29 +289,25 @@ export function SettingsModal({
 
             {/* Toggle Switches */}
             <div className="space-y-3">
-              <ToggleSwitch
+              <ToggleSwitchWithDescription
                 label="Note Names (C, D, E...)"
+                description="Display note letter names inside each note head"
                 checked={showLabels}
                 onChange={onShowLabelsChange}
                 color="emerald"
               />
 
-              <ToggleSwitch
-                label="Kid Faces"
-                checked={showKidFaces}
-                onChange={onShowKidFacesChange}
-                color="pink"
-              />
-
-              <ToggleSwitch
+              <ToggleSwitchWithDescription
                 label="Grid Lines"
+                description="Show dashed vertical lines at each beat position to help with note placement"
                 checked={showGrid}
                 onChange={onShowGridChange}
                 color="blue"
               />
 
-              <ToggleSwitch
+              <ToggleSwitchWithDescription
                 label="Chords (Multiple Notes)"
+                description="Allow placing multiple notes at the same beat position to create chords"
                 checked={allowChords}
                 onChange={onAllowChordsChange}
                 color="purple"
@@ -339,15 +330,22 @@ export function SettingsModal({
   );
 }
 
-// Toggle Switch Component (Kid-Friendly)
-interface ToggleSwitchProps {
+// Toggle Switch Component with Description
+interface ToggleSwitchWithDescriptionProps {
   label: string;
+  description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   color: "emerald" | "pink" | "blue" | "purple";
 }
 
-function ToggleSwitch({ label, checked, onChange, color }: ToggleSwitchProps) {
+function ToggleSwitchWithDescription({
+  label,
+  description,
+  checked,
+  onChange,
+  color,
+}: ToggleSwitchWithDescriptionProps) {
   const colorClasses = {
     emerald: "bg-emerald-300",
     pink: "bg-pink-300",
@@ -356,23 +354,25 @@ function ToggleSwitch({ label, checked, onChange, color }: ToggleSwitchProps) {
   };
 
   return (
-    <label className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors shadow-sm">
-      <span className="text-base font-medium text-gray-700">{label}</span>
-      <div
-        className={`relative w-14 h-7 rounded-full transition-colors ${
-          checked ? colorClasses[color] : "bg-gray-200"
-        }`}
-        onClick={(e) => {
-          e.preventDefault();
-          onChange(!checked);
-        }}
-      >
+    <div
+      className="p-3 bg-white rounded-xl border-2 border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors shadow-sm"
+      onClick={() => onChange(!checked)}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-base font-medium text-gray-700">{label}</span>
         <div
-          className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-            checked ? "translate-x-7" : "translate-x-0"
+          className={`relative w-14 h-7 rounded-full transition-colors ${
+            checked ? colorClasses[color] : "bg-gray-200"
           }`}
-        />
+        >
+          <div
+            className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+              checked ? "translate-x-7" : "translate-x-0"
+            }`}
+          />
+        </div>
       </div>
-    </label>
+      <p className="text-xs text-gray-500 mt-1.5">{description}</p>
+    </div>
   );
 }

@@ -241,14 +241,23 @@ export function fromLegacyNotes(
 
 /**
  * Convert new repeat marker to legacy format
+ *
+ * For END markers at system boundaries (measureNumber is multiple of measuresPerRow),
+ * place at the end of the previous system instead of measure 0 of the next system.
  */
 export function toLegacyRepeatMarker(
   marker: NewRepeatMarker,
   layout: LayoutConfig,
 ): LegacyRepeatMarker {
   const { beatsPerMeasure: _beatsPerMeasure, measuresPerRow } = layout;
-  const system = Math.floor(marker.measureNumber / measuresPerRow);
-  const measure = marker.measureNumber % measuresPerRow;
+  let system = Math.floor(marker.measureNumber / measuresPerRow);
+  let measure = marker.measureNumber % measuresPerRow;
+
+  // For END markers at system boundaries, place at end of previous system
+  if (marker.type === "end" && measure === 0 && marker.measureNumber > 0) {
+    system = system - 1;
+    measure = measuresPerRow;
+  }
 
   return {
     id: marker.id,

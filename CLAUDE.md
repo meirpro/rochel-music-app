@@ -13,7 +13,7 @@ The following layout constants **must be kept in sync** between files:
 const LEFT_MARGIN = 100;
 const BEAT_WIDTH = 60;
 const NOTE_OFFSET = 15;        // Center notes within beat columns
-const SYSTEM_HEIGHT = 180;
+const SYSTEM_HEIGHT = 200;
 const SYSTEM_TOP_MARGIN = 60;
 const STAFF_CENTER_OFFSET = 80;
 const LINE_SPACING = 32;

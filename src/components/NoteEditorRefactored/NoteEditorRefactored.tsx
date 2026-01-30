@@ -15,10 +15,10 @@ import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import {
   LEFT_MARGIN,
   LINE_SPACING,
-  SYSTEM_HEIGHT,
   SYSTEM_TOP_MARGIN,
   getNoteOffset,
   getStaffCenterY,
+  getEffectiveSystemHeight,
 } from "@/lib/layoutUtils";
 
 // Import extracted utilities
@@ -85,6 +85,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     onLyricsChange,
     selectedTool,
     showLabels = true,
+    showGrid = true,
     allowChords = false,
     allowMove = false,
     playheadX = null,
@@ -184,7 +185,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   );
 
   const svgWidth = maxSvgWidth;
-  const svgHeight = SYSTEM_TOP_MARGIN + systemCount * SYSTEM_HEIGHT + 40;
+  // Dynamic system height based on staff lines (more lines = more space needed)
+  const effectiveSystemHeight = getEffectiveSystemHeight(staffLines);
+  const svgHeight =
+    SYSTEM_TOP_MARGIN + systemCount * effectiveSystemHeight + 40;
 
   // Group eighth notes for beaming (uses rendered notes with system/beat)
   const beamGroups = useMemo(
@@ -700,6 +704,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             staffLines={staffLines}
             timeSignature={timeSignature}
             readOnly={readOnly}
+            showGrid={showGrid}
             onTimeSignatureClick={onTimeSignatureClick}
             repeatMarkers={renderedRepeatMarkers}
             onRepeatMarkersChange={onRepeatMarkersChange}
@@ -792,6 +797,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           readOnly={readOnly}
           isPlaying={isPlaying}
           editingLyric={editingLyric}
+          staffLines={staffLines}
         />
 
         {/* Learn mode: Pitch line highlight */}

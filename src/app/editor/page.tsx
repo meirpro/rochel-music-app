@@ -181,6 +181,7 @@ export default function EditorPage() {
   const [showLyricsModal, setShowLyricsModal] = useState(false);
   const [showRestartTutorialConfirm, setShowRestartTutorialConfirm] =
     useState(false);
+  const [showNewSongConfirm, setShowNewSongConfirm] = useState(false);
 
   // Instrument state (separate from settings for modal compatibility)
   const [instrument, setInstrument] = useState<InstrumentType>("piano");
@@ -368,6 +369,33 @@ export default function EditorPage() {
     setShowRestartTutorialConfirm(false);
   }, [playback, editor, tutorial]);
 
+  // Request to create a new song - shows confirmation if there are notes
+  const handleNewSong = useCallback(() => {
+    if (editor.hasNotes || editor.lyrics.length > 0) {
+      // Show confirmation dialog if there's content to lose
+      setShowNewSongConfirm(true);
+    } else {
+      // No content, create new song directly
+      playback.handleStop();
+      editor.clearComposition();
+      editor.setSelectedTool("quarter");
+      setShowSongLibrary(false);
+    }
+  }, [editor, playback]);
+
+  // Actually create a new song (called after confirmation)
+  const confirmNewSong = useCallback(() => {
+    // Stop any playback
+    playback.handleStop();
+    // Clear all editor content (notes, repeat markers, lyrics)
+    editor.clearComposition();
+    // Reset the selected tool to quarter note (default)
+    editor.setSelectedTool("quarter");
+    // Close dialogs
+    setShowNewSongConfirm(false);
+    setShowSongLibrary(false);
+  }, [playback, editor]);
+
   // Download as PNG
   const handleDownloadPNG = useCallback(async () => {
     if (!svgRef.current) return;
@@ -539,6 +567,8 @@ export default function EditorPage() {
             onLyricsChange={handleLyricsChange}
             selectedTool={editor.selectedTool}
             showLabels={editor.settings.showLabels}
+            showGrid={editor.settings.showGrid}
+            allowChords={editor.settings.allowChords}
             allowMove={editor.allowMove}
             systemCount={editor.systemCount}
             totalMeasures={editor.settings.totalMeasures}
@@ -618,6 +648,7 @@ export default function EditorPage() {
         onDeleteSong={editor.deleteSong}
         onSaveSong={editor.saveSong}
         onUpdateCurrentSong={editor.updateCurrentSong}
+        onNewSong={handleNewSong}
         onRestoreDefaults={editor.restoreDefaults}
         onExport={editor.exportSongs}
         onExportSelected={editor.exportSelectedSongs}
@@ -635,12 +666,10 @@ export default function EditorPage() {
         onInstrumentChange={setInstrument}
         showLabels={editor.settings.showLabels}
         onShowLabelsChange={editor.setShowLabels}
-        showKidFaces={false}
-        onShowKidFacesChange={() => {}}
-        showGrid={true}
-        onShowGridChange={() => {}}
-        allowChords={true}
-        onAllowChordsChange={() => {}}
+        showGrid={editor.settings.showGrid}
+        onShowGridChange={editor.setShowGrid}
+        allowChords={editor.settings.allowChords}
+        onAllowChordsChange={editor.setAllowChords}
         staffLines={editor.settings.staffLines}
         onStaffLinesChange={editor.setStaffLines}
         noteSpacing={editor.settings.noteSpacing}
@@ -710,6 +739,61 @@ export default function EditorPage() {
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
               >
                 Clear & Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Song Confirmation Modal */}
+      {showNewSongConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-100 to-purple-100 border-b border-blue-200">
+              <h2 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                Create New Song?
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className="text-gray-700">
+                Creating a new song will clear all your current notes, lyrics,
+                and repeat markers.
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                Make sure to save your current work first if you want to keep
+                it.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowNewSongConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmNewSong}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+              >
+                Clear & Create New
               </button>
             </div>
           </div>

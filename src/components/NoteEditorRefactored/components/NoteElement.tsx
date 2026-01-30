@@ -232,7 +232,7 @@ export function NoteElement({
 
   // Stem direction: notes above middle line have stems down
   // For beamed notes, use the beam group's stem direction
-  const staffCenterY = getStaffCenterY(note.system);
+  const staffCenterY = getStaffCenterY(note.system, staffLines);
   let stemDir: "up" | "down" = y > staffCenterY ? "up" : "down";
   if (isBeamed) {
     const beamGroup = beamGroups.find((g) =>

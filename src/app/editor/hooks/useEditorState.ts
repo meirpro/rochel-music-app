@@ -48,6 +48,8 @@ interface EditorSettings {
   measuresPerRow: number;
   totalMeasures: number;
   showLabels: boolean;
+  showGrid: boolean;
+  allowChords: boolean;
   showPiano: boolean;
   useColors: boolean;
   showBlackKeys: boolean;
@@ -61,6 +63,8 @@ const DEFAULT_SETTINGS: EditorSettings = {
   measuresPerRow: 4,
   totalMeasures: 4,
   showLabels: true,
+  showGrid: true,
+  allowChords: false,
   showPiano: false,
   useColors: true,
   showBlackKeys: true,
@@ -105,6 +109,8 @@ export interface UseEditorStateReturn {
   setMeasuresPerRow: (count: number) => void;
   setTotalMeasures: (count: number) => void;
   setShowLabels: (show: boolean) => void;
+  setShowGrid: (show: boolean) => void;
+  setAllowChords: (allow: boolean) => void;
   setShowPiano: (show: boolean) => void;
   setUseColors: (use: boolean) => void;
   setShowBlackKeys: (show: boolean) => void;
@@ -453,6 +459,20 @@ export function useEditorState(
     [setSettings],
   );
 
+  const setShowGrid = useCallback(
+    (showGrid: boolean) => {
+      setSettings((prev) => ({ ...prev, showGrid }));
+    },
+    [setSettings],
+  );
+
+  const setAllowChords = useCallback(
+    (allowChords: boolean) => {
+      setSettings((prev) => ({ ...prev, allowChords }));
+    },
+    [setSettings],
+  );
+
   const setShowPiano = useCallback(
     (showPiano: boolean) => {
       setSettings((prev) => ({ ...prev, showPiano }));
@@ -666,6 +686,8 @@ export function useEditorState(
     setMeasuresPerRow,
     setTotalMeasures,
     setShowLabels,
+    setShowGrid,
+    setAllowChords,
     setShowPiano,
     setUseColors,
     setShowBlackKeys,

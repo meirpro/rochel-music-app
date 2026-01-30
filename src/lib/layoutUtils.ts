@@ -23,8 +23,8 @@ export const LEFT_MARGIN = 100; // Space before first beat for clef and time sig
 export const STAFF_LEFT = 10; // Where staff lines start (left of clef)
 export const RIGHT_MARGIN = 30; // Space after last beat
 export const LINE_SPACING = 32; // Vertical distance between staff lines (pixels)
-export const SYSTEM_HEIGHT = 200; // Vertical space between system centers
-export const SYSTEM_TOP_MARGIN = 100; // Top margin for first system (accommodates clef)
+export const SYSTEM_HEIGHT = 200; // Base vertical space between system centers (use getEffectiveSystemHeight for dynamic adjustment)
+export const SYSTEM_TOP_MARGIN = 60; // Top margin for first system (reduced for less whitespace)
 export const STAFF_CENTER_OFFSET = 80; // Offset from system top to staff center (Line 3)
 
 // Decoration widths for time signatures and repeat markers
@@ -59,9 +59,36 @@ export function getNoteOffset(beatWidth: number): number {
 }
 
 /**
+ * Calculate effective system height based on the number of visible staff lines.
+ * More lines need more vertical space to prevent overlap between lyrics and the next clef.
+ * @param staffLines - Number of visible staff lines (3, 4, or 5)
+ * @returns Effective system height in pixels
+ */
+export function getEffectiveSystemHeight(staffLines: number = 5): number {
+  switch (staffLines) {
+    case 5:
+      return SYSTEM_HEIGHT + 60; // 260px for 5 lines (lyrics + full clef)
+    case 4:
+      return SYSTEM_HEIGHT + 30; // 230px for 4 lines
+    case 3:
+    default:
+      return SYSTEM_HEIGHT; // 200px for 3 lines (base)
+  }
+}
+
+/**
  * Get the Y coordinate for the center of a staff system
  * @param systemIndex - 0-indexed system number
+ * @param staffLines - Optional: number of visible staff lines for dynamic height (default: uses base SYSTEM_HEIGHT)
  */
-export function getStaffCenterY(systemIndex: number): number {
-  return SYSTEM_TOP_MARGIN + systemIndex * SYSTEM_HEIGHT + STAFF_CENTER_OFFSET;
+export function getStaffCenterY(
+  systemIndex: number,
+  staffLines?: number,
+): number {
+  const effectiveHeight = staffLines
+    ? getEffectiveSystemHeight(staffLines)
+    : SYSTEM_HEIGHT;
+  return (
+    SYSTEM_TOP_MARGIN + systemIndex * effectiveHeight + STAFF_CENTER_OFFSET
+  );
 }
