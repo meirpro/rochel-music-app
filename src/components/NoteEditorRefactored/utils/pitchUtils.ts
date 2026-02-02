@@ -107,6 +107,7 @@ export function getSystemFromY(
   // Each staff has valid note placement from position 7 (top) to position 0 (bottom)
   // Position 7: y = staffCenterY - 48 (above top line)
   // Position 0: y = staffCenterY + 64 (below bottom line)
+  // Lyrics zone extends to staffCenterY + LINE_SPACING * 3 + 45 (approximately +141)
   // For gaps between systems, use midpoint as boundary
 
   for (let sys = 0; sys < systemCount; sys++) {
@@ -115,15 +116,18 @@ export function getSystemFromY(
     // Calculate visual boundaries for this system
     // Extend beyond the exact note positions to catch clicks near the staff
     const topNoteY = staffCenterY - 48; // Position 7 (highest note)
-    const bottomNoteY = staffCenterY + 64; // Position 0 (lowest note)
+    // Include lyrics zone in the visual extent (lyrics go to staffCenterY + ~141)
+    const bottomVisualY = staffCenterY + LINE_SPACING * 3 + 45; // Bottom of lyrics zone
 
     // Top boundary: midpoint to previous system, or 0 for first system
     let topBound: number;
     if (sys === 0) {
       topBound = 0;
     } else {
-      const prevBottomNoteY = getStaffCenterY(sys - 1, staffLines) + 64;
-      topBound = (prevBottomNoteY + topNoteY) / 2;
+      // Use previous system's lyrics zone bottom for calculating boundary
+      const prevBottomVisualY =
+        getStaffCenterY(sys - 1, staffLines) + LINE_SPACING * 3 + 45;
+      topBound = (prevBottomVisualY + topNoteY) / 2;
     }
 
     // Bottom boundary: midpoint to next system, or Infinity for last system
@@ -132,7 +136,7 @@ export function getSystemFromY(
       bottomBound = Infinity;
     } else {
       const nextTopNoteY = getStaffCenterY(sys + 1, staffLines) - 48;
-      bottomBound = (bottomNoteY + nextTopNoteY) / 2;
+      bottomBound = (bottomVisualY + nextTopNoteY) / 2;
     }
 
     if (y >= topBound && y < bottomBound) {
