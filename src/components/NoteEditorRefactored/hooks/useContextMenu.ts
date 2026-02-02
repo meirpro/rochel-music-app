@@ -391,7 +391,7 @@ export function useContextMenu({
       }
 
       const { x, y } = getCoords(e);
-      const initialSystem = getSystemFromY(y, systemCount);
+      const initialSystem = getSystemFromY(y, systemCount, staffLines);
 
       const {
         system: bestSystem,
@@ -406,7 +406,7 @@ export function useContextMenu({
         getBeatFromXInSystem,
       );
 
-      const staffCenterY = getStaffCenterY(bestSystem);
+      const staffCenterY = getStaffCenterY(bestSystem, staffLines);
       const sysStaffRightForCtx = sysLayoutForCtx.staffRight;
 
       // Check bounds

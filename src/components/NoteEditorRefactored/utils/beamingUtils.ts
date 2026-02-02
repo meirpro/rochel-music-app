@@ -29,6 +29,7 @@ import { getYFromPitch } from "./pitchUtils";
 export function groupEighthNotes(
   allNotes: RenderedNote[],
   systemLayouts: SystemLayout[],
+  staffLines?: number,
 ): BeamGroup[] {
   // Include sixteenths (0.25), eighths (0.5), and dotted eighths (0.75) for beaming
   const beamableNotes = allNotes.filter(
@@ -114,7 +115,7 @@ export function groupEighthNotes(
       } else {
         // Not consecutive or has notes in between, finish current group
         if (currentGroup.length >= 2) {
-          groups.push(createBeamGroup(currentGroup));
+          groups.push(createBeamGroup(currentGroup, staffLines));
         }
         currentGroup = [note];
         currentBeatGroup = absoluteBeatGroup;
@@ -122,7 +123,7 @@ export function groupEighthNotes(
     } else {
       // Different beat group, finish current and start new
       if (currentGroup.length >= 2) {
-        groups.push(createBeamGroup(currentGroup));
+        groups.push(createBeamGroup(currentGroup, staffLines));
       }
       currentGroup = [note];
       currentBeatGroup = absoluteBeatGroup;
@@ -131,7 +132,7 @@ export function groupEighthNotes(
 
   // Don't forget the last group
   if (currentGroup.length >= 2) {
-    groups.push(createBeamGroup(currentGroup));
+    groups.push(createBeamGroup(currentGroup, staffLines));
   }
 
   return groups;
@@ -149,13 +150,16 @@ export function groupEighthNotes(
  *
  * This ensures the beam doesn't collide with nearby staff lines.
  */
-export function createBeamGroup(notes: RenderedNote[]): BeamGroup {
+export function createBeamGroup(
+  notes: RenderedNote[],
+  staffLines?: number,
+): BeamGroup {
   let maxDistance = 0;
   let stemDirection: "up" | "down" = "up";
 
   for (const note of notes) {
-    const staffCenterY = getStaffCenterY(note.system);
-    const noteY = getYFromPitch(note.pitch, note.system);
+    const staffCenterY = getStaffCenterY(note.system, staffLines);
+    const noteY = getYFromPitch(note.pitch, note.system, staffLines);
     const distance = Math.abs(noteY - staffCenterY);
     if (distance > maxDistance) {
       maxDistance = distance;

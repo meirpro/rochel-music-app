@@ -130,9 +130,11 @@ export interface NoteElementProps {
 export function DurationExtension({
   note,
   systemLayouts,
+  staffLines,
 }: {
   note: RenderedNote;
   systemLayouts: SystemLayout[];
+  staffLines?: number;
 }) {
   // Skip if note has invalid data
   if (
@@ -156,7 +158,7 @@ export function DurationExtension({
   // Use getBeatXInSystem to account for decoration widths
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysBeatWidth);
-  const y = getYFromPitch(note.pitch, note.system);
+  const y = getYFromPitch(note.pitch, note.system, staffLines);
   const color = getNoteColor(note.pitch);
 
   // Extension shows adjusted duration (shortened by 1/8 beat)
@@ -209,7 +211,7 @@ export function NoteElement({
   const sysLayout = getLayoutForSystem(systemLayouts, note.system);
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysLayout.beatWidth);
-  const y = getYFromPitch(note.pitch, note.system);
+  const y = getYFromPitch(note.pitch, note.system, staffLines);
   const color = getNoteColor(note.pitch);
   const isActive = activeNoteId === note.id;
   const isBeamed = beamedNoteIds.has(note.id);
@@ -425,6 +427,8 @@ export interface BeamGroupElementProps {
   groupIndex: number;
   /** Layout information for all systems */
   systemLayouts: SystemLayout[];
+  /** Number of visible staff lines (for dynamic system height) */
+  staffLines?: number;
 }
 
 /**
@@ -459,6 +463,7 @@ export function BeamGroupElement({
   group,
   groupIndex,
   systemLayouts,
+  staffLines,
 }: BeamGroupElementProps) {
   const { notes: groupNotes, stemDirection } = group;
 
@@ -498,7 +503,7 @@ export function BeamGroupElement({
   // STEP 2: Calculate stem Y endpoints (before beam slope adjustment)
   // ─────────────────────────────────────────────────────────────────────────
   const stemYs = groupNotes.map((note) => {
-    const noteY = getYFromPitch(note.pitch, note.system);
+    const noteY = getYFromPitch(note.pitch, note.system, staffLines);
     return stemDirection === "up" ? noteY - stemH : noteY + stemH;
   });
 
@@ -654,7 +659,7 @@ export function BeamGroupElement({
       {/* Stems from each note to the beam */}
       {groupNotes.map((note, i) => {
         const stemX = stemXs[i];
-        const noteY = getYFromPitch(note.pitch, note.system);
+        const noteY = getYFromPitch(note.pitch, note.system, staffLines);
         const beamY = getBeamYAtX(stemX);
         return (
           <line
@@ -701,7 +706,7 @@ export function BeamGroupElement({
         const noteX =
           getBeatXInSystem(dotSysLayout, note.beat) +
           getNoteOffset(dotSysLayout.beatWidth);
-        const noteY = getYFromPitch(note.pitch, note.system);
+        const noteY = getYFromPitch(note.pitch, note.system, staffLines);
         return (
           <circle
             key={`beam-dot-${groupIndex}-${i}`}

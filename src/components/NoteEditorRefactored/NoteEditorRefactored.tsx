@@ -15,10 +15,11 @@ import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import {
   LEFT_MARGIN,
   LINE_SPACING,
-  SYSTEM_TOP_MARGIN,
   getNoteOffset,
   getStaffCenterY,
   getEffectiveSystemHeight,
+  getEffectiveTopMargin,
+  getEffectiveBottomPadding,
 } from "@/lib/layoutUtils";
 
 // Import extracted utilities
@@ -185,15 +186,19 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   );
 
   const svgWidth = maxSvgWidth;
-  // Dynamic system height based on staff lines (more lines = more space needed)
+  // Dynamic layout based on staff lines (more lines = different margins/heights)
   const effectiveSystemHeight = getEffectiveSystemHeight(staffLines);
+  const effectiveTopMargin = getEffectiveTopMargin(staffLines);
+  const effectiveBottomPadding = getEffectiveBottomPadding(staffLines);
   const svgHeight =
-    SYSTEM_TOP_MARGIN + systemCount * effectiveSystemHeight + 40;
+    effectiveTopMargin +
+    systemCount * effectiveSystemHeight +
+    effectiveBottomPadding;
 
   // Group eighth notes for beaming (uses rendered notes with system/beat)
   const beamGroups = useMemo(
-    () => groupEighthNotes(renderedNotes, systemLayouts),
-    [renderedNotes, systemLayouts],
+    () => groupEighthNotes(renderedNotes, systemLayouts, staffLines),
+    [renderedNotes, systemLayouts, staffLines],
   );
 
   // Get set of note IDs that are part of beam groups
@@ -358,6 +363,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     beatsPerMeasure: defaultLayout.beatsPerMeasure,
     selectedTool,
     svgRef,
+    staffLines,
   });
 
   // Use extracted time signature picker hook
@@ -446,7 +452,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       if (isDraggingPlayhead && onPlayheadBeatChange) {
         const { x, y } = getCoords(e);
         // Determine which system/row the mouse is over
-        const targetSystem = getSystemFromY(y, systemCount);
+        const targetSystem = getSystemFromY(y, systemCount, staffLines);
         const sysLayout = getLayoutForSystem(systemLayouts, targetSystem);
         // Calculate beat from X position
         const rawBeat = getBeatFromXInSystem(
@@ -469,7 +475,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       // Handle repeat marker dragging
       if (draggedMarker) {
         const { x, y } = getCoords(e);
-        const system = getSystemFromY(y, systemCount);
+        const system = getSystemFromY(y, systemCount, staffLines);
         handleMarkerDrag(x, y, system);
         return;
       }
@@ -477,14 +483,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       // Handle repeat tool hover tracking
       if (selectedTool === "repeat" && !readOnly && !draggedMarker) {
         const { x, y } = getCoords(e);
-        const system = getSystemFromY(y, systemCount);
+        const system = getSystemFromY(y, systemCount, staffLines);
         handleRepeatHover(x, system);
       }
 
       if (!draggedNote) return;
 
       const { x, y } = getCoords(e);
-      const initialSystem = getSystemFromY(y, systemCount);
+      const initialSystem = getSystemFromY(y, systemCount, staffLines);
 
       const { system: bestSystem, beat } = findBestSystemForX(
         x,
@@ -590,7 +596,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       // Get SVG coordinates from mouse event (uses getCoords which accounts for viewBox offset)
       const { x, y } = getCoords(e);
 
-      const system = getSystemFromY(y, systemCount);
+      const system = getSystemFromY(y, systemCount, staffLines);
       const sysLayout = getLayoutForSystem(systemLayouts, system);
 
       // Handle repeat tool - delegate to hook
@@ -727,6 +733,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             key={`duration-${note.id}`}
             note={note}
             systemLayouts={systemLayouts}
+            staffLines={staffLines}
           />
         ))}
 
@@ -758,6 +765,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             group={group}
             groupIndex={index}
             systemLayouts={systemLayouts}
+            staffLines={staffLines}
           />
         ))}
 
@@ -766,7 +774,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           !readOnly &&
           !isPlaying &&
           Array.from({ length: systemCount }, (_, systemIndex) => {
-            const staffCenterY = getStaffCenterY(systemIndex);
+            const staffCenterY = getStaffCenterY(systemIndex, staffLines);
             const lyricsZoneY = staffCenterY + LINE_SPACING * 3 + 15;
             const lyricsZoneLayout = getLayoutForSystem(
               systemLayouts,
@@ -875,7 +883,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 LEFT_MARGIN + localStartBeat * sysLayout.beatWidth;
               const highlightEndX =
                 LEFT_MARGIN + localEndBeat * sysLayout.beatWidth;
-              const staffCenterY = getStaffCenterY(sys);
+              const staffCenterY = getStaffCenterY(sys, staffLines);
 
               highlights.push(
                 <rect
@@ -1008,7 +1016,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             const showTextMeasure = hoveredRepeatMeasure
               ? hoveredRepeatMeasure.measure
               : repeatStart.measure;
-            const textStaffCenterY = getStaffCenterY(showTextSystem);
+            const textStaffCenterY = getStaffCenterY(
+              showTextSystem,
+              staffLines,
+            );
 
             const textToShow = hoveredRepeatMeasure
               ? isHoveredBefore
@@ -1067,7 +1078,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 lastMeasureInfo.beatsInMeasure * sysLayout.beatWidth +
                 (lastMeasureInfo.suffixWidth || 0);
               const rangeWidth = rangeEndX - rangeX;
-              const sysStaffCenterY = getStaffCenterY(sys);
+              const sysStaffCenterY = getStaffCenterY(sys, staffLines);
 
               // Calculate staff extents based on visible lines (same as StaffSystem)
               const sysStaffTopOffset =

@@ -24,7 +24,8 @@ export const STAFF_LEFT = 10; // Where staff lines start (left of clef)
 export const RIGHT_MARGIN = 30; // Space after last beat
 export const LINE_SPACING = 32; // Vertical distance between staff lines (pixels)
 export const SYSTEM_HEIGHT = 200; // Base vertical space between system centers (use getEffectiveSystemHeight for dynamic adjustment)
-export const SYSTEM_TOP_MARGIN = 60; // Top margin for first system (reduced for less whitespace)
+export const BASE_SYSTEM_TOP_MARGIN = 60; // Base top margin (use getEffectiveTopMargin for dynamic adjustment)
+export const SYSTEM_TOP_MARGIN = 60; // Legacy alias for BASE_SYSTEM_TOP_MARGIN (for compatibility)
 export const STAFF_CENTER_OFFSET = 80; // Offset from system top to staff center (Line 3)
 
 // Decoration widths for time signatures and repeat markers
@@ -77,9 +78,44 @@ export function getEffectiveSystemHeight(staffLines: number = 5): number {
 }
 
 /**
+ * Calculate effective top margin based on the number of visible staff lines.
+ * Fewer lines need less top margin since the clef visual is smaller.
+ * @param staffLines - Number of visible staff lines (3, 4, or 5)
+ * @returns Effective top margin in pixels
+ */
+export function getEffectiveTopMargin(staffLines: number = 5): number {
+  switch (staffLines) {
+    case 5:
+      return BASE_SYSTEM_TOP_MARGIN + 20; // 80px for 5 lines (larger clef)
+    case 4:
+      return BASE_SYSTEM_TOP_MARGIN + 10; // 70px for 4 lines
+    case 3:
+    default:
+      return BASE_SYSTEM_TOP_MARGIN - 20; // 40px for 3 lines (compact)
+  }
+}
+
+/**
+ * Calculate effective bottom padding based on the number of visible staff lines.
+ * @param staffLines - Number of visible staff lines (3, 4, or 5)
+ * @returns Effective bottom padding in pixels
+ */
+export function getEffectiveBottomPadding(staffLines: number = 5): number {
+  switch (staffLines) {
+    case 5:
+      return 20; // Less padding for 5 lines (already tall)
+    case 4:
+      return 30; // Medium padding for 4 lines
+    case 3:
+    default:
+      return 40; // Base padding for 3 lines
+  }
+}
+
+/**
  * Get the Y coordinate for the center of a staff system
  * @param systemIndex - 0-indexed system number
- * @param staffLines - Optional: number of visible staff lines for dynamic height (default: uses base SYSTEM_HEIGHT)
+ * @param staffLines - Optional: number of visible staff lines for dynamic height and margin
  */
 export function getStaffCenterY(
   systemIndex: number,
@@ -88,7 +124,10 @@ export function getStaffCenterY(
   const effectiveHeight = staffLines
     ? getEffectiveSystemHeight(staffLines)
     : SYSTEM_HEIGHT;
+  const effectiveTopMargin = staffLines
+    ? getEffectiveTopMargin(staffLines)
+    : BASE_SYSTEM_TOP_MARGIN;
   return (
-    SYSTEM_TOP_MARGIN + systemIndex * effectiveHeight + STAFF_CENTER_OFFSET
+    effectiveTopMargin + systemIndex * effectiveHeight + STAFF_CENTER_OFFSET
   );
 }

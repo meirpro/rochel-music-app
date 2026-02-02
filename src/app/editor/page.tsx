@@ -556,7 +556,9 @@ export default function EditorPage() {
         {/* Editor canvas */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-auto p-4 bg-gradient-to-br from-white to-purple-50 flex flex-col items-center"
+          className={`flex-1 overflow-auto p-4 bg-gradient-to-br from-white to-purple-50 flex flex-col items-center ${
+            visibility.showPiano && editor.settings.showPiano ? "pb-36" : ""
+          }`}
         >
           <NoteEditorRefactored
             notes={editor.notes}

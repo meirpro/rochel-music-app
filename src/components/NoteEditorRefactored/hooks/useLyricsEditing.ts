@@ -6,9 +6,8 @@ import { LyricSyllable } from "@/lib/types";
 import {
   LEFT_MARGIN,
   LINE_SPACING,
-  SYSTEM_TOP_MARGIN,
-  SYSTEM_HEIGHT,
   getNoteOffset,
+  getStaffCenterY as getStaffCenterYFromLayout,
 } from "@/lib/layoutUtils";
 import { SystemLayout, getLayoutForSystem } from "../utils/systemLayout";
 import { NoteTool } from "../types";
@@ -29,6 +28,7 @@ export interface UseLyricsEditingParams {
   beatsPerMeasure: number;
   selectedTool: NoteTool;
   svgRef: React.RefObject<SVGSVGElement | null>;
+  staffLines?: number;
 }
 
 // Hook return type
@@ -62,6 +62,7 @@ export function useLyricsEditing({
   beatsPerMeasure,
   selectedTool,
   svgRef,
+  staffLines,
 }: UseLyricsEditingParams): UseLyricsEditingReturn {
   // Editing state
   const [editingLyric, setEditingLyric] = useState<EditingLyricState | null>(
@@ -85,10 +86,13 @@ export function useLyricsEditing({
   // Calculate total beats per system
   const beatsPerSystem = beatsPerMeasure * measuresPerSystem;
 
-  // Calculate staff center Y for a system
-  const getStaffCenterY = useCallback((systemIndex: number): number => {
-    return SYSTEM_TOP_MARGIN + systemIndex * SYSTEM_HEIGHT + 80;
-  }, []);
+  // Calculate staff center Y for a system (uses dynamic staffLines)
+  const getStaffCenterY = useCallback(
+    (systemIndex: number): number => {
+      return getStaffCenterYFromLayout(systemIndex, staffLines);
+    },
+    [staffLines],
+  );
 
   // Handle click in lyrics zone
   const handleLyricsClick = useCallback(

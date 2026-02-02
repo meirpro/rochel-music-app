@@ -98,7 +98,11 @@ export const POSITION_TO_PITCH: Pitch[] = [
 
 // getStaffCenterY imported from @/lib/layoutUtils
 
-export function getSystemFromY(y: number, systemCount: number): number {
+export function getSystemFromY(
+  y: number,
+  systemCount: number,
+  staffLines?: number,
+): number {
   // Use actual staff visual boundaries instead of simple SYSTEM_HEIGHT division
   // Each staff has valid note placement from position 7 (top) to position 0 (bottom)
   // Position 7: y = staffCenterY - 48 (above top line)
@@ -106,7 +110,7 @@ export function getSystemFromY(y: number, systemCount: number): number {
   // For gaps between systems, use midpoint as boundary
 
   for (let sys = 0; sys < systemCount; sys++) {
-    const staffCenterY = getStaffCenterY(sys);
+    const staffCenterY = getStaffCenterY(sys, staffLines);
 
     // Calculate visual boundaries for this system
     // Extend beyond the exact note positions to catch clicks near the staff
@@ -118,7 +122,7 @@ export function getSystemFromY(y: number, systemCount: number): number {
     if (sys === 0) {
       topBound = 0;
     } else {
-      const prevBottomNoteY = getStaffCenterY(sys - 1) + 64;
+      const prevBottomNoteY = getStaffCenterY(sys - 1, staffLines) + 64;
       topBound = (prevBottomNoteY + topNoteY) / 2;
     }
 
@@ -127,7 +131,7 @@ export function getSystemFromY(y: number, systemCount: number): number {
     if (sys === systemCount - 1) {
       bottomBound = Infinity;
     } else {
-      const nextTopNoteY = getStaffCenterY(sys + 1) - 48;
+      const nextTopNoteY = getStaffCenterY(sys + 1, staffLines) - 48;
       bottomBound = (bottomNoteY + nextTopNoteY) / 2;
     }
 
@@ -153,7 +157,7 @@ export function getPitchFromY(
   system: number,
   staffLines: number = 3,
 ): Pitch {
-  const staffCenterY = getStaffCenterY(system);
+  const staffCenterY = getStaffCenterY(system, staffLines);
   // Line 5 (E4, position 2) is at staffCenterY + 2*LINE_SPACING (64px below center)
   // Must match getYFromPitch calculation
   const bottomLineY = staffCenterY + 2 * LINE_SPACING;
@@ -245,15 +249,16 @@ export function changeOctave(pitch: Pitch, direction: "up" | "down"): Pitch {
 export function getYFromPitch(
   pitch: Pitch | undefined | null,
   system: number,
+  staffLines?: number,
 ): number {
   // Guard against undefined/null pitch
   if (!pitch) {
     console.warn("[getYFromPitch] Undefined pitch, defaulting to staff center");
-    return getStaffCenterY(system);
+    return getStaffCenterY(system, staffLines);
   }
 
   const pos = PITCH_POSITIONS[pitch] ?? getPitchPosition(pitch);
-  const staffCenterY = getStaffCenterY(system);
+  const staffCenterY = getStaffCenterY(system, staffLines);
   if (pos < 0) return staffCenterY;
 
   // Round to handle accidentals (sharps/flats share visual position with their natural)

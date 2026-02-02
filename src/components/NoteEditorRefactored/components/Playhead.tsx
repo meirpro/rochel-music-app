@@ -68,9 +68,13 @@ export function Playhead({
   const playheadOverhang = 35;
 
   const playheadTop =
-    getStaffCenterY(playheadSystem) + staffTopOffset - playheadOverhang;
+    getStaffCenterY(playheadSystem, staffLines) +
+    staffTopOffset -
+    playheadOverhang;
   const playheadBottom =
-    getStaffCenterY(playheadSystem) + staffBottomOffset + playheadOverhang;
+    getStaffCenterY(playheadSystem, staffLines) +
+    staffBottomOffset +
+    playheadOverhang;
 
   return (
     <g

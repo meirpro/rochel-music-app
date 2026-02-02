@@ -34,12 +34,11 @@ import {
 import { getLayoutConfig } from "@/components/NoteEditor";
 import {
   LEFT_MARGIN,
-  SYSTEM_HEIGHT,
-  SYSTEM_TOP_MARGIN,
   MIN_BEAT_WIDTH,
   BASE_BEAT_WIDTH,
   TIME_SIG_DISPLAY_WIDTH,
   REPEAT_MARKER_WIDTH,
+  getStaffCenterY,
 } from "@/lib/layoutUtils";
 
 // Playback types
@@ -70,6 +69,7 @@ interface UsePlaybackOptions {
   onScrollTo?: (scrollLeft: number, scrollTop: number) => void;
   noteSpacing?: number; // 1.0 to 2.0, default 1.0
   disableSpacebarControl?: boolean; // When true, caller handles spacebar
+  staffLines?: number; // Number of visible staff lines (3, 4, or 5)
 }
 
 // Measure info for playback cursor positioning
@@ -117,6 +117,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     onScrollTo,
     noteSpacing = 1.0,
     disableSpacebarControl = false,
+    staffLines = 3,
   } = options;
 
   // Playback state
@@ -143,6 +144,10 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
   const totalPlaybackSecondsRef = useRef<number>(0);
   const systemCountRef = useRef<number>(1);
   const tempoRef = useRef<number>(120); // Store tempo for RAF calculations
+
+  // Refs for smart scroll behavior
+  const lastSystemRef = useRef<number>(0); // Last system we were on
+  const scrollPausedUntilRef = useRef<number>(0); // User scroll pause timestamp
 
   // Refs for Tone.js singletons (following React best practices)
   // These are initialized lazily when playback starts
@@ -739,17 +744,32 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         return;
       }
 
-      // Scroll-follow: keep playhead visible with system snapping
+      // Scroll-follow with smart behavior:
+      // - Always scroll when system/row changes
+      // - Otherwise, only recenter after 1.5s of no user scrolling
       if (onScrollTo && containerWidth && containerHeight) {
-        // Horizontal: center playhead in viewport
+        const now = performance.now();
+        const systemChanged = system !== lastSystemRef.current;
+        const userScrollPaused = now < scrollPausedUntilRef.current;
+
+        // Use dynamic layout for proper Y positioning
+        const staffCenterY = getStaffCenterY(system, staffLines);
+
+        // Calculate desired scroll positions
         const desiredScrollX = x - containerWidth / 2;
+        const desiredScrollY = staffCenterY - containerHeight / 2;
 
-        // Vertical: snap to current system row
-        const systemY = SYSTEM_TOP_MARGIN + system * SYSTEM_HEIGHT;
-        const desiredScrollY =
-          systemY - containerHeight / 2 + SYSTEM_HEIGHT / 2;
-
-        onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
+        if (systemChanged) {
+          // Always scroll when moving to a new row/system
+          lastSystemRef.current = system;
+          onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
+          // Give user 1.5s before we start auto-scrolling horizontally again
+          scrollPausedUntilRef.current = now + 1500;
+        } else if (!userScrollPaused) {
+          // User hasn't scrolled recently, recenter to playhead
+          onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
+        }
+        // If userScrollPaused, don't override user's scroll position
       }
 
       rafRef.current = requestAnimationFrame(animatePlayhead);
@@ -814,12 +834,12 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
   }, [
     composition,
     tempo,
-    timeSignature,
     measuresPerRow,
     totalMeasures,
     containerWidth,
     containerHeight,
     onScrollTo,
+    staffLines,
     buildPlaybackData,
     cleanupTransport,
     getPlayheadPosition,

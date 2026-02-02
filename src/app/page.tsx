@@ -343,6 +343,7 @@ export default function Home() {
     containerHeight: containerSize.height,
     onScrollTo: handleScrollTo,
     noteSpacing: settings.noteSpacing ?? 1.0,
+    staffLines: settings.staffLines ?? 3,
   });
 
   // Undo/Redo state
@@ -914,7 +915,7 @@ export default function Home() {
       <div className="flex-1 flex relative overflow-hidden">
         {/* Canvas area */}
         <div ref={editorContainerRef} className="flex-1 overflow-auto">
-          <div className="py-4">
+          <div className={`py-4 ${ui.showPiano ? "pb-36" : ""}`}>
             <div className="mx-auto w-fit">
               <NoteEditorRefactored
                 notes={composition.notes as EditorNote[]}
