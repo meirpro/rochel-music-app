@@ -38,6 +38,7 @@ export interface SongData {
     tempo: number;
     timeSignature: { numerator: number; denominator: number };
     timeSignatureChanges?: TimeSignatureChange[]; // Mid-song time signature changes
+    staffLines?: number; // Number of staff lines to display (default: 3)
   };
   releaseDate: string; // ISO date string (YYYY-MM-DD) when song was added to the app
   transcriptionNotes?: TranscriptionNotes; // Documentation for transcribed songs

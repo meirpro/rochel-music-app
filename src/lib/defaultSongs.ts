@@ -1,6 +1,6 @@
 import { SavedSong, SavedSongsMap } from "./types";
 import { SongData } from "./songs/types";
-import { dayenu, mashiachNow, didanNotzach, aniPurim } from "./songs";
+import { dayenu, mashiachNow, didanNotzach, aniPurim, havdalah } from "./songs";
 
 // Helper to create a SavedSong from a SongData
 // Uses the song's releaseDate for consistent timestamps
@@ -29,6 +29,7 @@ const ALL_DEFAULT_SONGS: SongData[] = [
   mashiachNow,
   didanNotzach,
   aniPurim,
+  havdalah,
 ];
 
 // Generate default songs from individual song files

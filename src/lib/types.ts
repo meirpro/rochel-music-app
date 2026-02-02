@@ -225,6 +225,7 @@ export interface SavedSong {
     tempo: number;
     timeSignature: TimeSignature;
     timeSignatureChanges?: TimeSignatureChange[]; // Mid-song time signature changes
+    staffLines?: number; // Number of staff lines to display (default: 3)
   };
 }
 

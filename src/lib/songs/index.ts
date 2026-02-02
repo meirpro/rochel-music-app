@@ -5,6 +5,7 @@ export { dayenu } from "./dayenu";
 export { mashiachNow } from "./mashiachNow";
 export { didanNotzach } from "./didanNotzach";
 export { aniPurim } from "./aniPurim";
+export { havdalah } from "./havdalah";
 
 // Re-export types
 export type { SongData } from "./types";

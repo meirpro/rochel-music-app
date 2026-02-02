@@ -705,6 +705,8 @@ export default function Home() {
           ...prev,
           tempo: userTempo, // Use localStorage tempo, not song tempo
           timeSignature: song.settings.timeSignature,
+          // Apply song's staffLines if specified, otherwise keep user's preference
+          staffLines: song.settings.staffLines ?? prev.staffLines ?? 3,
         }));
         setCurrentSongId(song.id);
 
