@@ -1,17 +1,6 @@
 import { SavedSong, SavedSongsMap } from "./types";
 import { SongData } from "./songs/types";
-import {
-  dayenu,
-  mashiachNow,
-  didanNotzach,
-  nigunSimcha,
-  koliDodiDofek,
-  avinuMalkenu,
-  animZemirot,
-  shibnehBeitHamikdash,
-  eimatiKaatiMar,
-  aniPurim,
-} from "./songs";
+import { dayenu, mashiachNow, didanNotzach, aniPurim } from "./songs";
 
 // Helper to create a SavedSong from a SongData
 // Uses the song's releaseDate for consistent timestamps
@@ -34,16 +23,11 @@ function createSavedSong(song: SongData): SavedSong {
 }
 
 // All default songs in order of release
+// NOTE: Songs in src/lib/songs/_needs_redo/ are excluded until properly transcribed
 const ALL_DEFAULT_SONGS: SongData[] = [
   dayenu,
   mashiachNow,
   didanNotzach,
-  nigunSimcha,
-  koliDodiDofek,
-  avinuMalkenu,
-  animZemirot,
-  shibnehBeitHamikdash,
-  eimatiKaatiMar,
   aniPurim,
 ];
 

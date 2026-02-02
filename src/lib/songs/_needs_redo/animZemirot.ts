@@ -1,7 +1,7 @@
 // Ani'm Zemirot (אנעים זמירות) - Chabad Niggun
 // Key: G minor (2 flats), Time: 4/4, Tempo: 120
 // Source: Chabad Niggunim
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const animZemirot: SongData = {
   id: "default-anim",

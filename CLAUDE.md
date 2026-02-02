@@ -77,6 +77,8 @@ const [settings, setSettings] = useLocalStorage<Settings>(
 
 ## Sheet Music Transcription Format
 
+**📖 Full Guide: See `SHEET_MUSIC_EXTRACTION.md` for comprehensive extraction instructions.**
+
 Location: `/src/lib/defaultSongs.ts`
 
 When adding new songs from sheet music, follow this format exactly.

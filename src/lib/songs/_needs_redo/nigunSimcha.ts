@@ -1,7 +1,7 @@
 // Nigun Simcha (ניגון שמחה) - A Joyful Niggun
 // Transposed from Db major to C major
 // Time: 4/4, Tempo: 145
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const nigunSimcha: SongData = {
   id: "default-simcha",

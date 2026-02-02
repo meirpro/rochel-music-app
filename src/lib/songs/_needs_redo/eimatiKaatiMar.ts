@@ -1,7 +1,7 @@
 // Eimati Ka'ati Mar (אימתי קאתי מר) - Chabad Niggun
 // Key: G minor (2 flats), Time: 4/4, Tempo: 108
 // Words: From the letter of the Baal Shem Tov, Melody: Yerushalmi
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const eimatiKaatiMar: SongData = {
   id: "default-eimati",

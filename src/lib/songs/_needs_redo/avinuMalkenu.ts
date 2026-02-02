@@ -2,7 +2,7 @@
 // Key: Eb major / C minor (3 flats: Bb, Eb, Ab)
 // Time: 3/4 throughout (no mid-song time signature changes)
 // Source: Admor HaZaken
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const avinuMalkenu: SongData = {
   id: "default-avinu",

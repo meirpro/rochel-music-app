@@ -1,7 +1,7 @@
 // Koli Dodi Dofek (קולי דודי דופק) - Chabad Niggun
 // Key: E minor, Time: 4/4, Tempo: 120
 // By the Alter Rebbe, words from Shir HaShirim
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const koliDodiDofek: SongData = {
   id: "default-koli",

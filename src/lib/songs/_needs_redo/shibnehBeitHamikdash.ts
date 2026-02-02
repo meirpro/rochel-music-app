@@ -1,7 +1,7 @@
 // Shibneh Beit HaMikdash (שיבנה בית המקדש) - Chabad Niggun
 // Key: A minor (no key signature, chromatic F#), Time: 4/4, Tempo: 120
 // Words: From the prayer, Melody: R' Yisrael Shor
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const shibnehBeitHamikdash: SongData = {
   id: "default-shibneh",
