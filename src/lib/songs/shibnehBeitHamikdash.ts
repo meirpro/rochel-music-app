@@ -105,4 +105,5 @@ export const shibnehBeitHamikdash: SongData = {
     tempo: 120,
     timeSignature: { numerator: 4, denominator: 4 },
   },
+  releaseDate: "2025-01-15",
 };

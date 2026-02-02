@@ -1,0 +1,438 @@
+{
+  "source": "israelinote.com",
+  "lastUpdated": "2026-02-02",
+  "songs": [
+    {
+      "filename": "Gam Ki Elech - Avraham Fried - Sheet Music - Notes and Chords - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/gam-ki-elech-avraham-fried-sheet-music/",
+      "songName": "Gam Ki Elech",
+      "artist": "Avraham Fried",
+      "scoreKey": ["D minor (original key)", "E minor"],
+      "range": ["D4-F5", "E4-G5", "D3-F4"],
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "too-complex",
+        "missingFeatures": ["time-sig-changes", "ds-coda"],
+        "transposeTo": null,
+        "priority": 5,
+        "notes": "Multiple time signature changes (4/4↔3/4↔2/4) and D.S. al Coda navigation required"
+      }
+    },
+    {
+      "filename": "Hevenu Shalom Alechem - Tsemed Reim - Sheet Music - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/hevenu-shalom-alechem-tsemed-reim-sheet-music/",
+      "songName": "Hevenu Shalom Alechem",
+      "artist": "Tsemed Reim",
+      "scoreKey": ["D minor (Original Scale)", "E minor", "B minor"],
+      "range": "A4-D5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Trumpet", "Saxophone", "Flute", "Recorder", "Cello", "Tuba", "Trombone", "Double Bass", "Bassoon", "Horn", "Baritone"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": ["rests"],
+        "transposeTo": "A minor",
+        "priority": 2,
+        "notes": "Transpose from D minor; has eighth rests (can omit until rest rendering implemented)"
+      }
+    },
+    {
+      "filename": "Sheet Music for Adon Olam - Uzi Hitman - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/adon-olam-uzi-hitman-sheet-music/",
+      "songName": "Adon Olam",
+      "artist": "Uzi Hitman",
+      "scoreKey": ["E minor", "A minor"],
+      "range": "B3-E5",
+      "difficulty": "Intermediate",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "A minor",
+        "priority": 3,
+        "notes": "2 pages, transpose from E minor to A minor"
+      }
+    },
+    {
+      "filename": "Sheet Music for Al Yedey Nigunim - Chilik Frank - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/al-yedey-nigunim-chilik-frank-sheet-music/",
+      "songName": "Al Yedey Nigunim",
+      "artist": "Chilik Frank",
+      "scoreKey": ["A minor", "B minor"],
+      "range": ["G4-G5", "A2-A3"],
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": null,
+        "priority": 3,
+        "notes": "Already in A minor; has eighth rests and G# accidentals in chords"
+      }
+    },
+    {
+      "filename": "Sheet Music for Ani Purim - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/ani-purim-sheet-music/",
+      "songName": "Ani Purim",
+      "artist": "Israeli Folk",
+      "scoreKey": "C Major",
+      "range": "C4-C5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder"],
+      "appCompatibility": {
+        "status": "compatible",
+        "missingFeatures": ["volta-brackets"],
+        "transposeTo": null,
+        "priority": 1,
+        "notes": "C Major, 4/4 time, pickup beat. Has volta brackets (1st/2nd endings) - workaround: linearize by writing out both repeat passes explicitly"
+      }
+    },
+    {
+      "filename": "Sheet Music for Avinu Malcenu - Tefilah - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/avinu-malcenu-tefilah-sheet-music/",
+      "songName": "Avinu Malcenu",
+      "artist": "Tefilah",
+      "scoreKey": "A Hijaz",
+      "range": "A4-F5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": null,
+        "priority": 3,
+        "notes": "3/4 time, Hijaz mode (D minor with C# accidentals), half and quarter rests"
+      }
+    },
+    {
+      "filename": "Sheet Music for Bore Olam - Shlomo Carlebach - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/bore-olam-shlomo-carlebach-sheet-music/",
+      "songName": "Bore Olam",
+      "artist": "Shlomo Carlebach",
+      "scoreKey": "E minor",
+      "range": "E4-E5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": null,
+        "priority": 3,
+        "notes": "E minor (1 sharp), eighth rests, multiple sections"
+      }
+    },
+    {
+      "filename": "Sheet Music for Chag Purim - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/chag-purim-sheet-music/",
+      "songName": "Chag Purim",
+      "artist": "Israeli Folk",
+      "scoreKey": "D minor",
+      "range": "D4-A4",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "A minor",
+        "priority": 2,
+        "notes": "Transpose from D minor; dotted rhythms supported"
+      }
+    },
+    {
+      "filename": "Sheet Music for Dror Yikra - Yonatan Razel - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/dror-yikra-yonatan-razel-sheet-music/",
+      "songName": "D'ror Yikra",
+      "artist": "Yonatan Razel",
+      "scoreKey": "C Major (Original Key)",
+      "range": "G3-F5",
+      "difficulty": "Intermediate",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Trumpet", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": null,
+        "priority": 3,
+        "notes": "Already C Major; 2 pages, longer transcription effort"
+      }
+    },
+    {
+      "filename": "Sheet Music for Havdalah - Shlomo Carlebach - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/havdalah-shlomo-carlebach-sheet-music/",
+      "songName": "Havdalah",
+      "artist": "Shlomo Carlebach",
+      "scoreKey": ["A minor", "E minor"],
+      "range": ["G4-E5", "A3-B4", "G3-E4"],
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "compatible",
+        "missingFeatures": [],
+        "transposeTo": null,
+        "priority": 1,
+        "notes": "A minor, 4/4 time, no accidentals. Has D.C. which can be ignored by linearizing the form"
+      }
+    },
+    {
+      "filename": "Sheet Music for Inshalla - Yaakov Shwekey - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/inshalla-yaakov-shwekey-sheet-music/",
+      "songName": "Inshalla",
+      "artist": "Yaakov Shwekey",
+      "scoreKey": "C minor",
+      "range": "G4-Ab5",
+      "difficulty": "Intermediate",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": "A minor",
+        "priority": 4,
+        "notes": "C minor (3 flats), 2 pages, complex arrangement"
+      }
+    },
+    {
+      "filename": "Sheet Music for Ma Nishtana - Passover - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/ma-nishtana-passover-sheet-music/",
+      "songName": "Ma Nishtana",
+      "artist": "Israeli Folk",
+      "scoreKey": "D minor (original key)",
+      "range": "A3-C5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Trumpet", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "A minor",
+        "priority": 2,
+        "notes": "Transpose from D minor; sixteenth notes and C# accidentals present"
+      }
+    },
+    {
+      "filename": "Sheet Music for Ma She'at Ohevet - Gali Atari - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/ma-sheat-ohevet-gali-atari-sheet-music/",
+      "songName": "Ma She'at Ohevet",
+      "artist": "Gali Atari",
+      "scoreKey": "D Major",
+      "range": "D4-Eb5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "too-complex",
+        "missingFeatures": ["key-changes", "fermata", "ds"],
+        "transposeTo": null,
+        "priority": 5,
+        "notes": "Key change mid-song (F Major to D Major), fermata, D.S. navigation"
+      }
+    },
+    {
+      "filename": "Sheet Music for Machnisei Rachamim - Avraham Fried - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/machnisei-rachamim-avraham-fried-sheet-music/",
+      "songName": "Machnisei Rachamim",
+      "artist": "Avraham Fried",
+      "scoreKey": "A minor",
+      "range": "A3-G5",
+      "difficulty": "Intermediate",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Trumpet", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": null,
+        "priority": 4,
+        "notes": "Already A minor; 2 pages, has rests"
+      }
+    },
+    {
+      "filename": "Sheet Music for Mahapecha Shel Simcha - Lior Narkis - Omer Adam - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/mahapecha-shel-simcha-lior-narkis-omer-adam-sheet-music/",
+      "songName": "Mahapecha Shel Simcha",
+      "artist": "Lior Narkis & Omer Adam",
+      "scoreKey": "G minor",
+      "range": "F4-G5",
+      "difficulty": "Intermediate",
+      "numberOfPages": 3,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "too-complex",
+        "missingFeatures": ["rests"],
+        "transposeTo": "E minor",
+        "priority": 5,
+        "notes": "G minor (2 flats), 3 pages, complex pop arrangement"
+      }
+    },
+    {
+      "filename": "Sheet Music for Melech Ha'olam - Shlomo Artzi - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/melech-haolam-shlomo-artzi-sheet-music/",
+      "songName": "Melech Ha'olam",
+      "artist": "Shlomo Artzi",
+      "scoreKey": "D minor",
+      "range": "G#3-D5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet"],
+      "appCompatibility": {
+        "status": "too-complex",
+        "missingFeatures": ["time-sig-changes", "key-changes"],
+        "transposeTo": null,
+        "priority": 5,
+        "notes": "Constant time signature changes (every 2-4 bars), key changes throughout"
+      }
+    },
+    {
+      "filename": "Sheet Music for Ochila Lakel - Gilad Potolsky - Shalhevet Orchestra - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/ochila-lakel-gilad-potolsky-shalhevet-orchestra-sheet-music/",
+      "songName": "Ochila Lakel",
+      "artist": "Gilad Potolsky & Shalhevet Orchestra",
+      "scoreKey": ["D minor", "G minor (Original Key)", "E minor"],
+      "range": ["A3-C5", "D4-F5", "B3-C5", "D3-F4"],
+      "difficulty": "Beginner",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Trumpet", "Saxophone", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests"],
+        "transposeTo": "A minor",
+        "priority": 3,
+        "notes": "Transpose from D minor; 2 pages, has rests"
+      }
+    },
+    {
+      "filename": "Sheet Music for Omar Rabbi Akiva - Yaakov shwekey - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/omar-rabbi-akiva-yaakov-shwekey-sheet-music/",
+      "songName": "Omar Rabbi Akiva",
+      "artist": "Yaakov Shwekey",
+      "scoreKey": "Bb Major",
+      "range": "F4-G5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "C Major",
+        "priority": 2,
+        "notes": "Transpose from Bb Major to C Major; dotted rhythms supported"
+      }
+    },
+    {
+      "filename": "Sheet Music for Sha'ar Harachamim - Meir Banai - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/shaar-harachamim-meir-banai-sheet-music/",
+      "songName": "Sha'ar Harachamim",
+      "artist": "Meir Banai",
+      "scoreKey": ["A minor", "E minor"],
+      "range": ["A4-A5", "B3-E5", "E2-A3"],
+      "difficulty": "Beginner",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-features",
+        "missingFeatures": ["rests", "triplets"],
+        "transposeTo": null,
+        "priority": 4,
+        "notes": "Already A minor (no key signature); has triplets and rests"
+      }
+    },
+    {
+      "filename": "Sheet Music for SheHashemesh Ta'avor Alay - Yardena Arazi - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/shehashemesh-taavor-alay-yardena-arazi-sheet-music/",
+      "songName": "SheHashemesh Ta'avor Alay",
+      "artist": "Yardena Arazi",
+      "scoreKey": "G minor",
+      "range": "G4-G5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": ["rests"],
+        "transposeTo": "E minor",
+        "priority": 2,
+        "notes": "Transpose from G minor to E minor; quarter rests present"
+      }
+    },
+    {
+      "filename": "Sheet Music for Shevet Achim Ve'Achaiot - Idan Raichel - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/shevet-achim-veachaiot-idan-raichel-sheet-music/",
+      "songName": "Shevet Achim Ve'Achaiot",
+      "artist": "Idan Raichel",
+      "scoreKey": "A minor",
+      "range": "G4-E5",
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder"],
+      "appCompatibility": {
+        "status": "compatible",
+        "missingFeatures": [],
+        "transposeTo": null,
+        "priority": 1,
+        "notes": "A minor (no key signature), 4/4 time, section labels, quarter rests can be omitted"
+      }
+    },
+    {
+      "filename": "Sheet Music for Vezakeni Legadel - Baruch Levine - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/vezakeni-legadel-baruch-levine-sheet-music/",
+      "songName": "Vezakeni Legadel",
+      "artist": "Baruch Levine",
+      "scoreKey": ["C minor", "A minor"],
+      "range": ["Bb3-C6", "E4-A5"],
+      "difficulty": "Beginner",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "A minor",
+        "priority": 2,
+        "notes": "Transpose from C minor (3 flats) to A minor; 2 pages"
+      }
+    },
+    {
+      "filename": "Sheet Music for Yerushlaim Shebalev - Avraham Fried - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/yerushlaim-shebalev-avraham-fried-sheet-music/",
+      "songName": "Yerushlaim Shebalev",
+      "artist": "Avraham Fried",
+      "scoreKey": "B minor",
+      "range": "E4-A5",
+      "difficulty": "Beginner",
+      "numberOfPages": 2,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Flute", "Recorder"],
+      "appCompatibility": {
+        "status": "too-complex",
+        "missingFeatures": ["dc-coda"],
+        "transposeTo": "A minor",
+        "priority": 5,
+        "notes": "B minor (2 sharps), D.C. al Coda navigation required; 2 pages"
+      }
+    },
+    {
+      "filename": "Sheet Music for Yesh Bi Od Koach - Idan Raichel - Israeli Note.pdf",
+      "sourceUrl": "https://israelinote.com/song/yesh-bi-od-koach-idan-raichel-sheet-music/",
+      "songName": "Yesh Bi Od Koach",
+      "artist": "Idan Raichel",
+      "scoreKey": ["Bb minor (Original Key)", "A minor"],
+      "range": ["Bb3-Bb4", "A3-A4", "Bb2-Bb3"],
+      "difficulty": "Beginner",
+      "numberOfPages": 1,
+      "instruments": ["Piano", "Guitar", "Violin", "Clarinet", "Saxophone", "Trumpet", "Bass Guitar", "Double bass", "Cello", "Trombone", "Bassoon", "Tuba"],
+      "appCompatibility": {
+        "status": "needs-transposition",
+        "missingFeatures": [],
+        "transposeTo": "A minor",
+        "priority": 2,
+        "notes": "Transpose from Bb minor (5 flats) to A minor; very repetitive melody - easy to transcribe"
+      }
+    }
+  ]
+}

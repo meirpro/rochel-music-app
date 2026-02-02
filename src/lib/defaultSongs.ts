@@ -1,4 +1,5 @@
-import { SavedSong } from "./types";
+import { SavedSong, SavedSongsMap } from "./types";
+import { SongData } from "./songs/types";
 import {
   dayenu,
   mashiachNow,
@@ -9,15 +10,18 @@ import {
   animZemirot,
   shibnehBeitHamikdash,
   eimatiKaatiMar,
+  aniPurim,
 } from "./songs";
 
 // Helper to create a SavedSong from a SongData
-function createSavedSong(song: typeof dayenu, createdAt: number): SavedSong {
+// Uses the song's releaseDate for consistent timestamps
+function createSavedSong(song: SongData): SavedSong {
+  const releaseTimestamp = new Date(song.releaseDate).getTime();
   return {
     id: song.id,
     name: song.name,
-    createdAt,
-    updatedAt: createdAt,
+    createdAt: releaseTimestamp,
+    updatedAt: releaseTimestamp,
     composition: {
       notes: song.notes,
       repeatMarkers: song.repeatMarkers,
@@ -27,34 +31,41 @@ function createSavedSong(song: typeof dayenu, createdAt: number): SavedSong {
   };
 }
 
+// All default songs in order of release
+const ALL_DEFAULT_SONGS: SongData[] = [
+  dayenu,
+  mashiachNow,
+  didanNotzach,
+  nigunSimcha,
+  koliDodiDofek,
+  avinuMalkenu,
+  animZemirot,
+  shibnehBeitHamikdash,
+  eimatiKaatiMar,
+  aniPurim,
+];
+
 // Generate default songs from individual song files
-export function getDefaultSongs(): Record<string, SavedSong> {
-  const now = Date.now();
-
-  const songs = [
-    createSavedSong(dayenu, now),
-    createSavedSong(mashiachNow, now - 1000),
-    createSavedSong(didanNotzach, now - 2000),
-    createSavedSong(nigunSimcha, now - 3000),
-    createSavedSong(koliDodiDofek, now - 4000),
-    createSavedSong(avinuMalkenu, now - 5000),
-    createSavedSong(animZemirot, now - 6000),
-    createSavedSong(shibnehBeitHamikdash, now - 7000),
-    createSavedSong(eimatiKaatiMar, now - 8000),
-  ];
-
+export function getDefaultSongs(): SavedSongsMap {
+  const songs = ALL_DEFAULT_SONGS.map((song) => createSavedSong(song));
   return Object.fromEntries(songs.map((song) => [song.id, song]));
 }
 
+// Merge new default songs into existing saved songs
+// This allows users to automatically receive new songs without resetting
+export function mergeWithDefaults(existingSongs: SavedSongsMap): SavedSongsMap {
+  const defaults = getDefaultSongs();
+  const merged = { ...existingSongs };
+
+  // Add any missing default songs
+  for (const [id, song] of Object.entries(defaults)) {
+    if (!(id in merged)) {
+      merged[id] = song;
+    }
+  }
+
+  return merged;
+}
+
 // Default song IDs for checking if defaults exist
-export const DEFAULT_SONG_IDS = [
-  "default-dayenu",
-  "default-mashiach",
-  "default-didan",
-  "default-simcha",
-  "default-koli",
-  "default-avinu",
-  "default-anim",
-  "default-shibneh",
-  "default-eimati",
-];
+export const DEFAULT_SONG_IDS = ALL_DEFAULT_SONGS.map((song) => song.id);

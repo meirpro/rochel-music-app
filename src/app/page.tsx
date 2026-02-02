@@ -26,7 +26,7 @@ import {
   TimeSignatureChange,
   Pitch,
 } from "@/lib/types";
-import { getDefaultSongs } from "@/lib/defaultSongs";
+import { getDefaultSongs, mergeWithDefaults } from "@/lib/defaultSongs";
 import {
   migrateSavedSong,
   migrateAllSongs,
@@ -666,8 +666,21 @@ export default function Home() {
           parsedComp.repeatMarkers?.length === 0);
 
       // For new users: localStorage may be empty, so fall back to defaults
-      // getDefaultSongs() provides the built-in songs like Dayenu
-      const songsToUse = parsedSongs ?? getDefaultSongs();
+      // For existing users: merge with defaults to add any new songs automatically
+      // This ensures users get new default songs without needing to reset
+      const songsToUse = parsedSongs
+        ? mergeWithDefaults(parsedSongs)
+        : getDefaultSongs();
+
+      // If we merged in new songs, save back to localStorage
+      if (parsedSongs) {
+        const defaultIds = Object.keys(getDefaultSongs());
+        const hasNewDefaults = defaultIds.some((id) => !(id in parsedSongs));
+        if (hasNewDefaults) {
+          setSavedSongs(songsToUse);
+        }
+      }
+
       const songIdToUse = parsedSongId ?? "default-dayenu";
 
       if (isEmptyComposition && songsToUse[songIdToUse]) {

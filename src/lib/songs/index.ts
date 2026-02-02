@@ -8,6 +8,7 @@ export { avinuMalkenu } from "./avinuMalkenu";
 export { animZemirot } from "./animZemirot";
 export { shibnehBeitHamikdash } from "./shibnehBeitHamikdash";
 export { eimatiKaatiMar } from "./eimatiKaatiMar";
+export { aniPurim } from "./aniPurim";
 
 // Re-export types
 export type { SongData } from "./types";

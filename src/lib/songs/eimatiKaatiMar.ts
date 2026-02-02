@@ -114,4 +114,5 @@ export const eimatiKaatiMar: SongData = {
     tempo: 108,
     timeSignature: { numerator: 4, denominator: 4 },
   },
+  releaseDate: "2025-01-15",
 };

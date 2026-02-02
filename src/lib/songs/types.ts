@@ -6,6 +6,20 @@ import {
   TimeSignatureChange,
 } from "../types";
 
+export interface TranscriptionNotes {
+  original: {
+    key: string;
+    timeSignature: string;
+    features: string[];
+  };
+  changes: Array<{
+    what: string;
+    why: string;
+  }>;
+  sourceUrl: string;
+  transcribedDate: string;
+}
+
 export interface SongData {
   id: string;
   name: string;
@@ -19,4 +33,6 @@ export interface SongData {
     timeSignature: { numerator: number; denominator: number };
     timeSignatureChanges?: TimeSignatureChange[]; // Mid-song time signature changes
   };
+  releaseDate: string; // ISO date string (YYYY-MM-DD) when song was added to the app
+  transcriptionNotes?: TranscriptionNotes; // Documentation for transcribed songs
 }

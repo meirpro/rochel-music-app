@@ -108,4 +108,5 @@ export const avinuMalkenu: SongData = {
     timeSignature: { numerator: 3, denominator: 4 },
     // No mid-song time signature changes - UI only supports changes at system starts
   },
+  releaseDate: "2025-01-15",
 };
