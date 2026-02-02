@@ -62,6 +62,13 @@ export type NoteTool =
   | "timesig"
   | null;
 
+// Song metadata for display at top/bottom of staff
+export interface SongMetadata {
+  title?: string; // English name
+  hebrewName?: string; // Hebrew name (אני פורים)
+  description?: string; // Brief description or attribution
+}
+
 export interface NoteEditorProps {
   notes: EditorNote[];
   onNotesChange: (notes: EditorNote[]) => void;
@@ -73,6 +80,8 @@ export interface NoteEditorProps {
   showLabels?: boolean;
   showKidFaces?: boolean;
   showGrid?: boolean;
+  // Song metadata for title/footer display
+  songMetadata?: SongMetadata;
   allowChords?: boolean;
   allowMove?: boolean;
   playheadX?: number | null;

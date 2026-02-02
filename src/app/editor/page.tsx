@@ -590,6 +590,7 @@ export default function EditorPage() {
             playheadSystem={playback.playheadSystem}
             activeNoteId={playback.activeNoteId}
             onPlayheadBeatChange={handlePlayheadSeek}
+            songMetadata={editor.currentSongMetadata}
           />
 
           {/* Debug info in development - only during active tutorial */}

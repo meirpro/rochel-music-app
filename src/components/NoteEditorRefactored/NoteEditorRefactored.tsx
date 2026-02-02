@@ -116,6 +116,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     highlightPitchLine,
     highlightBeatRange,
     onNoteInteraction,
+    // Song metadata for title/footer
+    songMetadata,
   } = props;
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -680,6 +682,22 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   return (
     <div className="flex flex-col gap-2 relative">
+      {/* Song Title Header */}
+      {songMetadata && (songMetadata.title || songMetadata.hebrewName) && (
+        <div className="text-center px-4 py-2">
+          {songMetadata.hebrewName && (
+            <h1 className="text-2xl font-bold text-gray-800 mb-1" dir="rtl">
+              {songMetadata.hebrewName}
+            </h1>
+          )}
+          {songMetadata.title && (
+            <h2 className="text-lg font-medium text-gray-600">
+              {songMetadata.title}
+            </h2>
+          )}
+        </div>
+      )}
+
       <svg
         id={TOUR_ELEMENT_IDS.staffCanvas}
         ref={svgRef}
@@ -1267,6 +1285,13 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           />
         )}
       </svg>
+
+      {/* Song Description Footer */}
+      {songMetadata?.description && (
+        <div className="text-center px-4 py-2 text-sm text-gray-500 italic">
+          {songMetadata.description}
+        </div>
+      )}
 
       {/* Context menu for note editing */}
       {contextMenu && contextMenu.type === "note" && (

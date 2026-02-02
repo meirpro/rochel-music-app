@@ -359,6 +359,16 @@ export default function Home() {
       ? savedSongs[currentSongId].name
       : "Untitled Song";
 
+  // Song metadata for display in NoteEditor (title, hebrew name, description)
+  const currentSongMetadata =
+    currentSongId && savedSongs[currentSongId]
+      ? {
+          title: savedSongs[currentSongId].name,
+          hebrewName: savedSongs[currentSongId].hebrewName,
+          description: savedSongs[currentSongId].description,
+        }
+      : undefined;
+
   // Check if current composition has unsaved changes compared to saved version
   // Returns true if there are changes that would be lost by switching songs
   const hasUnsavedChanges = useCallback((): boolean => {
@@ -961,6 +971,7 @@ export default function Home() {
                 readOnly={isMobile}
                 staffLines={settings.staffLines ?? 3}
                 noteSpacing={settings.noteSpacing ?? 1.0}
+                songMetadata={currentSongMetadata}
               />
             </div>
           </div>

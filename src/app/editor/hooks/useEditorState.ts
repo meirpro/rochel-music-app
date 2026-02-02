@@ -137,6 +137,11 @@ export interface UseEditorStateReturn {
   savedSongs: SavedSongsMap;
   currentSongId: string | null;
   currentSongTitle: string;
+  currentSongMetadata?: {
+    title: string;
+    hebrewName?: string;
+    description?: string;
+  };
   saveSong: (name: string) => void;
   loadSong: (song: SavedSong) => void;
   deleteSong: (songId: string) => void;
@@ -522,6 +527,19 @@ export function useEditorState(
     return "Untitled Song";
   }, [currentSongId, savedSongs]);
 
+  // Current song metadata for display (title, hebrew name, description)
+  const currentSongMetadata = useMemo(() => {
+    if (currentSongId && savedSongs[currentSongId]) {
+      const song = savedSongs[currentSongId];
+      return {
+        title: song.name,
+        hebrewName: song.hebrewName,
+        description: song.description,
+      };
+    }
+    return undefined;
+  }, [currentSongId, savedSongs]);
+
   // Save current composition as new song or update existing
   const saveSong = useCallback(
     (name: string) => {
@@ -714,6 +732,7 @@ export function useEditorState(
     savedSongs,
     currentSongId,
     currentSongTitle,
+    currentSongMetadata,
     saveSong,
     loadSong,
     deleteSong,

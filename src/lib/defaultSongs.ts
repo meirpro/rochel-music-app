@@ -20,6 +20,8 @@ function createSavedSong(song: SongData): SavedSong {
   return {
     id: song.id,
     name: song.name,
+    hebrewName: song.hebrewName,
+    description: song.description,
     createdAt: releaseTimestamp,
     updatedAt: releaseTimestamp,
     composition: {
