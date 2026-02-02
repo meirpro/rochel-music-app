@@ -127,17 +127,17 @@ export const aniPurim: SongData = {
 
   lyrics: [
     // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - FIRST PASS
+    // A SECTION - FIRST PASS (volta 1)
     // "Ani Purim, ani Purim, Sameach Umvadeyach"
     // ═══════════════════════════════════════════════════════════════════
     { text: "A", absoluteBeat: 3 }, // pickup
     { text: "ni", absoluteBeat: 4 },
     { text: "Pu", absoluteBeat: 5 },
-    { text: "rim", absoluteBeat: 6 },
+    { text: "rim,", absoluteBeat: 6 },
     { text: "a", absoluteBeat: 7 },
     { text: "ni", absoluteBeat: 8 },
     { text: "Pu", absoluteBeat: 9 },
-    { text: "rim", absoluteBeat: 10 },
+    { text: "rim,", absoluteBeat: 10 },
     { text: "Sa", absoluteBeat: 11 },
     { text: "me", absoluteBeat: 12 },
     { text: "ach", absoluteBeat: 13 },
@@ -145,52 +145,57 @@ export const aniPurim: SongData = {
     { text: "va", absoluteBeat: 15 },
     { text: "de", absoluteBeat: 16 },
     { text: "ya", absoluteBeat: 16.5 },
-    { text: "ch", absoluteBeat: 17 },
+    { text: "ch.", absoluteBeat: 17 },
 
     // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - SECOND PASS (same lyrics, volta 2 ending)
-    // ═══════════════════════════════════════════════════════════════════
-    { text: "A", absoluteBeat: 19 }, // pickup for repeat
-    { text: "ni", absoluteBeat: 20 },
-    { text: "Pu", absoluteBeat: 21 },
-    { text: "rim", absoluteBeat: 22 },
-    { text: "a", absoluteBeat: 23 },
-    { text: "ni", absoluteBeat: 24 },
-    { text: "Pu", absoluteBeat: 25 },
-    { text: "rim", absoluteBeat: 26 },
-    { text: "Sa", absoluteBeat: 27 },
-    { text: "me", absoluteBeat: 28 },
-    { text: "ach", absoluteBeat: 29 },
-    { text: "Um", absoluteBeat: 30 },
-    { text: "va", absoluteBeat: 31 },
-    { text: "de", absoluteBeat: 32 },
-    { text: "ya", absoluteBeat: 32.5 },
-    { text: "ch", absoluteBeat: 33 },
-
-    // ═══════════════════════════════════════════════════════════════════
-    // B SECTION
+    // A SECTION - SECOND PASS (volta 2)
     // "Halo rak pa'am bashana, Avo lehitareyach"
     // ═══════════════════════════════════════════════════════════════════
-    { text: "Ha", absoluteBeat: 36 },
-    { text: "lo", absoluteBeat: 38 },
-    { text: "rak", absoluteBeat: 40 },
-    { text: "pa", absoluteBeat: 40.5 },
-    { text: "am", absoluteBeat: 41 },
-    { text: "ba", absoluteBeat: 43 },
-    { text: "sha", absoluteBeat: 44 },
-    { text: "na", absoluteBeat: 46 },
-    { text: "A", absoluteBeat: 48 },
-    { text: "vo", absoluteBeat: 49 },
-    { text: "le", absoluteBeat: 51 },
-    { text: "hi", absoluteBeat: 52 },
-    { text: "ta", absoluteBeat: 54 },
-    { text: "re", absoluteBeat: 56 },
-    { text: "ya", absoluteBeat: 56.5 },
-    { text: "ch", absoluteBeat: 57 },
-    { text: "—", absoluteBeat: 59 }, // held
-    { text: "—", absoluteBeat: 60 }, // held
-    { text: "—", absoluteBeat: 62 }, // held
-    { text: "—", absoluteBeat: 64 }, // final
+    { text: "Ha", absoluteBeat: 19 }, // pickup for second verse line
+    { text: "lo", absoluteBeat: 20 },
+    { text: "rak", absoluteBeat: 21 },
+    { text: "pa", absoluteBeat: 22 },
+    { text: "'am", absoluteBeat: 23 },
+    { text: "ba", absoluteBeat: 24 },
+    { text: "sha", absoluteBeat: 25 },
+    { text: "na", absoluteBeat: 26 },
+    { text: "A", absoluteBeat: 27 },
+    { text: "vo", absoluteBeat: 28 },
+    { text: "le", absoluteBeat: 29 },
+    { text: "hi", absoluteBeat: 30 },
+    { text: "ta", absoluteBeat: 31 },
+    { text: "re", absoluteBeat: 32 },
+    { text: "ya", absoluteBeat: 32.5 },
+    { text: "ch.", absoluteBeat: 33 },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // B SECTION - CHORUS
+    // "La la la - la la" (repeated pattern)
+    // ═══════════════════════════════════════════════════════════════════
+    // Line 1: "La la la - la la"
+    { text: "La", absoluteBeat: 36 },
+    { text: "la", absoluteBeat: 38 },
+    { text: "la", absoluteBeat: 40 },
+    { text: "-", absoluteBeat: 40.5 },
+    { text: "la", absoluteBeat: 41 },
+    { text: "la", absoluteBeat: 43 },
+    // Line 2: "La la la - la la"
+    { text: "La", absoluteBeat: 44 },
+    { text: "la", absoluteBeat: 46 },
+    { text: "la", absoluteBeat: 48 },
+    { text: "-", absoluteBeat: 49 },
+    { text: "la", absoluteBeat: 51 },
+    // Line 3: "La la la - la la"
+    { text: "La", absoluteBeat: 52 },
+    { text: "la", absoluteBeat: 54 },
+    { text: "la", absoluteBeat: 56 },
+    { text: "-", absoluteBeat: 56.5 },
+    { text: "la", absoluteBeat: 57 },
+    { text: "la", absoluteBeat: 59 },
+    // Line 4: "La la - la."
+    { text: "La", absoluteBeat: 60 },
+    { text: "la", absoluteBeat: 62 },
+    { text: "la.", absoluteBeat: 64 },
   ],
 
   settings: {
