@@ -93,12 +93,12 @@ export function SettingsModal({
               <input
                 type="range"
                 min="40"
-                max="200"
+                max="300"
                 value={tempo}
                 onChange={(e) => onTempoChange(Number(e.target.value))}
                 className="flex-1 h-3 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #c084fc 0%, #c084fc ${((tempo - 40) / 160) * 100}%, #e5e7eb ${((tempo - 40) / 160) * 100}%, #e5e7eb 100%)`,
+                  background: `linear-gradient(to right, #c084fc 0%, #c084fc ${((tempo - 40) / 260) * 100}%, #e5e7eb ${((tempo - 40) / 260) * 100}%, #e5e7eb 100%)`,
                 }}
               />
               <div className="w-20 text-center">

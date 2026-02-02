@@ -185,7 +185,7 @@ export function EditorHeader({
 
   const handleTempoBlur = () => {
     const newTempo = parseInt(tempoInputValue);
-    if (!isNaN(newTempo) && newTempo >= 40 && newTempo <= 200) {
+    if (!isNaN(newTempo) && newTempo >= 40 && newTempo <= 300) {
       onTempoChange(newTempo);
     } else {
       setTempoInputValue(tempo.toString());
@@ -373,7 +373,7 @@ export function EditorHeader({
                   ref={tempoInputRef}
                   type="number"
                   min="40"
-                  max="200"
+                  max="300"
                   value={tempoInputValue}
                   onChange={(e) => setTempoInputValue(e.target.value)}
                   onBlur={handleTempoBlur}

@@ -16,7 +16,13 @@ export interface TranscriptionNotes {
     what: string;
     why: string;
   }>;
-  sourceUrl: string;
+  // Single source URL (backwards compatible)
+  sourceUrl?: string;
+  // Multiple source URLs (for songs with separate sheet music and lyrics sources)
+  sources?: {
+    sheetMusic?: string;
+    lyrics?: string;
+  };
   transcribedDate: string;
 }
 
