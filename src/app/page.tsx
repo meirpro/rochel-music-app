@@ -539,8 +539,9 @@ export default function Home() {
 
   // Save current composition as song
   const handleSaveSong = useCallback(
-    (name: string) => {
+    (name: string, description?: string) => {
       const songId = currentSongId || `song_${Date.now()}`;
+      const existingSong = savedSongs[songId];
 
       // Ensure composition is migrated before saving
       const migratedComp = isLegacyComposition(composition)
@@ -558,6 +559,8 @@ export default function Home() {
       const song: SavedSong = {
         id: songId,
         name,
+        description: description || existingSong?.description,
+        hebrewName: existingSong?.hebrewName,
         composition: migratedComposition,
         settings: {
           tempo: settings.tempo,
@@ -566,7 +569,7 @@ export default function Home() {
           timeSignatureChanges:
             savedSongs[songId]?.settings?.timeSignatureChanges,
         },
-        createdAt: savedSongs[songId]?.createdAt || Date.now(),
+        createdAt: existingSong?.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
 
@@ -1027,6 +1030,11 @@ export default function Home() {
         onClose={() => setUI({ ...ui, showSongLibrary: false })}
         savedSongs={savedSongs}
         currentSongId={currentSongId}
+        currentComposition={composition as Composition}
+        currentSettings={{
+          tempo: settings.tempo,
+          timeSignature: settings.timeSignature,
+        }}
         onLoadSong={handleLoadSong}
         onDeleteSong={handleDeleteSong}
         onSaveSong={handleSaveSong}

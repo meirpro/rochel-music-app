@@ -647,6 +647,15 @@ export default function EditorPage() {
         onClose={() => setShowSongLibrary(false)}
         savedSongs={editor.savedSongs}
         currentSongId={editor.currentSongId}
+        currentComposition={{
+          notes: editor.notes,
+          repeatMarkers: editor.repeatMarkers,
+          lyrics: editor.lyrics,
+        }}
+        currentSettings={{
+          tempo: editor.settings.tempo,
+          timeSignature: editor.settings.timeSignature,
+        }}
         onLoadSong={handleLoadSong}
         onDeleteSong={editor.deleteSong}
         onSaveSong={editor.saveSong}

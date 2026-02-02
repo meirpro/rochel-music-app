@@ -142,7 +142,7 @@ export interface UseEditorStateReturn {
     hebrewName?: string;
     description?: string;
   };
-  saveSong: (name: string) => void;
+  saveSong: (name: string, description?: string) => void;
   loadSong: (song: SavedSong) => void;
   deleteSong: (songId: string) => void;
   updateCurrentSong: () => void;
@@ -542,11 +542,14 @@ export function useEditorState(
 
   // Save current composition as new song or update existing
   const saveSong = useCallback(
-    (name: string) => {
+    (name: string, description?: string) => {
       const songId = currentSongId || `song_${Date.now()}`;
+      const existingSong = savedSongs[songId];
       const song: SavedSong = {
         id: songId,
         name,
+        description: description || existingSong?.description,
+        hebrewName: existingSong?.hebrewName,
         composition: {
           // Notes already in absoluteBeat format - no conversion needed
           notes: composition.notes,
@@ -558,7 +561,7 @@ export function useEditorState(
           tempo: settings.tempo,
           timeSignature: settings.timeSignature,
         },
-        createdAt: savedSongs[songId]?.createdAt || Date.now(),
+        createdAt: existingSong?.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
       setSavedSongs({ ...savedSongs, [songId]: song });

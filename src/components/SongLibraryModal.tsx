@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { SavedSong, SavedSongsMap } from "@/lib/types";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { SavedSong, SavedSongsMap, Composition } from "@/lib/types";
 import { DEFAULT_SONG_IDS } from "@/lib/defaultSongs";
 
 interface SongLibraryModalProps {
@@ -9,9 +9,14 @@ interface SongLibraryModalProps {
   onClose: () => void;
   savedSongs: SavedSongsMap;
   currentSongId: string | null;
+  currentComposition?: Composition; // For showing summary in save dialog
+  currentSettings?: {
+    tempo: number;
+    timeSignature: { numerator: number; denominator: number };
+  };
   onLoadSong: (song: SavedSong) => void;
   onDeleteSong: (songId: string) => void;
-  onSaveSong: (name: string) => void;
+  onSaveSong: (name: string, description?: string) => void;
   onUpdateCurrentSong: () => void;
   onNewSong?: () => void; // Creates a new blank song (parent handles unsaved warning)
   onRestoreDefaults: () => void;
@@ -24,6 +29,8 @@ export function SongLibraryModal({
   onClose,
   savedSongs,
   currentSongId,
+  currentComposition,
+  currentSettings,
   onLoadSong,
   onDeleteSong,
   onSaveSong,
@@ -33,13 +40,32 @@ export function SongLibraryModal({
   onExport: _onExport,
   onExportSelected,
 }: SongLibraryModalProps) {
-  const [newSongName, setNewSongName] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedForExport, setSelectedForExport] = useState<Set<string>>(
     new Set(),
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveDescription, setSaveDescription] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const saveNameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  // Focus save name input when dialog opens
+  useEffect(() => {
+    if (isSaveDialogOpen && saveNameInputRef.current) {
+      saveNameInputRef.current.focus();
+    }
+  }, [isSaveDialogOpen]);
 
   // All songs sorted by update time
   const allSongs = useMemo(
@@ -64,10 +90,31 @@ export function SongLibraryModal({
   };
 
   const handleSave = () => {
-    if (newSongName.trim()) {
-      onSaveSong(newSongName.trim());
-      setNewSongName("");
+    if (saveName.trim()) {
+      onSaveSong(saveName.trim(), saveDescription.trim() || undefined);
+      setSaveName("");
+      setSaveDescription("");
+      setIsSaveDialogOpen(false);
     }
+  };
+
+  const openSaveDialog = () => {
+    setSaveName("");
+    setSaveDescription("");
+    setIsSaveDialogOpen(true);
+  };
+
+  const closeSaveDialog = () => {
+    setIsSaveDialogOpen(false);
+    setSaveName("");
+    setSaveDescription("");
+  };
+
+  const toggleSearch = () => {
+    if (isSearchOpen) {
+      setSearchQuery("");
+    }
+    setIsSearchOpen(!isSearchOpen);
   };
 
   const handleDelete = (songId: string) => {
@@ -145,57 +192,54 @@ export function SongLibraryModal({
           </button>
         </div>
 
-        {/* Save Section */}
-        <div className="px-3 py-3 bg-emerald-50 border-b border-emerald-200">
+        {/* Compact Toolbar */}
+        <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={newSongName}
-              onChange={(e) => setNewSongName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              placeholder="Save as..."
-              className="flex-1 px-3 py-2 text-sm border border-emerald-200 rounded-lg focus:border-emerald-300 focus:outline-none min-w-0"
-            />
-            <button
-              onClick={handleSave}
-              disabled={!newSongName.trim()}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                newSongName.trim()
-                  ? "bg-emerald-200 hover:bg-emerald-300 text-emerald-800"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Save
-            </button>
-          </div>
-        </div>
+            {/* Search Button */}
+            {allSongs.length > 3 && (
+              <button
+                onClick={toggleSearch}
+                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                  isSearchOpen
+                    ? "bg-blue-200 text-blue-700"
+                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
+                }`}
+                title="Search songs"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </button>
+            )}
 
-        {/* New Song Button */}
-        {onNewSong && (
-          <div className="px-3 py-2 border-b border-gray-200">
-            <button
-              onClick={onNewSong}
-              className="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="text-lg leading-none">+</span>
-              New Song
-            </button>
-          </div>
-        )}
+            {/* New Song Button */}
+            {onNewSong && (
+              <button
+                onClick={onNewSong}
+                className="flex-1 h-9 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+              >
+                <span className="text-base leading-none">+</span>
+                New
+              </button>
+            )}
 
-        {/* Search */}
-        {allSongs.length > 3 && (
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search songs..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-300 focus:outline-none"
-              />
+            {/* Save Button */}
+            <button
+              onClick={openSaveDialog}
+              className="flex-1 h-9 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+            >
               <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -204,23 +248,120 @@ export function SongLibraryModal({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                 />
               </svg>
+              Save
+            </button>
+          </div>
+
+          {/* Expandable Search Input */}
+          {isSearchOpen && (
+            <div className="mt-2">
+              <div className="relative">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search songs..."
+                  className="w-full pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-300 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 text-xs"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 text-xs"
-                >
-                  ×
-                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  {songs.length} of {allSongs.length} songs
+                </p>
               )}
             </div>
-            {searchQuery && (
-              <p className="text-xs text-gray-500 mt-1">
-                {songs.length} of {allSongs.length} songs
-              </p>
-            )}
+          )}
+        </div>
+
+        {/* Save Dialog */}
+        {isSaveDialogOpen && (
+          <div className="px-3 py-3 bg-emerald-50 border-b border-emerald-200">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-emerald-700 mb-1">
+                  Song Name
+                </label>
+                <input
+                  ref={saveNameInputRef}
+                  type="text"
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && saveName.trim() && handleSave()
+                  }
+                  placeholder="Enter song name..."
+                  className="w-full px-3 py-2 text-sm border border-emerald-200 rounded-lg focus:border-emerald-300 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-emerald-700 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={saveDescription}
+                  onChange={(e) => setSaveDescription(e.target.value)}
+                  placeholder="Brief description or attribution..."
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-emerald-200 rounded-lg focus:border-emerald-300 focus:outline-none resize-none"
+                />
+              </div>
+
+              {/* Data Summary */}
+              {currentComposition && currentSettings && (
+                <div className="bg-white/60 rounded-lg p-2 text-xs text-emerald-700">
+                  <div className="font-medium mb-1">Song Summary</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-emerald-600">
+                    <span>{currentComposition.notes.length} notes</span>
+                    <span>
+                      {currentSettings.timeSignature.numerator}/
+                      {currentSettings.timeSignature.denominator} time
+                    </span>
+                    <span>{currentSettings.tempo} BPM</span>
+                    {currentComposition.lyrics.length > 0 && (
+                      <span>{currentComposition.lyrics.length} lyrics</span>
+                    )}
+                    {currentComposition.repeatMarkers.length > 0 && (
+                      <span>
+                        {currentComposition.repeatMarkers.length / 2} repeat(s)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={closeSaveDialog}
+                  className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!saveName.trim()}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                    saveName.trim()
+                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Save Song
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
