@@ -108,7 +108,7 @@ export const chagPurim: SongData = {
   lyrics: [],
 
   settings: {
-    tempo: 120,
+    tempo: 200,
     timeSignature: { numerator: 4, denominator: 4 },
     staffLines: 5,
   },

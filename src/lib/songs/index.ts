@@ -10,7 +10,6 @@ export { vezakeniLegadel } from "./vezakeniLegadel";
 export { adonOlam } from "./adonOlam";
 export { adonOlamFull } from "./adonOlamFull";
 export { hevenuShalom } from "./hevenuShalom";
-export { gamKiElech } from "./gamKiElech";
 export { alYedeyNigunim } from "./alYedeyNigunim";
 export { chagPurim } from "./chagPurim";
 export { maNishtana } from "./maNishtana";

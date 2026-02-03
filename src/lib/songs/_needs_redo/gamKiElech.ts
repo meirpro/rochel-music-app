@@ -1,7 +1,7 @@
 // Gam Ki Elech (גם כי אלך) - Avraham Fried
 // Key: D minor (1 flat), Time: 4/4 (with changes)
 // Based on Psalm 23:4
-import { SongData } from "./types";
+import { SongData } from "../types";
 
 export const gamKiElech: SongData = {
   id: "default-gam-ki-elech",
