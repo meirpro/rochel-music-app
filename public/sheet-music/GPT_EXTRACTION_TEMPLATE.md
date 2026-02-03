@@ -1,186 +1,333 @@
-# Sheet Music Extraction Template for Rochel Music App
+# Sheet Music to TypeScript Extraction Template
 
-Use this template to extract notes from sheet music images. Output in the exact format below.
+Use this template to extract notes from sheet music images into TypeScript code that can be directly added to the Rochel Music App.
+
+---
+
+## ⚠️ CRITICAL RULES - READ FIRST ⚠️
+
+### 1. LINEARIZE ALL NAVIGATION MARKERS
+
+The app does **NOT** support D.C., D.S., Coda, or Volta brackets. You **MUST** write out the complete playback order as sequential notes.
+
+**If you see any of these, you must LINEARIZE:**
+- **D.C. (Da Capo)** - Copy the section from the beginning and append it
+- **D.S. (Dal Segno)** - Copy from the sign (𝄋) and append it
+- **Coda (𝄌)** - Write out the jump to coda section
+- **Volta brackets [1. ] [2. ]** - Write out both passes with their different endings
+
+**❌ WRONG:**
+```typescript
+// Only includes measures as they appear on sheet, ignoring D.C.
+notes: [
+  // Section A
+  // Section B
+  // MISSING: D.C. back to Section A!
+],
+```
+
+**✅ CORRECT:**
+```typescript
+// Full playback order with D.C. written out
+notes: [
+  // Section A (first time)
+  // Section B
+  // Section A AGAIN (D.C. - same notes, NEW IDs, UPDATED absoluteBeat values)
+],
+```
+
+### 2. REPEAT MARKERS ARE ONLY FOR SIMPLE REPEATS
+
+The `repeatMarkers` array is **ONLY** for sections with repeat signs (:|) that loop back to (|:).
+
+**Repeat markers do NOT handle:**
+- D.C. (Da Capo)
+- D.S. (Dal Segno)
+- Coda jumps
+- Volta brackets
+
+All of those must be **LINEARIZED** in the notes array.
+
+### 3. TEMPO MUST MATCH SHEET MUSIC
+
+Look for tempo marking on the sheet (e.g., ♩= 96, Allegro, etc.). If none is marked, estimate based on style:
+- Slow/Adagio: 60-80
+- Moderate/Andante: 80-100
+- Lively/Allegro: 120-160
+- Fast/Vivace: 160-200
+- Very fast (niggun/freylach): 200-300
+
+**Do NOT default to 120.** The tempo goes in `settings.tempo`.
+
+### 4. RESTS CAN BE OMITTED
+
+The app does not visually render rests. Skip them - just leave gaps in absoluteBeat positions.
+
+### 5. VERIFY MEASURE COUNT
+
+After linearizing, your output should have **MORE measures** than the sheet shows if there was any D.C., D.S., or Volta.
+
+Example: If sheet has Section A + Section B + D.C., your output needs Section A + Section B + Section A again.
 
 ---
 
 ## OUTPUT FORMAT
 
-```
-SONG: [Song Name]
-HEBREW: [Hebrew Name]
-COMPOSER: [Composer/Artist]
-KEY: [Key signature, e.g., A minor, C Major, G Major]
-TIME: [Time signature, e.g., 4/4, 3/4, 6/8]
-TEMPO: [Suggested BPM, e.g., 100, 120, 80]
-STAFF_LINES: [Number of staff lines needed to display song, typically 3-6]
+```typescript
+// {SongName} ({HebrewName}) - {Composer/Artist}
+// Key: {Key}, Time: {TimeSignature}, Tempo: {Tempo}
+import { SongData } from "./types";
 
-STRUCTURE:
-- Section A: measures [X-Y] [repeat if applicable]
-- Section B: measures [X-Y] [repeat if applicable]
-- D.C./D.S./Coda: [describe navigation if any]
+export const {camelCaseName}: SongData = {
+  id: "default-{kebab-case-name}",
+  name: "{Song Name}",
+  hebrewName: "{Hebrew Name}",
+  description: "{Brief Hebrew description}",
+  notes: [
+    // ALL notes in FULL PLAYBACK ORDER (linearized)
+  ],
 
-MEASURES:
-M1: [pitch]-[duration], [pitch]-[duration], ...
-M2: [pitch]-[duration], [pitch]-[duration], ...
-...
-```
+  repeatMarkers: [
+    // ONLY for simple repeat signs (:|), NOT for D.C./D.S./Volta
+  ],
 
----
+  lyrics: [],
 
-## PITCH FORMAT
+  settings: {
+    tempo: ???,  // ⚠️ REQUIRED: Use tempo from sheet (e.g., 96, 120, 200)
+    timeSignature: { numerator: 4, denominator: 4 },
+    staffLines: 5,  // Based on pitch range (see below)
+  },
 
-Use scientific pitch notation: **Note + Octave**
+  releaseDate: "2026-02-02",
 
-| Staff Position (Treble Clef) | Pitch |
-|------------------------------|-------|
-| Ledger line above | A5 |
-| Top line (Line 1) | F5 |
-| Top space | E5 |
-| Line 2 | D5 |
-| Space | C5 |
-| Middle line (Line 3) | B4 |
-| Space | A4 |
-| Line 4 (G clef curls here) | G4 |
-| Space | F4 |
-| Bottom line (Line 5) | E4 |
-| Space below | D4 |
-| Ledger line below | C4 (Middle C) |
-
-**Accidentals:**
-- Sharp: `C#4`, `F#4`, `G#4`
-- Flat: `Bb4`, `Eb4`, `Ab4`
-
----
-
-## DURATION FORMAT
-
-| Symbol | Code | Beats (in 4/4) |
-|--------|------|----------------|
-| Whole note (𝅝) | `w` | 4 |
-| Dotted half (𝅗𝅥.) | `h.` | 3 |
-| Half note (𝅗𝅥) | `h` | 2 |
-| Dotted quarter (♩.) | `q.` | 1.5 |
-| Quarter note (♩) | `q` | 1 |
-| Dotted eighth (♪.) | `e.` | 0.75 |
-| Eighth note (♪) | `e` | 0.5 |
-| Sixteenth (𝅘𝅥𝅯) | `s` | 0.25 |
-
----
-
-## EXAMPLE OUTPUT
-
-```
-SONG: Havdalah
-HEBREW: הבדלה
-COMPOSER: Rabbi Shlomo Carlebach
-KEY: A minor
-TIME: 4/4
-TEMPO: 250
-STAFF_LINES: 5
-
-STRUCTURE:
-- Section A: measures 1-5, repeat
-- Section B: measures 6-9, repeat
-- D.C. back to beginning after Section B
-
-MEASURES:
-M1: E5-e, D5-e, C5-e, A4-e, D5-h
-M2: E5-e, D5-e, C5-e, A4-e, C5-h
-M3: C5-e, A4-e, G4-e, E4-e, D4-q, D4-q
-M4: D5-e, C5-e, B4-e, A4-e, C5-e, B4-e, A4-e, G4-e
-M5: A4-w
-M6: A4-e, G4-e, C5-e, B4-e, A4-h
-M7: A4-e, G4-e, C5-e, B4-e, A4-h
-M8: A4-e, G4-e, C5-e, B4-e, A4-e, G4-e, C5-e, B4-e
-M9: A4-e, G4-e, C5-e, B4-e, A4-h
+  transcriptionNotes: {
+    original: {
+      key: "Original Key",
+      timeSignature: "4/4",
+      features: ["List features like D.C., repeat signs, etc."],
+    },
+    changes: [
+      {
+        what: "Linearized D.C. (Da Capo)",
+        why: "App doesn't support navigation markers"
+      },
+    ],
+    sources: {
+      sheetMusic: "Source name",
+    },
+    transcribedDate: "2026-02-02"
+  },
+};
 ```
 
 ---
 
-## VALIDATION RULES
+## NOTE FORMAT
 
-Before submitting, verify:
+```typescript
+{ id: "{slug}-{n}", pitch: "{Note}{Octave}", duration: {beats}, absoluteBeat: {position} }
+```
 
-1. **Beat count per measure** - Must equal time signature
-   - 4/4 = 4 beats per measure
-   - 3/4 = 3 beats per measure
-   - 6/8 = 6 eighth notes (count as 2 dotted quarters)
+| Property | Description |
+|----------|-------------|
+| `id` | Unique sequential ID: `"song-1"`, `"song-2"`, etc. |
+| `pitch` | Scientific pitch: `"C4"`, `"F#4"`, `"Bb3"` |
+| `duration` | Length in beats (see table) |
+| `absoluteBeat` | Position from song start (0-indexed) |
 
-2. **Duration math:**
-   - `e` = 0.5, so 8 eighths = 4 beats ✓
-   - `q` = 1, so 4 quarters = 4 beats ✓
-   - `h` = 2, so 2 halves = 4 beats ✓
-   - `e + e + e + e + h` = 0.5+0.5+0.5+0.5+2 = 4 ✓
+### Duration Values:
 
-3. **Pitch range** - Should be within C3 to C6
-
-4. **Accidentals** - Note any sharps/flats from key signature
+| Note Type | Duration |
+|-----------|----------|
+| Whole | `4` |
+| Dotted half | `3` |
+| Half | `2` |
+| Dotted quarter | `1.5` |
+| Quarter | `1` |
+| Dotted eighth | `0.75` |
+| Eighth | `0.5` |
+| Sixteenth | `0.25` |
 
 ---
 
-## STRUCTURE NOTATION
+## PITCH REFERENCE (Treble Clef)
 
-**Repeat signs:**
-- `|:` = repeat start
-- `:|` = repeat end
-- If no `|:` before `:|`, repeat from beginning
+```
+        Ledger line above  = A5
+        ─────────────────  = F5 (Line 1, top)
+              Space        = E5
+        ─────────────────  = D5 (Line 2)
+              Space        = C5
+        ─────────────────  = B4 (Line 3, middle)
+              Space        = A4
+        ─────────────────  = G4 (Line 4, clef anchor)
+              Space        = F4
+        ─────────────────  = E4 (Line 5, bottom)
+              Space        = D4
+        Ledger line below  = C4 (Middle C)
+```
 
-**Navigation:**
-- `D.C.` (Da Capo) = go back to the beginning
-- `D.S.` (Dal Segno) = go back to the sign (𝄋)
-- `Fine` = end here on repeat
-- `Coda` (𝄌) = jump to coda section
+**Accidentals:** Sharp = `C#4`, Flat = `Bb4`
 
-**Volta brackets:**
-- `[1. ___]` = play first time only
-- `[2. ___]` = play second time only
+---
+
+## absoluteBeat CALCULATION
+
+**Formula:**
+```
+absoluteBeat = (measureIndex × beatsPerMeasure) + beatWithinMeasure
+```
+
+**BOTH ARE 0-INDEXED:**
+- Measure 1 = measureIndex 0
+- Beat 1 = beatWithinMeasure 0
+
+**Examples in 4/4 time:**
+
+| Position | absoluteBeat |
+|----------|--------------|
+| Measure 1, beat 1 | 0 |
+| Measure 1, beat 2 | 1 |
+| Measure 1, beat 2.5 (eighth on "and") | 1.5 |
+| Measure 2, beat 1 | 4 |
+| Measure 3, beat 1 | 8 |
+| Measure 4, beat 1 | 12 |
+
+---
+
+## LINEARIZATION GUIDE
+
+### D.C. (Da Capo) - "From the beginning"
+
+When you see D.C. at the end:
+1. Write out all sections in order as they first appear
+2. Then COPY the notes from the beginning (with new IDs and updated absoluteBeat)
+3. Continue absoluteBeat sequentially from where Section B ended
+
+```typescript
+notes: [
+  // SECTION A (as written)
+  { id: "song-1", pitch: "X", duration: Y, absoluteBeat: 0 },
+  // ... all Section A notes ...
+
+  // SECTION B (as written)
+  { id: "song-N", pitch: "X", duration: Y, absoluteBeat: Z },
+  // ... all Section B notes ...
+
+  // D.C. - SECTION A AGAIN
+  // Same pitches and durations as Section A
+  // But with NEW sequential IDs (continuing from where you left off)
+  // And UPDATED absoluteBeat values (continuing from end of Section B)
+  { id: "song-M", pitch: "X", duration: Y, absoluteBeat: W },
+  // ...
+],
+```
+
+### Volta Brackets (1st/2nd endings)
+
+When you see [1. ending] and [2. ending]:
+1. Write the main section + volta 1 ending
+2. Write the main section AGAIN + volta 2 ending
+3. Continue with rest of song
+
+```typescript
+notes: [
+  // FIRST PASS: Main section + Volta 1 ending
+  { id: "song-1", ... },  // Main section
+  { id: "song-N", ... },  // Volta 1 ending
+
+  // SECOND PASS: Main section again + Volta 2 ending
+  { id: "song-N+1", ... },  // Main section (same pitches, new IDs, updated beats)
+  { id: "song-M", ... },    // Volta 2 ending (different notes than volta 1)
+
+  // Continue with rest of song...
+],
+```
 
 ---
 
 ## PICKUP BEATS (Anacrusis)
 
-If the song starts with an incomplete measure:
-- Note it in STRUCTURE section
-- Example: "Pickup: 1 beat before M1"
+If song starts with incomplete measure:
+
+```
+startBeat = beatsPerMeasure - pickupBeats
+```
+
+**Example:** 4/4 time with 1-beat pickup → first note at absoluteBeat: 3
+
+```typescript
+{ id: "song-1", pitch: "G4", duration: 1, absoluteBeat: 3 },   // pickup
+{ id: "song-2", pitch: "C5", duration: 1, absoluteBeat: 4 },   // M1, beat 1
+```
 
 ---
 
-## LYRICS (Optional)
+## REPEAT MARKERS
 
-If lyrics are visible, include them aligned to measures:
+**Use ONLY for simple repeat signs** - sections that loop back with (|:  :|)
 
+```typescript
+repeatMarkers: [
+  { id: "song-ra-start", pairId: "section-a", type: "start", measureNumber: 0 },
+  { id: "song-ra-end", pairId: "section-a", type: "end", measureNumber: X },
+],
 ```
-LYRICS:
-M1: "A-ni Pu-rim"
-M2: "A-ni Pu-rim"
-...
-```
 
-Split syllables with hyphens where they align with separate notes.
+The `measureNumber` is 0-indexed and refers to measures in your **linearized** output.
+
+**Do NOT use repeat markers for D.C., D.S., or Volta** - those must be linearized in the notes array.
 
 ---
 
-## TRANSPOSITION NOTES
+## STAFF LINES SETTING
 
-If the original key has many accidentals, suggest transposition:
+| Pitch Range | staffLines |
+|-------------|------------|
+| E4 to F5 only | 3 |
+| D4 to G5 | 4 |
+| C4 to A5 | 5 |
+| Below C4 or above A5 | 6 |
 
-| Original Key | Accidentals | Transpose To |
-|--------------|-------------|--------------|
-| F Major | 1♭ (Bb) | C Major (up P4) |
-| Bb Major | 2♭ | C Major (up M2) |
-| D Major | 2♯ | C Major (down M2) |
-| G minor | 2♭ | A minor or E minor |
-| D minor | 1♭ | A minor (down P4) |
+---
 
-The app works best with: **C Major, A minor, G Major, E minor** (minimal accidentals)
+## TRANSPOSITION (Optional)
+
+The app works best with natural keys. If transposing:
+
+| Original | Transpose To |
+|----------|--------------|
+| D minor (1♭) | A minor |
+| F Major (1♭) | C Major |
+| Bb Major (2♭) | C Major |
+| G minor (2♭) | E minor |
+
+Document any transposition in `transcriptionNotes.changes`.
+
+---
+
+## VALIDATION CHECKLIST
+
+Before outputting, verify:
+
+- [ ] **D.C./D.S. linearized?** - Output has MORE measures than sheet if D.C./D.S. present
+- [ ] **Volta linearized?** - Both passes written out
+- [ ] **Beat counts correct?** - Each measure totals time signature (4 for 4/4, 3 for 3/4)
+- [ ] **Tempo from sheet?** - Not defaulting to 120
+- [ ] **IDs sequential?** - `song-1`, `song-2`, `song-3`, ...
+- [ ] **absoluteBeat increasing?** - Values go up throughout song
+- [ ] **Repeat markers only for (:|)?** - NOT for D.C./D.S./Volta
 
 ---
 
 ## SAMPLE REQUEST
 
-"Please extract the notes from this sheet music image using the template format. Include:
-1. All metadata (song name, key, time, tempo)
-2. Structure with repeat signs and navigation markers
-3. Every measure with pitches and durations
-4. Verify beat counts add up correctly"
+"Extract notes from this sheet music into TypeScript for the Rochel Music App.
+
+CRITICAL:
+1. LINEARIZE any D.C., D.S., Coda, or Volta - write out full playback order
+2. Use tempo from sheet (don't default to 120)
+3. All notes need sequential IDs and absoluteBeat values
+4. Repeat markers ONLY for simple repeat signs, NOT for D.C./D.S.
+5. Document linearization in transcriptionNotes.changes"

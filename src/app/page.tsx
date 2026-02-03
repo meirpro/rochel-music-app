@@ -614,6 +614,9 @@ export default function Home() {
         // Preserve user's tempo on initial page load, use song's tempo on explicit load
         tempo: preserveTempo ? settings.tempo : migratedSong.settings.tempo,
         timeSignature: migratedSong.settings.timeSignature,
+        // Apply song's staffLines if specified
+        staffLines:
+          migratedSong.settings.staffLines ?? settings.staffLines ?? 3,
       });
       setCurrentSongId(migratedSong.id);
       setUI({ ...ui, showSongLibrary: false });
