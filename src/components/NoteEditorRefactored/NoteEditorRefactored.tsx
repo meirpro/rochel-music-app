@@ -83,6 +83,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const {
     notes,
     onNotesChange,
+    onNotesChangeForDrag,
+    onDragEnd,
     repeatMarkers,
     onRepeatMarkersChange,
     voltaBrackets = [],
@@ -270,6 +272,25 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       onNotesChange(editorNotes);
     },
     [onNotesChange, systemLayouts],
+  );
+
+  // Same as above but for drag operations (doesn't push to undo history)
+  const handleNotesChangeForDragInternal = useCallback(
+    (newRenderedNotes: RenderedNote[]) => {
+      const editorNotes: EditorNote[] = newRenderedNotes.map((n) => ({
+        id: n.id,
+        pitch: n.pitch,
+        duration: n.duration,
+        absoluteBeat: toAbsoluteBeat(systemLayouts, n.system, n.beat),
+      }));
+      // Use drag-specific callback if provided, otherwise fallback to regular
+      if (onNotesChangeForDrag) {
+        onNotesChangeForDrag(editorNotes);
+      } else {
+        onNotesChange(editorNotes);
+      }
+    },
+    [onNotesChange, onNotesChangeForDrag, systemLayouts],
   );
 
   // Get coordinates from mouse event
@@ -569,7 +590,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       );
       if (existingNote) return;
 
-      handleNotesChangeWithConversion(
+      // Use drag-specific handler (doesn't push to undo history on each move)
+      handleNotesChangeForDragInternal(
         renderedNotes.map((n) =>
           n.id === draggedNote ? { ...n, beat, pitch, system: bestSystem } : n,
         ),
@@ -589,7 +611,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       systemLayouts,
       renderedNotes,
       allowChords,
-      handleNotesChangeWithConversion,
+      handleNotesChangeForDragInternal,
       staffLines,
     ],
   );
@@ -601,6 +623,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       if (note) playNoteSound(note.pitch, note.duration);
       setDraggedNote(null);
       justDraggedRef.current = true;
+      // Commit the drag operation to undo history
+      onDragEnd?.();
     }
     if (isDraggingPlayhead) {
       setIsDraggingPlayhead(false);
@@ -615,6 +639,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     isDraggingPlayhead,
     draggedMarker,
     handleMarkerDragEnd,
+    onDragEnd,
   ]);
 
   // Playhead drag handlers

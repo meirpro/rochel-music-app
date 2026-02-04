@@ -47,6 +47,23 @@ export interface RenderedRepeatMarker extends RepeatMarker {
   measure: number; // Position within system (calculated)
 }
 
+// Volta bracket (1st/2nd endings) - links to a repeat section
+export interface VoltaBracket {
+  id: string;
+  repeatPairId: string; // Links to RepeatMarker.pairId this volta belongs to
+  startMeasure: number; // Absolute measure where volta begins (0-indexed)
+  endMeasure: number; // Absolute measure where volta ends (exclusive)
+  voltaNumber: number; // 1, 2, 3, etc. - determines which pass plays these notes
+}
+
+// Rendered volta bracket with calculated system positions (for display only)
+export interface RenderedVoltaBracket extends VoltaBracket {
+  startSystem: number; // Calculated from startMeasure + layout
+  endSystem: number; // Calculated from endMeasure + layout
+  startMeasureInSystem: number; // Position within start system
+  endMeasureInSystem: number; // Position within end system
+}
+
 export type NoteTool =
   | "sixteenth"
   | "eighth"
@@ -63,6 +80,7 @@ export type NoteTool =
   | "rest-eighth"
   | "delete"
   | "repeat"
+  | "volta"
   | "lyrics"
   | "timesig"
   | null;
@@ -77,8 +95,14 @@ export interface SongMetadata {
 export interface NoteEditorProps {
   notes: EditorNote[];
   onNotesChange: (notes: EditorNote[]) => void;
+  // Optional: For drag operations - updates notes without pushing to undo history
+  onNotesChangeForDrag?: (notes: EditorNote[]) => void;
+  // Optional: Called when drag ends to commit the change to undo history
+  onDragEnd?: () => void;
   repeatMarkers: RepeatMarker[];
   onRepeatMarkersChange: (markers: RepeatMarker[]) => void;
+  voltaBrackets?: VoltaBracket[];
+  onVoltaBracketsChange?: (brackets: VoltaBracket[]) => void;
   lyrics?: LyricSyllable[];
   onLyricsChange?: (lyrics: LyricSyllable[]) => void;
   selectedTool: NoteTool | null;
@@ -127,4 +151,7 @@ export interface NoteEditorProps {
 
   // Context menu action callback for tutorial tracking
   onContextMenuAction?: () => void; // Called when any context menu action is performed
+
+  // Measure validation display
+  showMeasureErrors?: boolean; // Highlight measures with incorrect beat counts
 }

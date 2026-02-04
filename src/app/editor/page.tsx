@@ -251,6 +251,7 @@ export default function EditorPage() {
     composition: {
       notes: playbackNotes,
       repeatMarkers: absoluteRepeatMarkers,
+      voltaBrackets: editor.voltaBrackets,
     },
     tempo: editor.settings.tempo,
     timeSignature: editor.settings.timeSignature,
@@ -273,6 +274,19 @@ export default function EditorPage() {
     },
     [editor, tutorial],
   );
+
+  // Handle notes change during drag (without pushing to undo history)
+  const handleNotesChangeForDrag = useCallback(
+    (newNotes: RefactoredEditorNote[]) => {
+      editor.setNotesWithoutHistory(newNotes);
+    },
+    [editor],
+  );
+
+  // Handle drag end - commit to undo history
+  const handleDragEnd = useCallback(() => {
+    editor.commitNotesToHistory();
+  }, [editor]);
 
   // Handle tool selection - report to tutorial
   const handleToolSelect = useCallback(
@@ -581,6 +595,8 @@ export default function EditorPage() {
           <NoteEditorRefactored
             notes={editor.notes}
             onNotesChange={handleNotesChange}
+            onNotesChangeForDrag={handleNotesChangeForDrag}
+            onDragEnd={handleDragEnd}
             repeatMarkers={editor.repeatMarkers}
             onRepeatMarkersChange={handleRepeatMarkersChange}
             lyrics={editor.lyrics}
@@ -609,6 +625,9 @@ export default function EditorPage() {
             activeNoteId={playback.activeNoteId}
             onPlayheadBeatChange={handlePlayheadSeek}
             songMetadata={editor.currentSongMetadata}
+            showMeasureErrors={editor.settings.showMeasureErrors ?? false}
+            voltaBrackets={editor.voltaBrackets}
+            onVoltaBracketsChange={editor.setVoltaBrackets}
           />
 
           {/* Debug info in development - only during active tutorial */}
@@ -717,6 +736,8 @@ export default function EditorPage() {
         onStaffLinesChange={editor.setStaffLines}
         noteSpacing={editor.settings.noteSpacing}
         onNoteSpacingChange={editor.setNoteSpacing}
+        showMeasureErrors={editor.settings.showMeasureErrors ?? false}
+        onShowMeasureErrorsChange={editor.setShowMeasureErrors}
       />
 
       {/* Help Modal */}

@@ -14,6 +14,7 @@ import {
   EditorNote,
   NoteTool,
   RepeatMarker,
+  VoltaBracket,
 } from "@/components/NoteEditorRefactored";
 import {
   TimeSignature,
@@ -22,7 +23,7 @@ import {
   SavedSongsMap,
   Pitch,
 } from "@/lib/types";
-import { getDefaultSongs } from "@/lib/defaultSongs";
+import { getDefaultSongs, mergeWithDefaults } from "@/lib/defaultSongs";
 import { InstrumentType } from "@/lib/audio/TonePlayer";
 
 // SSR-safe localStorage options
@@ -68,6 +69,7 @@ interface EditorSettings {
   staffLines: number;
   volume: number; // 0-100 (percentage) - master volume control
   instrumentGains?: Record<InstrumentType, number>; // Per-instrument gain offsets in dB
+  showMeasureErrors: boolean; // Highlight measures with incorrect beat counts
 }
 
 const DEFAULT_SETTINGS: EditorSettings = {
@@ -85,6 +87,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   staffLines: 3,
   volume: 80, // Default: 80% volume
   instrumentGains: DEFAULT_INSTRUMENT_GAINS,
+  showMeasureErrors: false, // Off by default
 };
 
 // Composition data - uses absoluteBeat format (layout-independent)
@@ -92,12 +95,14 @@ interface CompositionData {
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
   lyrics: LyricSyllable[];
+  voltaBrackets: VoltaBracket[];
 }
 
 const DEFAULT_COMPOSITION: CompositionData = {
   notes: [],
   repeatMarkers: [],
   lyrics: [],
+  voltaBrackets: [],
 };
 
 // Options for the hook
@@ -111,11 +116,15 @@ export interface UseEditorStateReturn {
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
   lyrics: LyricSyllable[];
+  voltaBrackets: VoltaBracket[];
 
   // Setters
   setNotes: (notes: EditorNote[]) => void;
+  setNotesWithoutHistory: (notes: EditorNote[]) => void; // For drag operations
+  commitNotesToHistory: () => void; // Call after drag ends to save undo state
   setRepeatMarkers: (markers: RepeatMarker[]) => void;
   setLyrics: (lyrics: LyricSyllable[]) => void;
+  setVoltaBrackets: (brackets: VoltaBracket[]) => void;
 
   // Settings
   settings: EditorSettings;
@@ -133,6 +142,7 @@ export interface UseEditorStateReturn {
   setStaffLines: (lines: number) => void;
   setVolume: (volume: number) => void;
   setInstrumentGains: (gains: Record<InstrumentType, number>) => void;
+  setShowMeasureErrors: (show: boolean) => void;
 
   // Tool state
   selectedTool: NoteTool | null;
@@ -272,6 +282,38 @@ function validateRepeatMarkers(
 }
 
 /**
+ * Validate volta brackets to ensure they have valid structure.
+ */
+function validateVoltaBrackets(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brackets: any[],
+): VoltaBracket[] {
+  if (!Array.isArray(brackets)) return [];
+
+  return brackets
+    .filter((b) => {
+      if (!b || typeof b !== "object") return false;
+      if (
+        typeof b.startMeasure !== "number" ||
+        !Number.isFinite(b.startMeasure)
+      )
+        return false;
+      if (typeof b.endMeasure !== "number" || !Number.isFinite(b.endMeasure))
+        return false;
+      if (typeof b.voltaNumber !== "number" || b.voltaNumber < 1) return false;
+      if (typeof b.repeatPairId !== "string" || !b.repeatPairId) return false;
+      return true;
+    })
+    .map((b) => ({
+      id: b.id || `volta-${Date.now()}-${Math.random()}`,
+      repeatPairId: b.repeatPairId,
+      startMeasure: b.startMeasure,
+      endMeasure: b.endMeasure,
+      voltaNumber: b.voltaNumber,
+    }));
+}
+
+/**
  * Hook for managing editor state
  */
 export function useEditorState(
@@ -353,6 +395,7 @@ export function useEditorState(
       notes: validateNotes(rawComposition?.notes || []),
       repeatMarkers: validateRepeatMarkers(rawComposition?.repeatMarkers || []),
       lyrics: rawComposition?.lyrics || [],
+      voltaBrackets: validateVoltaBrackets(rawComposition?.voltaBrackets || []),
     };
   }, [rawComposition]);
 
@@ -362,6 +405,25 @@ export function useEditorState(
       historyInitialized.current = true;
     }
   }, [composition]);
+
+  // Merge saved songs with defaults to get latest versions (volta brackets, fixes, etc.)
+  const mergedSongsRef = useRef(false);
+  useEffect(() => {
+    if (!mergedSongsRef.current && Object.keys(savedSongs).length > 0) {
+      mergedSongsRef.current = true;
+      const merged = mergeWithDefaults(savedSongs);
+      // Only update if there are changes
+      const defaultIds = Object.keys(getDefaultSongs());
+      const needsUpdate = defaultIds.some(
+        (id) =>
+          !savedSongs[id] ||
+          JSON.stringify(savedSongs[id]) !== JSON.stringify(merged[id]),
+      );
+      if (needsUpdate) {
+        setSavedSongs(merged);
+      }
+    }
+  }, [savedSongs, setSavedSongs]);
 
   // Push composition to history
   const pushToHistory = useCallback(
@@ -425,6 +487,21 @@ export function useEditorState(
     [composition, setComposition, pushToHistory],
   );
 
+  // Update notes WITHOUT pushing to history (for drag operations)
+  const setNotesWithoutHistory = useCallback(
+    (notes: EditorNote[]) => {
+      const newComposition = { ...composition, notes };
+      setComposition(newComposition);
+      // Don't push to history - caller will call commitNotesToHistory when done
+    },
+    [composition, setComposition],
+  );
+
+  // Commit current composition to history (call after drag ends)
+  const commitNotesToHistory = useCallback(() => {
+    pushToHistory(composition);
+  }, [composition, pushToHistory]);
+
   const setRepeatMarkers = useCallback(
     (repeatMarkers: RepeatMarker[]) => {
       const newComposition = { ...composition, repeatMarkers };
@@ -437,6 +514,15 @@ export function useEditorState(
   const setLyrics = useCallback(
     (lyrics: LyricSyllable[]) => {
       const newComposition = { ...composition, lyrics };
+      setComposition(newComposition);
+      pushToHistory(newComposition);
+    },
+    [composition, setComposition, pushToHistory],
+  );
+
+  const setVoltaBrackets = useCallback(
+    (voltaBrackets: VoltaBracket[]) => {
+      const newComposition = { ...composition, voltaBrackets };
       setComposition(newComposition);
       pushToHistory(newComposition);
     },
@@ -544,6 +630,13 @@ export function useEditorState(
     [setSettings],
   );
 
+  const setShowMeasureErrors = useCallback(
+    (showMeasureErrors: boolean) => {
+      setSettings((prev) => ({ ...prev, showMeasureErrors }));
+    },
+    [setSettings],
+  );
+
   // Clear composition
   const clearComposition = useCallback(() => {
     setComposition(DEFAULT_COMPOSITION);
@@ -587,6 +680,8 @@ export function useEditorState(
           // Repeat markers already in measureNumber format
           repeatMarkers: composition.repeatMarkers,
           lyrics: composition.lyrics,
+          // Volta brackets (1st/2nd endings)
+          voltaBrackets: composition.voltaBrackets,
         },
         settings: {
           tempo: settings.tempo,
@@ -621,10 +716,17 @@ export function useEditorState(
       const lyrics =
         "lyrics" in song.composition ? song.composition.lyrics : [];
 
+      // Get volta brackets (only exists in new format with voltas)
+      const voltaBrackets =
+        "voltaBrackets" in song.composition
+          ? validateVoltaBrackets(song.composition.voltaBrackets || [])
+          : [];
+
       const newComposition: CompositionData = {
         notes: validNotes,
         repeatMarkers: validMarkers,
         lyrics: lyrics || [],
+        voltaBrackets,
       };
 
       setComposition(newComposition);
@@ -721,11 +823,15 @@ export function useEditorState(
     notes: composition.notes,
     repeatMarkers: composition.repeatMarkers,
     lyrics: composition.lyrics,
+    voltaBrackets: composition.voltaBrackets,
 
     // Setters
     setNotes,
+    setNotesWithoutHistory,
+    commitNotesToHistory,
     setRepeatMarkers,
     setLyrics,
+    setVoltaBrackets,
 
     // Settings
     settings: {
@@ -747,6 +853,7 @@ export function useEditorState(
     setStaffLines,
     setVolume,
     setInstrumentGains,
+    setShowMeasureErrors,
 
     // Tool state
     selectedTool,
