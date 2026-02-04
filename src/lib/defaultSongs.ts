@@ -1,25 +1,5 @@
 import { SavedSong, SavedSongsMap } from "./types";
-import { SongData } from "./songs/types";
-import {
-  dayenu,
-  mashiachNow,
-  didanNotzach,
-  aniPurim,
-  havdalah,
-  vezakeniLegadel,
-  adonOlam,
-  adonOlamFull,
-  hevenuShalom,
-  alYedeyNigunim,
-  chagPurim,
-  maNishtana,
-  omarRabbiAkiva,
-  drorYikra,
-  ochilaLakel,
-  shevetAchim,
-  sheHashemesh,
-  // yeshBiOdKoach moved to _needs_redo/ - requires chords
-} from "./songs";
+import { SONG_REGISTRY, SongData } from "./songs/registry";
 
 // Helper to create a SavedSong from a SongData
 // Uses the song's releaseDate for consistent timestamps
@@ -35,56 +15,34 @@ function createSavedSong(song: SongData): SavedSong {
     composition: {
       notes: song.notes,
       repeatMarkers: song.repeatMarkers,
+      voltaBrackets: song.voltaBrackets ?? [],
       lyrics: song.lyrics,
     },
     settings: song.settings,
   };
 }
 
-// All default songs in order of release
-// NOTE: Songs in src/lib/songs/_needs_redo/ are excluded until properly transcribed
-const ALL_DEFAULT_SONGS: SongData[] = [
-  dayenu,
-  mashiachNow,
-  didanNotzach,
-  aniPurim,
-  havdalah,
-  vezakeniLegadel,
-  adonOlam,
-  adonOlamFull,
-  hevenuShalom,
-  alYedeyNigunim,
-  chagPurim,
-  maNishtana,
-  omarRabbiAkiva,
-  drorYikra,
-  ochilaLakel,
-  shevetAchim,
-  sheHashemesh,
-  // yeshBiOdKoach - needs chords to sound correct (moved to _needs_redo/)
-];
-
-// Generate default songs from individual song files
+// Generate default songs from the registry
 export function getDefaultSongs(): SavedSongsMap {
-  const songs = ALL_DEFAULT_SONGS.map((song) => createSavedSong(song));
+  const songs = SONG_REGISTRY.map((song) => createSavedSong(song));
   return Object.fromEntries(songs.map((song) => [song.id, song]));
 }
 
-// Merge new default songs into existing saved songs
-// This allows users to automatically receive new songs without resetting
+// Merge default songs into existing saved songs
+// - Adds any missing default songs
+// - Updates existing default songs with latest versions (fixes, new features like voltas)
+// - Preserves user-created songs (non-default IDs)
 export function mergeWithDefaults(existingSongs: SavedSongsMap): SavedSongsMap {
   const defaults = getDefaultSongs();
   const merged = { ...existingSongs };
 
-  // Add any missing default songs
+  // Add or update all default songs
   for (const [id, song] of Object.entries(defaults)) {
-    if (!(id in merged)) {
-      merged[id] = song;
-    }
+    merged[id] = song;
   }
 
   return merged;
 }
 
 // Default song IDs for checking if defaults exist
-export const DEFAULT_SONG_IDS = ALL_DEFAULT_SONGS.map((song) => song.id);
+export const DEFAULT_SONG_IDS = SONG_REGISTRY.map((song) => song.id);

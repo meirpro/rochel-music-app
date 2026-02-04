@@ -1,6 +1,14 @@
-// Song library - exports all individual song files
-// NOTE: Songs in _needs_redo/ are excluded until they are properly transcribed
+/**
+ * Song Library Exports
+ *
+ * For adding new songs, edit registry.ts (single source of truth).
+ * This file re-exports everything for backwards compatibility.
+ */
 
+// Re-export the registry (preferred way to get all songs)
+export { SONG_REGISTRY } from "./registry";
+
+// Individual song exports (for backwards compatibility)
 export { dayenu } from "./dayenu";
 export { mashiachNow } from "./mashiachNow";
 export { didanNotzach } from "./didanNotzach";
@@ -19,6 +27,14 @@ export { ochilaLakel } from "./ochilaLakel";
 export { shevetAchim } from "./shevetAchim";
 export { sheHashemesh } from "./sheHashemesh";
 // yeshBiOdKoach moved to _needs_redo/ - requires chords to sound correct
+
+// Updated versions with REST notes from MusicXML
+export { hevenuShalomUpdated } from "./hevenuShalomUpdated";
+export { sheHashemeshUpdated } from "./sheHashemeshUpdated";
+export { shevetAchimUpdated } from "./shevetAchimUpdated";
+export { ochilaLakelUpdated } from "./ochilaLakelUpdated";
+export { omarRabbiAkivaUpdated } from "./omarRabbiAkivaUpdated";
+export { yeshBiOdKoachUpdated } from "./yeshBiOdKoachUpdated";
 
 // Re-export types
 export type { SongData } from "./types";
