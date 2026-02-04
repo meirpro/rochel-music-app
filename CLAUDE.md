@@ -88,11 +88,31 @@ When adding new songs from sheet music, follow this format exactly.
 ```typescript
 interface EditorNote {
   id: string;           // Unique ID: "{songSlug}-{index}"
-  pitch: string;        // Note name + octave: "C4", "F#4", "Bb3"
+  pitch: string;        // Note name + octave: "C4", "F#4", "Bb3", or "REST"
   duration: number;     // In beats: 4=whole, 2=half, 1=quarter, 0.5=eighth
   absoluteBeat: number; // Position from start of song (0-indexed)
 }
 ```
+
+### Rests (Silence)
+
+Use `pitch: "REST"` to create silence for a specified duration. Rests are always centered vertically on the staff.
+
+```typescript
+// Quarter rest at beat 3
+{ id: "song-15", pitch: "REST", duration: 1, absoluteBeat: 3 },
+
+// Half rest at beat 4
+{ id: "song-16", pitch: "REST", duration: 2, absoluteBeat: 4 },
+```
+
+**Rest symbols rendered:**
+| Duration | Symbol | Description |
+|----------|--------|-------------|
+| 4 beats | Rectangle hanging below line | Whole rest |
+| 2 beats | Rectangle sitting on line | Half rest |
+| 1 beat | Squiggly zig-zag | Quarter rest |
+| 0.5 beats | Flag with dot | Eighth rest |
 
 ### Duration Values
 
@@ -225,6 +245,14 @@ Tutorial hint strings in `/src/app/editor/config/tutorialStages.ts` support inli
 | `[repeat]` | Repeat sign SVG | Repeat marker tool |
 | `[delete]` | X icon SVG | Delete tool |
 
+**TODO: Add rest tokens when rests are taught in curriculum:**
+| Token | Renders As | Use For |
+|-------|-----------|---------|
+| `[rest-quarter]` | Quarter rest SVG | Quarter rest tool |
+| `[rest-half]` | Half rest SVG | Half rest tool |
+| `[rest-eighth]` | Eighth rest SVG | Eighth rest tool |
+| `[rest-whole]` | Whole rest SVG | Whole rest tool |
+
 ### Example Usage
 
 ```typescript
@@ -242,3 +270,53 @@ Tutorial hint strings in `/src/app/editor/config/tutorialStages.ts` support inli
 1. Create an `Inline*Icon` component in `TutorialOverlay.tsx` (12-14px wide)
 2. Add the token to `ICON_MAP`: `"[newtoken]": InlineNewIcon`
 3. Add the pattern to the regex in `renderHintWithIcons()`
+
+## Songs Needing Rests
+
+The following songs have rests marked in comments but not yet added as REST notes.
+Now that rest support is implemented, these songs should be updated:
+
+### High Priority (Many Rests)
+| Song | File | Notes |
+|------|------|-------|
+| Shevet Achim | `shevetAchim.ts` | 15+ rests throughout, "Multiple rests" in features |
+| She Hashemesh | `sheHashemesh.ts` | 16+ rests, "Rests throughout" in features |
+
+### Medium Priority (Some Rests)
+| Song | File | Notes |
+|------|------|-------|
+| Ochila Lakel | `ochilaLakel.ts` | "Some gaps indicate rests" |
+| Dror Yikra | `drorYikra.ts` | "Some gaps indicate rests" |
+| Omar Rabbi Akiva | `omarRabbiAkiva.ts` | "Some gaps in source (rests not rendered)" |
+| Didan Notzach | `didanNotzach.ts` | Measures 6 and 8 have rests |
+
+### Low Priority (Pickup/Opening Rests)
+| Song | File | Notes |
+|------|------|-------|
+| Ani Purim | `aniPurim.ts` | Beats 1-3 silent before pickup |
+
+### In `_needs_redo/` Folder (Also Need Rests)
+- yeshBiOdKoach - many rests + needs chords
+- shibnehBeitHamikdash - multiple rests
+- nigunSimcha - multiple rests
+- eimatiKaatiMar - has rests
+- avinuMalkenu - quarter rests
+
+## Learn Mode Stages
+
+Location: `/src/app/learn/`
+
+Current curriculum (5 stages):
+1. **The Staff & Notes** - Where notes live
+2. **Note Durations** - How long notes last
+3. **Reading & Playing** - Making music flow
+4. **Rhythm & Shorter Notes** - Adding complexity
+5. **Full Editor Intro** - You're ready!
+
+### Future: Rests in Curriculum
+Rests could be added to Stage 2 (Note Durations) or as a new Stage 2.5.
+Key concepts to teach:
+- Rests represent silence/pauses
+- Same duration values as notes (whole=4, half=2, quarter=1, eighth=0.5)
+- Visual symbols differ from note symbols
+- Rests maintain rhythmic structure even without sound
