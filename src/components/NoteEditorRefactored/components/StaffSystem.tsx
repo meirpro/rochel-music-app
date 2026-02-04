@@ -19,6 +19,7 @@ import { TimeSignature } from "../utils/timeSigConfig";
 import { RepeatMarker, RenderedRepeatMarker, NoteTool } from "../types";
 import { TimeSignatureChange } from "@/lib/types";
 import { HoveredTimeSigBarState } from "../hooks/useTimeSigPicker";
+import { MeasureValidation } from "../utils/measureValidation";
 
 export interface StaffSystemProps {
   systemIndex: number;
@@ -52,6 +53,10 @@ export interface StaffSystemProps {
   onMarkerDragStart?: (marker: RenderedRepeatMarker, system: number) => void;
   /** Whether a marker is currently being dragged */
   isDraggingMarker?: boolean;
+  /** Measure validation errors (when showMeasureErrors is enabled) */
+  measureErrors?: Map<number, MeasureValidation>;
+  /** Whether to show measure error highlights */
+  showMeasureErrors?: boolean;
 }
 
 // Treble clef SVG path data (optimized via Inkscape + SVGOMG)
@@ -81,6 +86,8 @@ export function StaffSystem({
   onTimeSigPickerOpen,
   onMarkerDragStart,
   isDraggingMarker = false,
+  measureErrors,
+  showMeasureErrors = false,
 }: StaffSystemProps) {
   const isFirstSystem = systemIndex === 0;
   // Use dynamic system height based on staff lines
@@ -173,6 +180,76 @@ export function StaffSystem({
             );
           }),
         )}
+
+      {/* Measure error highlights - render above beat shading with 30% opacity */}
+      {showMeasureErrors &&
+        sysMeasures.map((measure) => {
+          const validation = measureErrors?.get(measure.measureIndex);
+          if (!validation || validation.isValid) return null;
+
+          const measureStartX =
+            LEFT_MARGIN + measure.xOffset - (measure.prefixWidth || 0);
+          const measureWidth =
+            (measure.prefixWidth || 0) +
+            measure.beatsInMeasure * sysBeatWidth +
+            (measure.suffixWidth || 0);
+
+          const peakHeight = 25;
+
+          return (
+            <g key={`error-${systemIndex}-${measure.measureIndex}`}>
+              {/* Top peak - more visible */}
+              <rect
+                x={measureStartX}
+                y={staffCenterY + staffTopOffset - staffPadding - 5}
+                width={measureWidth}
+                height={peakHeight}
+                fill="rgba(239, 68, 68, 0.35)"
+                rx={4}
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Bottom peak - more visible */}
+              <rect
+                x={measureStartX}
+                y={
+                  staffCenterY +
+                  staffBottomOffset +
+                  staffPadding -
+                  peakHeight +
+                  5
+                }
+                width={measureWidth}
+                height={peakHeight}
+                fill="rgba(239, 68, 68, 0.35)"
+                rx={4}
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Error label above staff */}
+              <rect
+                x={measureStartX + measureWidth / 2 - 35}
+                y={staffCenterY + staffTopOffset - staffPadding - 28}
+                width={70}
+                height={18}
+                fill="#fef2f2"
+                stroke="#ef4444"
+                strokeWidth={1}
+                rx={4}
+                style={{ pointerEvents: "none" }}
+              />
+              <text
+                x={measureStartX + measureWidth / 2}
+                y={staffCenterY + staffTopOffset - staffPadding - 15}
+                textAnchor="middle"
+                fontSize={11}
+                fontWeight="600"
+                fill="#dc2626"
+                style={{ pointerEvents: "none" }}
+              >
+                {validation.errorLabel}
+              </text>
+            </g>
+          );
+        })}
 
       {/* Staff lines */}
       {(() => {
