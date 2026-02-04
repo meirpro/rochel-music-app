@@ -65,53 +65,60 @@ export function snapX(
   sysLayout?: SystemLayout,
 ): number {
   const noteOffset = getNoteOffset(beatWidth);
-  const halfBeatWidth = beatWidth / 2;
 
   // Epsilon biases snapping forward - see function docstring for explanation
   const EPSILON = 0.01;
 
   // If we have a system layout, use measure xOffsets for proper snapping
+  // Key insight: calculate beat position first, then convert to X using same
+  // formula as rendering (getBeatXInSystem). This ensures snap matches render.
   if (sysLayout) {
     const xWithoutOffset = x - noteOffset;
 
     // Find which measure this X falls into
     for (const measure of sysLayout.measures) {
       const measureStartX = LEFT_MARGIN + measure.xOffset;
-      const measureEndX = measureStartX + measure.beatsInMeasure * beatWidth;
 
-      // Extend left tolerance to include prefixWidth (time sig display area)
-      // so clicks in the decoration area snap to the first beat
+      // leftTolerance extends click detection leftward to include the prefix decoration area
+      // (repeat start markers, mid-row time signatures). Without this, clicks on decorations
+      // wouldn't be attributed to the correct measure. Clicks in this area snap to beat 0.
+      // The base tolerance (10px) handles edge cases at the boundary.
       const leftTolerance = measure.prefixWidth + 10;
 
-      // Check if X falls within this measure's left boundary (with tolerance for prefix area)
+      // Check if X falls within this measure's beat area (with small left tolerance)
       if (xWithoutOffset >= measureStartX - leftTolerance) {
-        // X is potentially in this measure - calculate the snap position
+        // X is potentially in this measure - calculate beat position directly
         // Clamp xInMeasure to not go negative (clicks in prefix area snap to beat 0)
         const xInMeasure = Math.max(0, xWithoutOffset - measureStartX);
-        // Add epsilon to bias rounding forward at boundaries
-        const halfBeatCount = xInMeasure / halfBeatWidth + EPSILON;
-        const snappedBeatInMeasure = Math.round(halfBeatCount) * halfBeatWidth;
+
+        // Convert pixels to beats (not half-beat pixels!)
+        const beatInMeasure = xInMeasure / beatWidth + EPSILON;
+
+        // Snap to half-beats by rounding to nearest 0.5
+        const snappedBeatInMeasure = Math.round(beatInMeasure * 2) / 2;
 
         // Check if snap result is within this measure's valid beat range
         // If snapped beat exceeds measure bounds, fall through to next measure
         // This handles clicks near the bar line that should snap to the next measure
-        const maxBeatInMeasure = (measure.beatsInMeasure - 0.5) * beatWidth;
+        const maxBeatInMeasure = measure.beatsInMeasure - 0.5;
         if (snappedBeatInMeasure <= maxBeatInMeasure) {
-          // Snap is within bounds - return this position
-          const clampedBeatX = Math.max(0, snappedBeatInMeasure);
-          return measureStartX + clampedBeatX + noteOffset;
+          // Snap is within bounds - convert beat back to X using same formula as rendering
+          // This is the key fix: use the rendering formula to ensure consistency
+          const clampedBeat = Math.max(0, snappedBeatInMeasure);
+          return (
+            LEFT_MARGIN + measure.xOffset + clampedBeat * beatWidth + noteOffset
+          );
         }
         // Snap exceeds measure bounds - continue to next measure
       }
     }
   }
 
-  // Fallback: simple calculation without xOffset
+  // Fallback: simple calculation without xOffset (for when no sysLayout provided)
   const xWithoutOffset = x - noteOffset;
-  const halfBeatCount =
-    (xWithoutOffset - LEFT_MARGIN) / halfBeatWidth + EPSILON;
-  const snapped =
-    Math.round(halfBeatCount) * halfBeatWidth + LEFT_MARGIN + noteOffset;
+  const rawBeat = (xWithoutOffset - LEFT_MARGIN) / beatWidth + EPSILON;
+  const snappedBeat = Math.round(rawBeat * 2) / 2;
+  const snapped = LEFT_MARGIN + snappedBeat * beatWidth + noteOffset;
   // Clamp to valid range
   const maxX = staffRight - beatWidth / 3;
   return Math.max(LEFT_MARGIN + noteOffset, Math.min(maxX, snapped));

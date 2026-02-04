@@ -9,7 +9,11 @@ import {
   getNoteOffset,
   getStaffCenterY as getStaffCenterYFromLayout,
 } from "@/lib/layoutUtils";
-import { SystemLayout, getLayoutForSystem } from "../utils/systemLayout";
+import {
+  SystemLayout,
+  getLayoutForSystem,
+  getBeatFromXInSystem,
+} from "../utils/systemLayout";
 import { NoteTool } from "../types";
 
 // Editing state type
@@ -107,10 +111,13 @@ export function useLyricsEditing({
       if (y >= lyricsZoneTop && y <= lyricsZoneBottom) {
         const sysLayout = getLayoutForSystem(systemLayouts, system);
 
-        // Calculate beat position
-        const beatInSystem =
-          (x - LEFT_MARGIN - getNoteOffset(sysLayout.beatWidth)) /
-          sysLayout.beatWidth;
+        // Calculate beat position using getBeatFromXInSystem which properly
+        // accounts for measure xOffsets (repeat markers, time signatures)
+        const beatInSystem = getBeatFromXInSystem(
+          sysLayout,
+          x,
+          getNoteOffset(sysLayout.beatWidth),
+        );
         const snappedBeatInSystem = Math.round(beatInSystem * 2) / 2;
         const clampedBeatInSystem = Math.max(
           0,

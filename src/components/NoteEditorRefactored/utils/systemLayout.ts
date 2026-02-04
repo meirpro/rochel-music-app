@@ -511,8 +511,9 @@ export function getBeatFromXInSystem(
   for (const measure of sysLayout.measures) {
     const measureStartX = LEFT_MARGIN + measure.xOffset;
 
-    // Extend left tolerance to include prefixWidth (time sig display area)
-    // so clicks in the decoration area are assigned to this measure
+    // leftTolerance extends click detection leftward to include the prefix decoration area
+    // (repeat start markers, mid-row time signatures). Clicks in this area snap to beat 0.
+    // Smaller tolerance here since this function receives already-snapped X coordinates
     const leftTolerance = measure.prefixWidth + 5;
 
     // Check if X falls within this measure's left boundary

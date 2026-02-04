@@ -129,19 +129,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     showMeasureErrors = false,
   } = props;
 
-  // Debug: Check if onVoltaBracketsChange changes
-  const prevCallbackRef = useRef<boolean | undefined>(undefined);
-  useEffect(() => {
-    const hasCallback = typeof onVoltaBracketsChange === "function";
-    if (prevCallbackRef.current !== hasCallback) {
-      console.log("[NoteEditorRefactored] onVoltaBracketsChange changed:", {
-        hasCallback,
-        voltaBracketsCount: voltaBrackets.length,
-      });
-      prevCallbackRef.current = hasCallback;
-    }
-  }, [onVoltaBracketsChange, voltaBrackets.length]);
-
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
 
@@ -775,11 +762,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
       // Handle volta tool - delegate to hook
       if (selectedTool === "volta") {
-        console.log("[NoteEditorRefactored] Volta tool click:", {
-          x,
-          system,
-          hasOnVoltaBracketsChange: typeof onVoltaBracketsChange === "function",
-        });
         handleVoltaClick(x, system);
         return;
       }
@@ -791,15 +773,20 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       }
 
       // Regular note placement
+      // Use snapX to get the snapped X coordinate, then getBeatFromXInSystem to convert
+      // back to beat. This properly accounts for measure xOffsets (repeat markers, time sigs).
+      // NOTE: Don't use simple (x - LEFT_MARGIN) / beatWidth - it ignores decoration offsets!
       const snappedX = snapX(
         x,
         sysLayout.staffRight,
         sysLayout.beatWidth,
         sysLayout,
       );
-      const beat =
-        (snappedX - LEFT_MARGIN - getNoteOffset(sysLayout.beatWidth)) /
-        sysLayout.beatWidth;
+      const beat = getBeatFromXInSystem(
+        sysLayout,
+        snappedX,
+        getNoteOffset(sysLayout.beatWidth),
+      );
       // For rest tools, use "REST" pitch; otherwise get pitch from Y position
       const pitch = isRestTool(selectedTool)
         ? "REST"
@@ -849,7 +836,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       handleRepeatClick,
       handleVoltaClick,
       handleLyricsClick,
-      onVoltaBracketsChange, // For debug logging
       notes,
       renderedNotes,
       allowChords,

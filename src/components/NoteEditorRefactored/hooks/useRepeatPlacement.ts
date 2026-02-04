@@ -3,8 +3,12 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { LEFT_MARGIN } from "@/lib/layoutUtils";
-import { SystemLayout, getLayoutForSystem } from "../utils/systemLayout";
+// Note: getBeatFromXInSystem properly handles measure xOffsets for decoration-aware positioning
+import {
+  SystemLayout,
+  getLayoutForSystem,
+  getBeatFromXInSystem,
+} from "../utils/systemLayout";
 import { RepeatMarker, RenderedRepeatMarker, NoteTool } from "../types";
 
 // Repeat start state type
@@ -124,8 +128,10 @@ export function useRepeatPlacement({
 
       const sysLayout = getLayoutForSystem(systemLayouts, system);
 
-      // Calculate beat position to determine measure
-      const beatInSystem = (x - LEFT_MARGIN) / sysLayout.beatWidth;
+      // Calculate beat position using getBeatFromXInSystem which properly
+      // accounts for measure xOffsets (repeat markers, time signatures)
+      // Use noteOffset=0 since raw click position doesn't include note centering
+      const beatInSystem = getBeatFromXInSystem(sysLayout, x, 0);
       const measureContainingClick = Math.floor(beatInSystem / beatsPerMeasure);
       const clampedMeasure = Math.max(
         0,
@@ -254,8 +260,9 @@ export function useRepeatPlacement({
 
       const sysLayout = getLayoutForSystem(systemLayouts, system);
 
-      // Calculate beat position to determine measure
-      const beatInSystem = (x - LEFT_MARGIN) / sysLayout.beatWidth;
+      // Calculate beat position using getBeatFromXInSystem which properly
+      // accounts for measure xOffsets (repeat markers, time signatures)
+      const beatInSystem = getBeatFromXInSystem(sysLayout, x, 0);
       const measureContainingHover = Math.floor(beatInSystem / beatsPerMeasure);
       const clampedMeasure = Math.max(
         0,
@@ -292,8 +299,9 @@ export function useRepeatPlacement({
 
       const sysLayout = getLayoutForSystem(systemLayouts, system);
 
-      // Calculate target measure from x position
-      const beatInSystem = (x - LEFT_MARGIN) / sysLayout.beatWidth;
+      // Calculate target measure using getBeatFromXInSystem which properly
+      // accounts for measure xOffsets (repeat markers, time signatures)
+      const beatInSystem = getBeatFromXInSystem(sysLayout, x, 0);
       const measureContainingDrag = Math.floor(beatInSystem / beatsPerMeasure);
       const clampedMeasure = Math.max(
         0,
