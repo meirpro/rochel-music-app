@@ -66,7 +66,13 @@ interface UsePlaybackOptions {
   totalMeasures: number;
   containerWidth?: number;
   containerHeight?: number;
-  onScrollTo?: (scrollLeft: number, scrollTop: number) => void;
+  contentWidth?: number; // SVG content width for scroll bounds
+  contentHeight?: number; // SVG content height for scroll bounds
+  onScrollTo?: (
+    scrollLeft: number,
+    scrollTop: number,
+    smoothVertical?: boolean,
+  ) => void;
   noteSpacing?: number; // 1.0 to 2.0, default 1.0
   disableSpacebarControl?: boolean; // When true, caller handles spacebar
   staffLines?: number; // Number of visible staff lines (3, 4, or 5)
@@ -114,6 +120,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     totalMeasures,
     containerWidth,
     containerHeight,
+    contentWidth,
+    contentHeight: _contentHeight,
     onScrollTo,
     noteSpacing = 1.0,
     disableSpacebarControl = false,
@@ -744,30 +752,44 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         return;
       }
 
-      // Scroll-follow with smart behavior:
-      // - Always scroll when system/row changes
-      // - Otherwise, only recenter after 1.5s of no user scrolling
-      if (onScrollTo && containerWidth && containerHeight) {
+      // 3-Phase scroll-follow behavior:
+      // Phase 1 (Beginning): scroll=0, playhead moves left→center
+      // Phase 2 (Middle): scroll keeps playhead centered
+      // Phase 3 (End): scroll=max, playhead moves center→right
+      if (onScrollTo && containerWidth && containerHeight && contentWidth) {
         const now = performance.now();
         const systemChanged = system !== lastSystemRef.current;
         const userScrollPaused = now < scrollPausedUntilRef.current;
 
-        // Use dynamic layout for proper Y positioning
-        const staffCenterY = getStaffCenterY(system, staffLines);
+        const viewportCenterX = containerWidth / 2;
+        const maxScrollX = Math.max(0, contentWidth - containerWidth);
 
-        // Calculate desired scroll positions
-        const desiredScrollX = x - containerWidth / 2;
-        const desiredScrollY = staffCenterY - containerHeight / 2;
+        // Calculate target horizontal scroll based on 3-phase logic
+        let targetScrollX: number;
+        if (x <= viewportCenterX) {
+          // Phase 1: Beginning - no scroll, playhead moves right
+          targetScrollX = 0;
+        } else if (x >= contentWidth - viewportCenterX) {
+          // Phase 3: End - max scroll, playhead moves right
+          targetScrollX = maxScrollX;
+        } else {
+          // Phase 2: Middle - keep playhead centered
+          targetScrollX = x - viewportCenterX;
+        }
+
+        // Vertical scroll calculation
+        const staffCenterY = getStaffCenterY(system, staffLines);
+        const targetScrollY = staffCenterY - containerHeight / 2;
 
         if (systemChanged) {
-          // Always scroll when moving to a new row/system
+          // System change: smooth vertical scroll, instant horizontal
           lastSystemRef.current = system;
-          onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
+          onScrollTo(targetScrollX, Math.max(0, targetScrollY), true);
           // Give user 1.5s before we start auto-scrolling horizontally again
           scrollPausedUntilRef.current = now + 1500;
         } else if (!userScrollPaused) {
-          // User hasn't scrolled recently, recenter to playhead
-          onScrollTo(Math.max(0, desiredScrollX), Math.max(0, desiredScrollY));
+          // Normal playback: instant scroll (RAF handles smoothness)
+          onScrollTo(targetScrollX, Math.max(0, targetScrollY), false);
         }
         // If userScrollPaused, don't override user's scroll position
       }
@@ -838,6 +860,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     totalMeasures,
     containerWidth,
     containerHeight,
+    contentWidth,
     onScrollTo,
     staffLines,
     buildPlaybackData,

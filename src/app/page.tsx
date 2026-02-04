@@ -6,7 +6,14 @@ import { toast, Toaster } from "sonner";
 import {
   NoteEditorRefactored,
   NoteTool,
+  calculateSystemLayouts,
+  getLayoutConfig,
 } from "@/components/NoteEditorRefactored";
+import {
+  getEffectiveSystemHeight,
+  getEffectiveTopMargin,
+  getEffectiveBottomPadding,
+} from "@/lib/layoutUtils";
 import { TimeSignature } from "@/components/NoteEditor";
 import { PianoDrawer } from "@/components/PianoDrawer";
 import { EditorHeader } from "@/components/EditorHeader";
@@ -41,7 +48,11 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileBanner } from "@/components/MobileBanner";
 import { Footer } from "@/components/Footer";
 // Note: coordinateAdapter is no longer needed - NoteEditorRefactored uses new format directly
-import { InstrumentType, setInstrument } from "@/lib/audio/TonePlayer";
+import {
+  InstrumentType,
+  setInstrument,
+  setMasterVolume,
+} from "@/lib/audio/TonePlayer";
 
 // Types for localStorage persistence
 // Supports both legacy (system-based) and new (absoluteBeat) formats during migration
@@ -61,6 +72,7 @@ interface EditorSettings {
   pianoShowBlackKeys: boolean;
   staffLines: number; // 2-5, default 3 - number of horizontal lines per staff
   noteSpacing: number; // 1.0-2.0 (100%-200%) - controls beat width multiplier
+  volume: number; // 0-100 (percentage) - master volume control
 }
 
 interface EditorUI {
@@ -91,6 +103,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   pianoShowBlackKeys: false,
   staffLines: 3, // Default: 3 horizontal lines per staff
   noteSpacing: 1.0, // Default: 100% (compact) - range 1.0-2.0
+  volume: 80, // Default: 80% volume
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -259,6 +272,13 @@ export default function Home() {
     }
   }, [settings.instrument]);
 
+  // Sync volume setting with TonePlayer on mount and when changed
+  useEffect(() => {
+    // Convert 0-100 range to 0-1 range for TonePlayer
+    const volumeNormalized = (settings.volume ?? 80) / 100;
+    setMasterVolume(volumeNormalized);
+  }, [settings.volume]);
+
   // SVG ref for export functionality
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -310,6 +330,66 @@ export default function Home() {
   const systemCount = Math.ceil(totalMeasures / measuresPerRow);
   const totalBeats = totalMeasures * beatsPerMeasure;
 
+  // Calculate content dimensions for playback scroll bounds
+  // This mirrors the calculation in NoteEditorRefactored for consistency
+  const contentDimensions = useMemo(() => {
+    const staffLinesVal = settings.staffLines ?? 3;
+    const noteSpacingVal = settings.noteSpacing ?? 1.0;
+
+    // Calculate system layouts to get svgWidth
+    // Filter and cast repeat markers - only use new format (with measureNumber)
+    const repeatMarkersForLayout = (
+      (composition as Composition).repeatMarkers || []
+    )
+      .filter((m): m is RepeatMarker => "measureNumber" in m)
+      .map((m) => ({
+        measureNumber: m.measureNumber,
+        type: m.type,
+      }));
+
+    const systemLayouts = calculateSystemLayouts(
+      systemCount,
+      totalMeasures,
+      settings.timeSignature,
+      timeSignatureChanges || [],
+      measuresPerRow,
+      noteSpacingVal,
+      repeatMarkersForLayout,
+    );
+
+    const defaultLayout = getLayoutConfig(
+      settings.timeSignature,
+      measuresPerRow,
+      noteSpacingVal,
+    );
+
+    // Max width across all systems (same as NoteEditorRefactored)
+    const svgWidth = Math.max(
+      ...systemLayouts.map((l) => l.svgWidth),
+      defaultLayout.svgWidth,
+    );
+
+    // Height calculation (same as NoteEditorRefactored)
+    const effectiveSystemHeight = getEffectiveSystemHeight(staffLinesVal);
+    const effectiveTopMargin = getEffectiveTopMargin(staffLinesVal);
+    const effectiveBottomPadding = getEffectiveBottomPadding(staffLinesVal);
+    const svgHeight =
+      effectiveTopMargin +
+      systemCount * effectiveSystemHeight +
+      effectiveBottomPadding;
+
+    return { width: svgWidth, height: svgHeight };
+  }, [
+    composition,
+    systemCount,
+    totalMeasures,
+    settings.timeSignature,
+    settings.staffLines,
+    settings.noteSpacing,
+    timeSignatureChanges,
+    measuresPerRow,
+  ]);
+
   // Get responsive layout configuration
   const layout = useResponsiveLayout(editorContainerRef, {
     timeSignature: settings.timeSignature,
@@ -317,15 +397,25 @@ export default function Home() {
     userMeasuresPerRow: measuresPerRow,
   });
 
-  // Scroll handler for playback follow (smooth scroll with both axes)
+  // Scroll handler for playback follow
+  // Uses instant scroll for horizontal (RAF handles smoothness),
+  // smooth only for vertical system changes
   const handleScrollTo = useCallback(
-    (scrollLeft: number, scrollTop: number) => {
+    (scrollLeft: number, scrollTop: number, smoothVertical?: boolean) => {
       if (editorContainerRef.current) {
-        editorContainerRef.current.scrollTo({
-          left: scrollLeft,
-          top: scrollTop,
-          behavior: "smooth",
-        });
+        if (smoothVertical) {
+          // Smooth vertical only (for system changes)
+          editorContainerRef.current.scrollLeft = scrollLeft;
+          editorContainerRef.current.scrollTo({
+            left: scrollLeft,
+            top: scrollTop,
+            behavior: "smooth",
+          });
+        } else {
+          // Instant for both (RAF handles smoothness)
+          editorContainerRef.current.scrollLeft = scrollLeft;
+          editorContainerRef.current.scrollTop = scrollTop;
+        }
       }
     },
     [],
@@ -341,6 +431,8 @@ export default function Home() {
     totalMeasures,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
+    contentWidth: contentDimensions.width,
+    contentHeight: contentDimensions.height,
     onScrollTo: handleScrollTo,
     noteSpacing: settings.noteSpacing ?? 1.0,
     staffLines: settings.staffLines ?? 3,
@@ -1068,6 +1160,8 @@ export default function Home() {
           setSettings({ ...settings, instrument });
           setInstrument(instrument);
         }}
+        volume={settings.volume ?? 80}
+        onVolumeChange={(volume) => setSettings({ ...settings, volume })}
         showLabels={settings.showLabels}
         onShowLabelsChange={(show) =>
           setSettings({ ...settings, showLabels: show })
