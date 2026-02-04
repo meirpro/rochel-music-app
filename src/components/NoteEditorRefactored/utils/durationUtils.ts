@@ -20,20 +20,36 @@ export function getDurationFromTool(tool: NoteTool): number {
     case "sixteenth":
       return 0.25;
     case "eighth":
+    case "rest-eighth":
       return 0.5;
     case "dotted-eighth":
       return 0.75;
     case "quarter":
+    case "rest-quarter":
       return 1;
     case "dotted-quarter":
       return 1.5;
     case "half":
+    case "rest-half":
       return 2;
     case "dotted-half":
       return 3;
     case "whole":
+    case "rest-whole":
       return 4;
     default:
       return 1;
   }
+}
+
+/**
+ * Check if a tool creates a rest (silence) instead of a note
+ */
+export function isRestTool(tool: NoteTool): boolean {
+  return (
+    tool === "rest-whole" ||
+    tool === "rest-half" ||
+    tool === "rest-quarter" ||
+    tool === "rest-eighth"
+  );
 }

@@ -39,7 +39,7 @@ import {
   getYFromPitch,
 } from "./utils/pitchUtils";
 import { snapX } from "./utils/beatUtils";
-import { getDurationFromTool } from "./utils/durationUtils";
+import { getDurationFromTool, isRestTool } from "./utils/durationUtils";
 import { groupEighthNotes } from "./utils/beamingUtils";
 
 // Import types
@@ -623,7 +623,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       const beat =
         (snappedX - LEFT_MARGIN - getNoteOffset(sysLayout.beatWidth)) /
         sysLayout.beatWidth;
-      const pitch = getPitchFromY(y, system, staffLines);
+      // For rest tools, use "REST" pitch; otherwise get pitch from Y position
+      const pitch = isRestTool(selectedTool)
+        ? "REST"
+        : getPitchFromY(y, system, staffLines);
       const duration = getDurationFromTool(selectedTool);
 
       // Check for collision using renderedNotes (which have system/beat for comparison)

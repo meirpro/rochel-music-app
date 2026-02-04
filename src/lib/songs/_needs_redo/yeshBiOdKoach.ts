@@ -2,7 +2,11 @@
 // Original Key: Bb minor (5 flats), Transposed to: A minor
 // Time: 2/2 (treated as 4/4)
 // Very repetitive melody - great for learning
-import { SongData } from "./types";
+//
+// ⚠️ NEEDS REDO: This song requires chords/harmony to sound correct.
+// The melody alone doesn't work well - needs accompanying chord progression.
+//
+import { SongData } from "../types";
 
 export const yeshBiOdKoach: SongData = {
   id: "default-yesh-bi-od-koach",

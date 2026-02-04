@@ -18,7 +18,7 @@ export { drorYikra } from "./drorYikra";
 export { ochilaLakel } from "./ochilaLakel";
 export { shevetAchim } from "./shevetAchim";
 export { sheHashemesh } from "./sheHashemesh";
-export { yeshBiOdKoach } from "./yeshBiOdKoach";
+// yeshBiOdKoach moved to _needs_redo/ - requires chords to sound correct
 
 // Re-export types
 export type { SongData } from "./types";

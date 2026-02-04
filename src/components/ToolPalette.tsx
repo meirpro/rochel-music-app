@@ -55,7 +55,7 @@ interface ToolPaletteProps {
   // Learn mode: filter to show only specific tools
   allowedTools?: NoteTool[];
   // Learn mode: hide entire sections
-  hideSections?: ("notes" | "markup" | "actions")[];
+  hideSections?: ("notes" | "rests" | "markup" | "actions")[];
   // Tutorial: highlight a specific tool to draw attention
   highlightTool?: NoteTool;
   // Tutorial: hint to show when the highlighted tool IS selected (guides next action)
@@ -414,6 +414,65 @@ const MoveIcon = () => (
   </svg>
 );
 
+// Rest Icons - Traditional music notation rest symbols
+const WholeRestIcon = () => (
+  <svg width="28" height="36" viewBox="0 0 28 36" className="inline-block">
+    {/* Whole rest hangs below the line */}
+    <line
+      x1="4"
+      y1="16"
+      x2="24"
+      y2="16"
+      stroke="currentColor"
+      strokeWidth="1"
+    />
+    <rect x="8" y="16" width="12" height="6" fill="currentColor" />
+  </svg>
+);
+
+const HalfRestIcon = () => (
+  <svg width="28" height="36" viewBox="0 0 28 36" className="inline-block">
+    {/* Half rest sits on top of the line */}
+    <line
+      x1="4"
+      y1="22"
+      x2="24"
+      y2="22"
+      stroke="currentColor"
+      strokeWidth="1"
+    />
+    <rect x="8" y="16" width="12" height="6" fill="currentColor" />
+  </svg>
+);
+
+const QuarterRestIcon = () => (
+  <svg width="28" height="36" viewBox="0 0 28 36" className="inline-block">
+    {/* Quarter rest - squiggly symbol */}
+    <path
+      d="M16 8 L12 14 L16 18 L10 24 L14 28 L12 32"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const EighthRestIcon = () => (
+  <svg width="28" height="36" viewBox="0 0 28 36" className="inline-block">
+    {/* Eighth rest - flag with dot */}
+    <circle cx="16" cy="12" r="3" fill="currentColor" />
+    <path
+      d="M16 12 L12 28"
+      stroke="currentColor"
+      strokeWidth="2"
+      fill="none"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 // Note duration tools with descriptions
 const NOTE_TOOLS: Array<{
   id: NoteTool;
@@ -477,6 +536,44 @@ const NOTE_TOOLS: Array<{
     label: "Sixteenth Note",
     description: "¼ beat • Four per beat, fast notes",
     color: "bg-fuchsia-100 border-fuchsia-300 text-fuchsia-600",
+  },
+];
+
+// Rest duration tools - create silence
+const REST_TOOLS: Array<{
+  id: NoteTool;
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  color: string;
+}> = [
+  {
+    id: "rest-whole",
+    icon: <WholeRestIcon />,
+    label: "Whole Rest",
+    description: "4 beats of silence",
+    color: "bg-slate-100 border-slate-300 text-slate-600",
+  },
+  {
+    id: "rest-half",
+    icon: <HalfRestIcon />,
+    label: "Half Rest",
+    description: "2 beats of silence",
+    color: "bg-slate-100 border-slate-300 text-slate-600",
+  },
+  {
+    id: "rest-quarter",
+    icon: <QuarterRestIcon />,
+    label: "Quarter Rest",
+    description: "1 beat of silence",
+    color: "bg-slate-100 border-slate-300 text-slate-600",
+  },
+  {
+    id: "rest-eighth",
+    icon: <EighthRestIcon />,
+    label: "Eighth Rest",
+    description: "½ beat of silence",
+    color: "bg-slate-100 border-slate-300 text-slate-600",
   },
 ];
 
@@ -766,6 +863,24 @@ export function ToolPalette({
             </div>
             <div className="grid grid-cols-2 gap-2 px-2 mb-3">
               {NOTE_TOOLS.filter(
+                (tool) => !allowedTools || allowedTools.includes(tool.id),
+              ).map(renderToolButton)}
+            </div>
+            {/* Divider - only show if next section is visible */}
+            {!hideSections.includes("rests") && (
+              <div className="w-20 h-px bg-purple-300 my-2" />
+            )}
+          </>
+        )}
+
+        {/* Rest tools section */}
+        {!hideSections.includes("rests") && (
+          <>
+            <div className="text-xs font-semibold text-slate-500 mb-2 text-center flex-shrink-0">
+              RESTS
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-2 mb-3">
+              {REST_TOOLS.filter(
                 (tool) => !allowedTools || allowedTools.includes(tool.id),
               ).map(renderToolButton)}
             </div>

@@ -107,6 +107,191 @@ import { getYFromPitch } from "../utils/pitchUtils";
 import { getNoteLabel } from "../utils/durationUtils";
 import { RenderedNote, BeamGroup, NoteTool } from "../types";
 
+// ============================================================================
+// REST SYMBOL COMPONENTS
+// ============================================================================
+
+/**
+ * Render a whole rest (4 beats) - rectangle hanging below a line
+ * Positioned at staff center, hanging from the line above center
+ */
+function WholeRestSymbol({ x, y }: { x: number; y: number }) {
+  const width = 16;
+  const height = 8;
+  // Hang from the line above center (y - LINE_SPACING/2)
+  const restY = y - LINE_SPACING / 2;
+  return (
+    <rect
+      x={x - width / 2}
+      y={restY}
+      width={width}
+      height={height}
+      fill="#374151"
+      rx={1}
+    />
+  );
+}
+
+/**
+ * Render a half rest (2 beats) - rectangle sitting on a line
+ * Positioned at staff center, sitting on the center line
+ */
+function HalfRestSymbol({ x, y }: { x: number; y: number }) {
+  const width = 16;
+  const height = 8;
+  // Sit on the center line (y)
+  return (
+    <rect
+      x={x - width / 2}
+      y={y - height}
+      width={width}
+      height={height}
+      fill="#374151"
+      rx={1}
+    />
+  );
+}
+
+/**
+ * Render a quarter rest (1 beat) - squiggly zig-zag symbol
+ * This is the most complex rest symbol to draw
+ */
+function QuarterRestSymbol({ x, y }: { x: number; y: number }) {
+  // Quarter rest is a zig-zag squiggle
+  // Start from above center, zig-zag down
+  const top = y - LINE_SPACING;
+  const bottom = y + LINE_SPACING;
+  const mid = (top + bottom) / 2;
+
+  return (
+    <path
+      d={`
+        M ${x + 4} ${top}
+        L ${x - 6} ${top + 12}
+        L ${x + 4} ${mid}
+        L ${x - 6} ${mid + 8}
+        Q ${x - 2} ${bottom - 4} ${x + 6} ${bottom}
+      `}
+      stroke="#374151"
+      strokeWidth={3.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  );
+}
+
+/**
+ * Render an eighth rest (0.5 beats) - flag with dot
+ * A curved flag descending from a dot
+ */
+function EighthRestSymbol({ x, y }: { x: number; y: number }) {
+  const dotY = y - LINE_SPACING / 2;
+  const flagEndY = y + LINE_SPACING / 2;
+
+  return (
+    <g>
+      {/* Dot at top */}
+      <circle cx={x + 4} cy={dotY} r={4} fill="#374151" />
+      {/* Curved stem/flag */}
+      <path
+        d={`
+          M ${x + 4} ${dotY + 4}
+          Q ${x - 8} ${dotY + 16} ${x - 4} ${flagEndY}
+        `}
+        stroke="#374151"
+        strokeWidth={3}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </g>
+  );
+}
+
+/**
+ * RestElement - Renders a rest symbol based on duration
+ */
+export function RestElement({
+  note,
+  systemLayouts,
+  staffLines,
+  activeNoteId,
+  readOnly,
+  selectedTool,
+  onContextMenu,
+  onMouseDown,
+  onClick,
+}: Omit<
+  NoteElementProps,
+  "beamGroups" | "beamedNoteIds" | "showLabels" | "draggedNote" | "allowMove"
+>) {
+  if (note.pitch !== "REST") return null;
+
+  const sysLayout = getLayoutForSystem(systemLayouts, note.system);
+  const x =
+    getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysLayout.beatWidth);
+  // Rests are centered on the staff
+  const y = getStaffCenterY(note.system, staffLines);
+  const isActive = activeNoteId === note.id;
+
+  // Determine which rest symbol to render based on duration
+  let RestSymbol: React.FC<{ x: number; y: number }>;
+  if (note.duration >= 4) {
+    RestSymbol = WholeRestSymbol;
+  } else if (note.duration >= 2) {
+    RestSymbol = HalfRestSymbol;
+  } else if (note.duration >= 1) {
+    RestSymbol = QuarterRestSymbol;
+  } else {
+    RestSymbol = EighthRestSymbol;
+  }
+
+  return (
+    <g
+      key={note.id}
+      data-note-id={note.id}
+      onContextMenu={(e) => onContextMenu(e, note.id)}
+      onMouseDown={(e) => onMouseDown(e, note.id)}
+      onClick={(e) => onClick?.(e, note.id)}
+      style={{
+        cursor:
+          selectedTool === "delete"
+            ? "pointer"
+            : readOnly
+              ? "default"
+              : "pointer",
+      }}
+    >
+      {/* Invisible hit area for interactions */}
+      <rect
+        x={x - 18}
+        y={y - 25}
+        width={36}
+        height={50}
+        fill="transparent"
+        style={{ cursor: readOnly ? "default" : "pointer" }}
+      />
+
+      {/* Active rest glow */}
+      {isActive && (
+        <ellipse
+          cx={x}
+          cy={y}
+          rx={20}
+          ry={20}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={3}
+          opacity={0.7}
+        />
+      )}
+
+      {/* Rest symbol */}
+      <RestSymbol x={x} y={y} />
+    </g>
+  );
+}
+
 export interface NoteElementProps {
   note: RenderedNote;
   systemLayouts: SystemLayout[];
@@ -206,6 +391,23 @@ export function NoteElement({
   ) {
     console.warn("[NoteElement] Skipping note with invalid data:", note.id);
     return null;
+  }
+
+  // Render rest symbol for REST pitch
+  if (note.pitch === "REST") {
+    return (
+      <RestElement
+        note={note}
+        systemLayouts={systemLayouts}
+        staffLines={staffLines}
+        activeNoteId={activeNoteId}
+        readOnly={readOnly}
+        selectedTool={selectedTool}
+        onContextMenu={onContextMenu}
+        onMouseDown={onMouseDown}
+        onClick={onClick}
+      />
+    );
   }
 
   const sysLayout = getLayoutForSystem(systemLayouts, note.system);

@@ -730,6 +730,11 @@ export type NoteTool =
   | "half"
   | "dotted-half"
   | "whole"
+  // Rest tools - create silence for specified duration
+  | "rest-whole"
+  | "rest-half"
+  | "rest-quarter"
+  | "rest-eighth"
   | "delete"
   | "repeat"
   | "lyrics"

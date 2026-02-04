@@ -18,7 +18,7 @@ import {
   ochilaLakel,
   shevetAchim,
   sheHashemesh,
-  yeshBiOdKoach,
+  // yeshBiOdKoach moved to _needs_redo/ - requires chords
 } from "./songs";
 
 // Helper to create a SavedSong from a SongData
@@ -61,7 +61,7 @@ const ALL_DEFAULT_SONGS: SongData[] = [
   ochilaLakel,
   shevetAchim,
   sheHashemesh,
-  yeshBiOdKoach,
+  // yeshBiOdKoach - needs chords to sound correct (moved to _needs_redo/)
 ];
 
 // Generate default songs from individual song files
