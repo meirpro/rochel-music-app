@@ -503,15 +503,23 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         getBeatFromXInSystem,
       );
 
-      const pitch = getPitchFromY(y, bestSystem, staffLines);
+      // Find the note being dragged to check if it's a REST
+      const draggedNoteData = renderedNotes.find((n) => n.id === draggedNote);
+
+      // For REST notes, preserve the REST pitch; for regular notes, calculate from Y
+      const pitch =
+        draggedNoteData?.pitch === "REST"
+          ? "REST"
+          : getPitchFromY(y, bestSystem, staffLines);
 
       // Check for collision (excluding dragged note)
+      // For rests, we don't check pitch collision since they're always centered
       const existingNote = renderedNotes.find(
         (n) =>
           n.id !== draggedNote &&
           Math.abs(n.beat - beat) < 0.25 &&
           n.system === bestSystem &&
-          (allowChords ? n.pitch === pitch : true),
+          (pitch === "REST" || allowChords ? n.pitch === pitch : true),
       );
       if (existingNote) return;
 

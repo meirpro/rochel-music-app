@@ -311,6 +311,7 @@ export interface NoteElementProps {
 
 /**
  * Render duration extension bar (semi-transparent line showing note length)
+ * Works for both notes (positioned at pitch) and rests (centered on staff)
  */
 export function DurationExtension({
   note,
@@ -330,8 +331,6 @@ export function DurationExtension({
     return null;
   }
 
-  if (note.pitch === "REST") return null;
-
   // Shorten extension by one eighth note (0.5 beats) - eighth notes get no line
   const adjustedDuration = note.duration - 0.5;
   if (adjustedDuration <= 0) return null;
@@ -343,8 +342,15 @@ export function DurationExtension({
   // Use getBeatXInSystem to account for decoration widths
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysBeatWidth);
-  const y = getYFromPitch(note.pitch, note.system, staffLines);
-  const color = getNoteColor(note.pitch);
+
+  // For rests, center on staff; for notes, use pitch position
+  const y =
+    note.pitch === "REST"
+      ? getStaffCenterY(note.system, staffLines)
+      : getYFromPitch(note.pitch, note.system, staffLines);
+
+  // Rests use a neutral gray color
+  const color = note.pitch === "REST" ? "#6b7280" : getNoteColor(note.pitch);
 
   // Extension shows adjusted duration (shortened by 1/8 beat)
   const extensionWidth = adjustedDuration * sysBeatWidth;
