@@ -27,7 +27,11 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { HelpModal } from "@/components/HelpModal";
 import { LyricsModal } from "@/components/LyricsModal";
 import { MobileBanner } from "@/components/MobileBanner";
-import { InstrumentType } from "@/lib/audio/TonePlayer";
+import {
+  InstrumentType,
+  setMasterVolume,
+  setAllInstrumentGainOffsets,
+} from "@/lib/audio/TonePlayer";
 
 // Hooks
 import { useProgressiveTutorial } from "./hooks/useProgressiveTutorial";
@@ -185,6 +189,20 @@ export default function EditorPage() {
 
   // Instrument state (separate from settings for modal compatibility)
   const [instrument, setInstrument] = useState<InstrumentType>("piano");
+
+  // Sync volume setting with TonePlayer on mount and when changed
+  useEffect(() => {
+    // Convert 0-100 range to 0-1 range for TonePlayer
+    const volumeNormalized = (editor.settings.volume ?? 80) / 100;
+    setMasterVolume(volumeNormalized);
+  }, [editor.settings.volume]);
+
+  // Sync instrument gain offsets with TonePlayer on mount and when changed
+  useEffect(() => {
+    if (editor.settings.instrumentGains) {
+      setAllInstrumentGainOffsets(editor.settings.instrumentGains);
+    }
+  }, [editor.settings.instrumentGains]);
 
   // Keyboard shortcuts for undo/redo and lyrics modal
   useEffect(() => {
@@ -676,6 +694,19 @@ export default function EditorPage() {
         onTimeSignatureChange={editor.setTimeSignature}
         instrument={instrument}
         onInstrumentChange={setInstrument}
+        volume={editor.settings.volume ?? 80}
+        onVolumeChange={editor.setVolume}
+        instrumentGains={
+          editor.settings.instrumentGains ?? {
+            piano: 0,
+            organ: 0,
+            bell: 0,
+            synth: 0,
+            "music-box": 0,
+            marimba: 0,
+          }
+        }
+        onInstrumentGainsChange={editor.setInstrumentGains}
         showLabels={editor.settings.showLabels}
         onShowLabelsChange={editor.setShowLabels}
         showGrid={editor.settings.showGrid}

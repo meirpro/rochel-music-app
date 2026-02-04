@@ -23,6 +23,7 @@ import {
   Pitch,
 } from "@/lib/types";
 import { getDefaultSongs } from "@/lib/defaultSongs";
+import { InstrumentType } from "@/lib/audio/TonePlayer";
 
 // SSR-safe localStorage options
 const SSR_SAFE = { initializeWithValue: false };
@@ -41,6 +42,16 @@ const MAX_HISTORY_SIZE = 50;
 // Default time signature
 const DEFAULT_TIME_SIGNATURE: TimeSignature = { numerator: 4, denominator: 4 };
 
+// Default instrument gain offsets (all zero = use built-in normalization)
+const DEFAULT_INSTRUMENT_GAINS: Record<InstrumentType, number> = {
+  piano: 0,
+  organ: 0,
+  bell: 0,
+  synth: 0,
+  "music-box": 0,
+  marimba: 0,
+};
+
 // Editor settings
 interface EditorSettings {
   tempo: number;
@@ -55,6 +66,8 @@ interface EditorSettings {
   showBlackKeys: boolean;
   noteSpacing: number;
   staffLines: number;
+  volume: number; // 0-100 (percentage) - master volume control
+  instrumentGains?: Record<InstrumentType, number>; // Per-instrument gain offsets in dB
 }
 
 const DEFAULT_SETTINGS: EditorSettings = {
@@ -70,6 +83,8 @@ const DEFAULT_SETTINGS: EditorSettings = {
   showBlackKeys: true,
   noteSpacing: 1.0,
   staffLines: 3,
+  volume: 80, // Default: 80% volume
+  instrumentGains: DEFAULT_INSTRUMENT_GAINS,
 };
 
 // Composition data - uses absoluteBeat format (layout-independent)
@@ -116,6 +131,8 @@ export interface UseEditorStateReturn {
   setShowBlackKeys: (show: boolean) => void;
   setNoteSpacing: (spacing: number) => void;
   setStaffLines: (lines: number) => void;
+  setVolume: (volume: number) => void;
+  setInstrumentGains: (gains: Record<InstrumentType, number>) => void;
 
   // Tool state
   selectedTool: NoteTool | null;
@@ -513,6 +530,20 @@ export function useEditorState(
     [setSettings],
   );
 
+  const setVolume = useCallback(
+    (volume: number) => {
+      setSettings((prev) => ({ ...prev, volume }));
+    },
+    [setSettings],
+  );
+
+  const setInstrumentGains = useCallback(
+    (instrumentGains: Record<InstrumentType, number>) => {
+      setSettings((prev) => ({ ...prev, instrumentGains }));
+    },
+    [setSettings],
+  );
+
   // Clear composition
   const clearComposition = useCallback(() => {
     setComposition(DEFAULT_COMPOSITION);
@@ -714,6 +745,8 @@ export function useEditorState(
     setShowBlackKeys,
     setNoteSpacing,
     setStaffLines,
+    setVolume,
+    setInstrumentGains,
 
     // Tool state
     selectedTool,

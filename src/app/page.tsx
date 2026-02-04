@@ -52,11 +52,22 @@ import {
   InstrumentType,
   setInstrument,
   setMasterVolume,
+  setAllInstrumentGainOffsets,
 } from "@/lib/audio/TonePlayer";
 
 // Types for localStorage persistence
 // Supports both legacy (system-based) and new (absoluteBeat) formats during migration
 type EditorComposition = Composition | LegacyComposition;
+
+// Default instrument gain offsets (all zero = use built-in normalization)
+const DEFAULT_INSTRUMENT_GAINS: Record<InstrumentType, number> = {
+  piano: 0,
+  organ: 0,
+  bell: 0,
+  synth: 0,
+  "music-box": 0,
+  marimba: 0,
+};
 
 interface EditorSettings {
   selectedTool: NoteTool | null;
@@ -73,6 +84,7 @@ interface EditorSettings {
   staffLines: number; // 2-5, default 3 - number of horizontal lines per staff
   noteSpacing: number; // 1.0-2.0 (100%-200%) - controls beat width multiplier
   volume: number; // 0-100 (percentage) - master volume control
+  instrumentGains?: Record<InstrumentType, number>; // Per-instrument gain offsets in dB (-12 to +12)
 }
 
 interface EditorUI {
@@ -104,6 +116,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   staffLines: 3, // Default: 3 horizontal lines per staff
   noteSpacing: 1.0, // Default: 100% (compact) - range 1.0-2.0
   volume: 80, // Default: 80% volume
+  instrumentGains: DEFAULT_INSTRUMENT_GAINS,
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -279,6 +292,13 @@ export default function Home() {
     setMasterVolume(volumeNormalized);
   }, [settings.volume]);
 
+  // Sync instrument gain offsets with TonePlayer on mount and when changed
+  useEffect(() => {
+    if (settings.instrumentGains) {
+      setAllInstrumentGainOffsets(settings.instrumentGains);
+    }
+  }, [settings.instrumentGains]);
+
   // SVG ref for export functionality
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -400,21 +420,24 @@ export default function Home() {
   // Scroll handler for playback follow
   // Uses instant scroll for horizontal (RAF handles smoothness),
   // smooth only for vertical system changes
+  // Round values to prevent sub-pixel rendering blur
   const handleScrollTo = useCallback(
     (scrollLeft: number, scrollTop: number, smoothVertical?: boolean) => {
       if (editorContainerRef.current) {
+        const left = Math.round(scrollLeft);
+        const top = Math.round(scrollTop);
         if (smoothVertical) {
           // Smooth vertical only (for system changes)
-          editorContainerRef.current.scrollLeft = scrollLeft;
+          editorContainerRef.current.scrollLeft = left;
           editorContainerRef.current.scrollTo({
-            left: scrollLeft,
-            top: scrollTop,
+            left,
+            top,
             behavior: "smooth",
           });
         } else {
           // Instant for both (RAF handles smoothness)
-          editorContainerRef.current.scrollLeft = scrollLeft;
-          editorContainerRef.current.scrollTop = scrollTop;
+          editorContainerRef.current.scrollLeft = left;
+          editorContainerRef.current.scrollTop = top;
         }
       }
     },
@@ -1162,6 +1185,10 @@ export default function Home() {
         }}
         volume={settings.volume ?? 80}
         onVolumeChange={(volume) => setSettings({ ...settings, volume })}
+        instrumentGains={settings.instrumentGains ?? DEFAULT_INSTRUMENT_GAINS}
+        onInstrumentGainsChange={(instrumentGains) =>
+          setSettings({ ...settings, instrumentGains })
+        }
         showLabels={settings.showLabels}
         onShowLabelsChange={(show) =>
           setSettings({ ...settings, showLabels: show })

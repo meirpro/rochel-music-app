@@ -97,7 +97,8 @@ const INSTRUMENT_PRESETS: Record<
   },
   bell: {
     oscillator: { type: "sine" },
-    envelope: { attack: 0.001, decay: 0.4, sustain: 0.1, release: 0.8 },
+    // Increased attack from 0.001 to 0.005 to prevent clicks at high tempos
+    envelope: { attack: 0.005, decay: 0.4, sustain: 0.1, release: 0.8 },
   },
   synth: {
     oscillator: { type: "sawtooth" },
@@ -105,13 +106,106 @@ const INSTRUMENT_PRESETS: Record<
   },
   "music-box": {
     oscillator: { type: "square" },
-    envelope: { attack: 0.001, decay: 0.3, sustain: 0.0, release: 0.5 },
+    // Increased attack from 0.001 to 0.005 to prevent clicks at high tempos
+    envelope: { attack: 0.005, decay: 0.3, sustain: 0.0, release: 0.5 },
   },
   marimba: {
     oscillator: { type: "sine" },
-    envelope: { attack: 0.001, decay: 0.5, sustain: 0.0, release: 0.4 },
+    // Increased attack from 0.001 to 0.005 to prevent clicks at high tempos
+    envelope: { attack: 0.005, decay: 0.5, sustain: 0.0, release: 0.4 },
   },
 };
+
+/**
+ * Per-instrument gain normalization in dB (default values).
+ * Different oscillator types have different perceived loudness:
+ * - Sawtooth and Square waves have more harmonics = louder
+ * - Sine and Triangle are quieter and cleaner
+ * These values bring all instruments to approximately equal volume.
+ */
+const DEFAULT_INSTRUMENT_GAIN_DB: Record<InstrumentType, number> = {
+  piano: 0, // triangle - baseline
+  organ: 0, // sine
+  bell: 0, // sine
+  synth: -6, // sawtooth - reduce 6dB (noticeably louder)
+  "music-box": -8, // square - reduce 8dB (loudest oscillator type)
+  marimba: 0, // sine
+};
+
+/**
+ * User-customizable instrument gain offsets in dB.
+ * These are ADDED to the default normalization values.
+ * Range: -12 to +12 dB (allows boosting quiet instruments or reducing loud ones)
+ */
+const customInstrumentGainDb: Record<InstrumentType, number> = {
+  piano: 0,
+  organ: 0,
+  bell: 0,
+  synth: 0,
+  "music-box": 0,
+  marimba: 0,
+};
+
+/**
+ * Get the effective gain for an instrument (default + custom offset)
+ */
+export function getEffectiveGainDb(instrument: InstrumentType): number {
+  return (
+    DEFAULT_INSTRUMENT_GAIN_DB[instrument] + customInstrumentGainDb[instrument]
+  );
+}
+
+/**
+ * Set custom gain offset for an instrument (in dB, range -12 to +12)
+ * This is added to the default normalization value.
+ */
+export function setInstrumentGainOffset(
+  instrument: InstrumentType,
+  offsetDb: number,
+): void {
+  // Clamp to valid range
+  customInstrumentGainDb[instrument] = Math.max(-12, Math.min(12, offsetDb));
+
+  // If this is the current instrument, update the gain immediately
+  if (instrument === currentInstrument && instrumentGain) {
+    const effectiveGain = getEffectiveGainDb(instrument);
+    instrumentGain.gain.value = Tone.dbToGain(effectiveGain);
+  }
+}
+
+/**
+ * Get the current custom gain offset for an instrument (in dB)
+ */
+export function getInstrumentGainOffset(instrument: InstrumentType): number {
+  return customInstrumentGainDb[instrument];
+}
+
+/**
+ * Set all custom instrument gain offsets at once (for loading from settings)
+ */
+export function setAllInstrumentGainOffsets(
+  offsets: Partial<Record<InstrumentType, number>>,
+): void {
+  for (const [inst, offset] of Object.entries(offsets)) {
+    if (inst in customInstrumentGainDb && typeof offset === "number") {
+      customInstrumentGainDb[inst as InstrumentType] = Math.max(
+        -12,
+        Math.min(12, offset),
+      );
+    }
+  }
+
+  // Update current instrument gain if chain is initialized
+  if (instrumentGain) {
+    const effectiveGain = getEffectiveGainDb(currentInstrument);
+    instrumentGain.gain.value = Tone.dbToGain(effectiveGain);
+  }
+}
+
+/**
+ * Export the default gains for reference in UI
+ */
+export const INSTRUMENT_GAIN_DEFAULTS = DEFAULT_INSTRUMENT_GAIN_DB;
 
 // Human-readable instrument names
 export const INSTRUMENT_NAMES: Record<InstrumentType, string> = {
@@ -128,6 +222,63 @@ let synth: Tone.PolySynth | null = null;
 let currentInstrument: InstrumentType = "piano";
 let initPromise: Promise<void> | null = null;
 let audioReady = false; // Fast synchronous check for audio readiness
+
+/**
+ * Audio processing chain singletons.
+ * Signal flow: synth → instrumentGain → masterGain → compressor → limiter → Destination
+ *
+ * Why this chain?
+ * - instrumentGain: Per-instrument volume normalization (different oscillators = different loudness)
+ * - masterGain: User volume control (0-100%)
+ * - compressor: Tames dynamic peaks when many notes overlap at high tempos
+ * - limiter: Hard ceiling to prevent clipping/distortion at the speaker level
+ */
+let instrumentGain: Tone.Gain | null = null;
+let masterGain: Tone.Gain | null = null;
+let compressor: Tone.Compressor | null = null;
+let limiter: Tone.Limiter | null = null;
+let audioChainInitialized = false;
+
+// Store the current master volume (0-1 range internally, 0-100 for user)
+let currentMasterVolume = 0.8; // Default 80%
+
+/**
+ * Initialize the audio processing chain (called once when synth is first created).
+ * Creates: instrumentGain → masterGain → compressor → limiter → Destination
+ */
+function ensureAudioChain(): void {
+  if (audioChainInitialized) return;
+
+  // Instrument gain: adjusts per-instrument volume (controlled by INSTRUMENT_GAIN_DB)
+  instrumentGain = new Tone.Gain(1);
+
+  // Master gain: user volume control
+  masterGain = new Tone.Gain(currentMasterVolume);
+
+  // Compressor: smooths out dynamic peaks at high tempos
+  // - threshold: -12dB (start compressing fairly early)
+  // - ratio: 4:1 (moderate compression)
+  // - attack: 5ms (fast enough to catch transients)
+  // - release: 100ms (smooth release)
+  compressor = new Tone.Compressor({
+    threshold: -12,
+    ratio: 4,
+    attack: 0.005,
+    release: 0.1,
+  });
+
+  // Limiter: hard ceiling to prevent clipping (-3dB gives headroom)
+  limiter = new Tone.Limiter(-3);
+
+  // Connect the chain
+  instrumentGain.connect(masterGain);
+  masterGain.connect(compressor);
+  compressor.connect(limiter);
+  limiter.toDestination();
+
+  audioChainInitialized = true;
+  console.log("[TonePlayer] Audio chain initialized");
+}
 
 /**
  * Get the current instrument type
@@ -150,7 +301,35 @@ export function setInstrument(instrument: InstrumentType): void {
     synth.dispose();
     synth = null;
   }
+
+  // Update instrument gain if chain is initialized
+  if (instrumentGain) {
+    const gainDb = getEffectiveGainDb(instrument);
+    instrumentGain.gain.value = Tone.dbToGain(gainDb);
+  }
+
   // New synth will be created on next note with new preset
+}
+
+/**
+ * Set master volume (0-1 range, where 0 = mute, 1 = full volume)
+ * Called from the UI volume slider (which uses 0-100 range)
+ */
+export function setMasterVolume(volume: number): void {
+  // Clamp to valid range
+  currentMasterVolume = Math.max(0, Math.min(1, volume));
+
+  // Update gain node if it exists
+  if (masterGain) {
+    masterGain.gain.value = currentMasterVolume;
+  }
+}
+
+/**
+ * Get current master volume (0-1 range)
+ */
+export function getMasterVolume(): number {
+  return currentMasterVolume;
 }
 
 /**
@@ -300,14 +479,33 @@ export function isAudioInitialized(): boolean {
 /**
  * Get or create the shared synth instance.
  * Uses PolySynth for playing multiple notes simultaneously.
+ * Connects through the audio processing chain for volume control and limiting.
  */
 function getSynth(): Tone.PolySynth {
   if (!synth) {
+    // Ensure audio chain is ready before creating synth
+    ensureAudioChain();
+
     const preset = INSTRUMENT_PRESETS[currentInstrument];
     synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: preset.oscillator,
       envelope: preset.envelope,
-    }).toDestination();
+    });
+
+    // Connect to audio chain instead of directly to destination
+    // Flow: synth → instrumentGain → masterGain → compressor → limiter → Destination
+    if (instrumentGain) {
+      synth.connect(instrumentGain);
+    } else {
+      // Fallback if chain somehow not initialized
+      synth.toDestination();
+    }
+
+    // Apply instrument-specific gain
+    if (instrumentGain) {
+      const gainDb = getEffectiveGainDb(currentInstrument);
+      instrumentGain.gain.value = Tone.dbToGain(gainDb);
+    }
 
     // Limit max polyphony to prevent audio glitches
     synth.maxPolyphony = 8;

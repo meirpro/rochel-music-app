@@ -15,7 +15,7 @@ export { chagPurim } from "./chagPurim";
 export { maNishtana } from "./maNishtana";
 export { omarRabbiAkiva } from "./omarRabbiAkiva";
 export { drorYikra } from "./drorYikra";
-export { unknownSong323 } from "./unknownSong323";
+export { ochilaLakel } from "./ochilaLakel";
 export { shevetAchim } from "./shevetAchim";
 export { sheHashemesh } from "./sheHashemesh";
 export { yeshBiOdKoach } from "./yeshBiOdKoach";
