@@ -7,7 +7,7 @@
  * utility modules for better organization and maintainability.
  */
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Pitch } from "@/lib/types";
 import { pitchToMidi } from "@/lib/constants";
 import { getAudioPlayer } from "@/lib/audio/AudioPlayer";
@@ -138,6 +138,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     beat: number;
   } | null>(null);
   const justDraggedRef = useRef(false);
+  // Store original note position for ESC cancel
+  const dragOriginalNoteRef = useRef<RenderedNote | null>(null);
 
   // Note hover state (for move tool preview)
   const [hoveredNote, setHoveredNote] = useState<string | null>(null);
@@ -457,15 +459,71 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     selectedTool,
   });
 
-  // Note mouse down handler for drag
+  // Note mouse down handler for drag (left-click only)
   const handleNoteMouseDown = useCallback(
     (e: React.MouseEvent, noteId: string) => {
+      // Only start drag on left-click, allow right-click for context menu
+      if (e.button !== 0) return;
       if (!allowMove || readOnly) return;
       e.stopPropagation();
+      // Store original note position for ESC cancel
+      const note = renderedNotes.find((n) => n.id === noteId);
+      if (note) {
+        dragOriginalNoteRef.current = { ...note };
+      }
+      // Close context menu when starting drag
+      setContextMenu(null);
       setDraggedNote(noteId);
     },
-    [allowMove, readOnly],
+    [allowMove, readOnly, renderedNotes, setContextMenu],
   );
+
+  // ESC key handler: cancel drag or close context menu
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+
+      // If dragging, cancel and restore original position
+      if (draggedNote && dragOriginalNoteRef.current) {
+        e.preventDefault();
+        const originalNote = dragOriginalNoteRef.current;
+        // Restore the note to its original position
+        handleNotesChangeWithConversion(
+          renderedNotes.map((n) =>
+            n.id === draggedNote
+              ? {
+                  ...n,
+                  beat: originalNote.beat,
+                  pitch: originalNote.pitch,
+                  system: originalNote.system,
+                }
+              : n,
+          ),
+        );
+        setDraggedNote(null);
+        setDragTargetPosition(null);
+        dragOriginalNoteRef.current = null;
+        // Prevent the subsequent click event from placing a new note
+        justDraggedRef.current = true;
+        return;
+      }
+
+      // If context menu is open, close it
+      if (contextMenu) {
+        e.preventDefault();
+        setContextMenu(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [
+    draggedNote,
+    contextMenu,
+    setContextMenu,
+    renderedNotes,
+    handleNotesChangeWithConversion,
+  ]);
 
   // Note click handler for delete tool and learn mode interaction
   const handleNoteClick = useCallback(
@@ -635,6 +693,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       if (note) playNoteSound(note.pitch, note.duration);
       setDraggedNote(null);
       setDragTargetPosition(null);
+      dragOriginalNoteRef.current = null; // Clear original position on successful drop
       justDraggedRef.current = true;
       // Commit the drag operation to undo history
       onDragEnd?.();
@@ -701,6 +760,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
       // Handle volta tool - delegate to hook
       if (selectedTool === "volta") {
+        console.log("[NoteEditorRefactored] Volta tool click:", { x, system });
         handleVoltaClick(x, system);
         return;
       }
