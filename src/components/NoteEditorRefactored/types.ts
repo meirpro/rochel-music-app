@@ -10,6 +10,7 @@ export type ContextMenuSection =
   | "accidental"
   | "changeNote"
   | "octave"
+  | "rest"
   | "delete";
 
 // Editor-specific note type - uses absoluteBeat for layout-independent positioning

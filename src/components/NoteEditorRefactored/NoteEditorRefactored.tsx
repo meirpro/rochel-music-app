@@ -133,6 +133,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   // Note drag state
   const [draggedNote, setDraggedNote] = useState<string | null>(null);
+  const [dragTargetPosition, setDragTargetPosition] = useState<{
+    system: number;
+    beat: number;
+  } | null>(null);
   const justDraggedRef = useRef(false);
 
   // Note hover state (for move tool preview)
@@ -324,7 +328,10 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     handleChangeAccidental,
     handleChangePitchLetter,
     handleChangeOctave,
+    handleConvertToRest,
+    handleConvertToNote,
     handleAddNoteFromMenu,
+    isSelectedNoteRest,
   } = useContextMenu({
     notes: renderedNotes,
     onNotesChange: handleNotesChangeWithConversion,
@@ -588,7 +595,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           n.system === bestSystem &&
           (pitch === "REST" || allowChords ? n.pitch === pitch : true),
       );
-      if (existingNote) return;
+      if (existingNote) {
+        // Still update drag target position for visual feedback even on collision
+        setDragTargetPosition({ system: bestSystem, beat });
+        return;
+      }
+
+      // Update drag target position for visual feedback
+      setDragTargetPosition({ system: bestSystem, beat });
 
       // Use drag-specific handler (doesn't push to undo history on each move)
       handleNotesChangeForDragInternal(
@@ -622,6 +636,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       const note = renderedNotes.find((n) => n.id === draggedNote);
       if (note) playNoteSound(note.pitch, note.duration);
       setDraggedNote(null);
+      setDragTargetPosition(null);
       justDraggedRef.current = true;
       // Commit the drag operation to undo history
       onDragEnd?.();
@@ -860,6 +875,75 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             />
           );
         })}
+
+        {/* Drag target position indicator - shows which half-beat the note will snap to */}
+        {draggedNote &&
+          dragTargetPosition &&
+          (() => {
+            const targetLayout = getLayoutForSystem(
+              systemLayouts,
+              dragTargetPosition.system,
+            );
+            const targetStaffCenterY = getStaffCenterY(
+              dragTargetPosition.system,
+              staffLines,
+            );
+            const staffTopOffset =
+              staffLines === 5
+                ? -2 * LINE_SPACING
+                : staffLines === 4
+                  ? -1 * LINE_SPACING
+                  : 0;
+            const staffBottomOffset = 2 * LINE_SPACING;
+            const staffPadding = 20;
+
+            // Find which measure and beat-in-measure this falls into
+            let targetX = LEFT_MARGIN;
+            for (const measure of targetLayout.measures) {
+              const measureStartBeat = measure.startBeatInSystem;
+              const measureEndBeat = measureStartBeat + measure.beatsInMeasure;
+              if (
+                dragTargetPosition.beat >= measureStartBeat &&
+                dragTargetPosition.beat < measureEndBeat
+              ) {
+                const beatInMeasure =
+                  dragTargetPosition.beat - measureStartBeat;
+                targetX =
+                  LEFT_MARGIN +
+                  measure.xOffset +
+                  beatInMeasure * targetLayout.beatWidth +
+                  getNoteOffset(targetLayout.beatWidth);
+                break;
+              }
+            }
+
+            // Half-beat column width
+            const columnWidth = targetLayout.beatWidth / 2;
+
+            return (
+              <g key="drag-target-indicator" style={{ pointerEvents: "none" }}>
+                {/* Highlight column for target half-beat */}
+                <rect
+                  x={targetX - columnWidth / 2}
+                  y={targetStaffCenterY + staffTopOffset - staffPadding}
+                  width={columnWidth}
+                  height={staffBottomOffset - staffTopOffset + staffPadding * 2}
+                  fill="rgba(59, 130, 246, 0.2)"
+                  rx={2}
+                />
+                {/* Vertical guide line at exact snap position */}
+                <line
+                  x1={targetX}
+                  y1={targetStaffCenterY + staffTopOffset - staffPadding + 5}
+                  x2={targetX}
+                  y2={targetStaffCenterY + staffBottomOffset + staffPadding - 5}
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  strokeDasharray="4,4"
+                />
+              </g>
+            );
+          })()}
 
         {/* Duration extensions (render behind notes) */}
         {renderedNotes.map((note) => (
@@ -1434,8 +1518,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           onChangeAccidental={handleChangeAccidental}
           onChangePitchLetter={handleChangePitchLetter}
           onChangeOctave={handleChangeOctave}
+          onConvertToRest={handleConvertToRest}
+          onConvertToNote={handleConvertToNote}
           onDelete={handleDeleteFromMenu}
           visibleSections={visibleContextMenuSections}
+          isRest={isSelectedNoteRest}
         />
       )}
 

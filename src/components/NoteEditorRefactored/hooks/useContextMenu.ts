@@ -45,6 +45,7 @@ export interface CollapsedSections {
   accidental: boolean;
   changeNote: boolean;
   octave: boolean;
+  rest: boolean;
 }
 
 // Hook parameters
@@ -70,7 +71,7 @@ export interface UseContextMenuReturn {
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState>>;
   collapsedSections: CollapsedSections;
   toggleSection: (
-    section: "duration" | "accidental" | "changeNote" | "octave",
+    section: "duration" | "accidental" | "changeNote" | "octave" | "rest",
   ) => void;
   handleNoteContextMenu: (e: React.MouseEvent, noteId: string) => void;
   handleEmptyContextMenu: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -79,7 +80,13 @@ export interface UseContextMenuReturn {
   handleChangeAccidental: (accidental: "#" | "b" | null) => void;
   handleChangePitchLetter: (newLetter: string) => void;
   handleChangeOctave: (direction: "up" | "down") => void;
+  /** Convert note to rest with specified duration */
+  handleConvertToRest: (duration: number) => void;
+  /** Convert rest back to a note (uses current duration, pitch defaults to C4) */
+  handleConvertToNote: () => void;
   handleAddNoteFromMenu: (duration: number) => void;
+  /** Returns true if the currently selected note is a rest */
+  isSelectedNoteRest: boolean;
 }
 
 /**
@@ -109,12 +116,18 @@ export function useContextMenu({
   const [collapsedSections, setCollapsedSections] =
     useLocalStorage<CollapsedSections>(
       "note-menu-collapsed",
-      { duration: false, accidental: false, changeNote: false, octave: false },
+      {
+        duration: false,
+        accidental: false,
+        changeNote: false,
+        octave: false,
+        rest: false,
+      },
       { initializeWithValue: false },
     );
 
   const toggleSection = useCallback(
-    (section: "duration" | "accidental" | "changeNote" | "octave") => {
+    (section: "duration" | "accidental" | "changeNote" | "octave" | "rest") => {
       setCollapsedSections((prev) => ({
         ...prev,
         [section]: !prev[section],
@@ -321,6 +334,73 @@ export function useContextMenu({
     ],
   );
 
+  // Handler for converting note to rest with specified duration
+  const handleConvertToRest = useCallback(
+    (duration: number) => {
+      if (!contextMenu || contextMenu.type !== "note") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const note = notes.find((n) => n.id === contextMenu.noteId);
+      if (!note) return;
+
+      onNotesChange(
+        notes.map((n) =>
+          n.id === contextMenu.noteId
+            ? { ...n, pitch: "REST" as Pitch, duration }
+            : n,
+        ),
+      );
+      onContextMenuAction?.();
+      setContextMenu(null);
+    },
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
+  );
+
+  // Handler for converting rest back to note (defaults to C4, keeps duration)
+  const handleConvertToNote = useCallback(() => {
+    if (!contextMenu || contextMenu.type !== "note") return;
+    if (isPlaying) {
+      onPlaybackBlock?.();
+      setContextMenu(null);
+      return;
+    }
+
+    const note = notes.find((n) => n.id === contextMenu.noteId);
+    if (!note || note.pitch !== "REST") return;
+
+    onNotesChange(
+      notes.map((n) =>
+        n.id === contextMenu.noteId ? { ...n, pitch: "C4" as Pitch } : n,
+      ),
+    );
+    onContextMenuAction?.();
+    setContextMenu(null);
+  }, [
+    contextMenu,
+    notes,
+    onNotesChange,
+    isPlaying,
+    onPlaybackBlock,
+    onContextMenuAction,
+  ]);
+
+  // Check if the currently selected note is a rest
+  const isSelectedNoteRest =
+    contextMenu?.type === "note"
+      ? notes.find((n) => n.id === contextMenu.noteId)?.pitch === "REST"
+      : false;
+
   // Handler for adding note from empty space menu
   const handleAddNoteFromMenu = useCallback(
     (duration: number) => {
@@ -474,6 +554,9 @@ export function useContextMenu({
     handleChangeAccidental,
     handleChangePitchLetter,
     handleChangeOctave,
+    handleConvertToRest,
+    handleConvertToNote,
     handleAddNoteFromMenu,
+    isSelectedNoteRest,
   };
 }

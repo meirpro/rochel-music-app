@@ -30,7 +30,7 @@
 
 import React from "react";
 import { Pitch } from "@/lib/types";
-import { MenuNoteIcon } from "./MenuNoteIcon";
+import { MenuNoteIcon, MenuRestIcon } from "./MenuNoteIcon";
 import { CollapsedSections } from "../hooks/useContextMenu";
 
 // ============================================================================
@@ -59,21 +59,28 @@ export type ContextMenuSection =
   | "accidental"
   | "changeNote"
   | "octave"
+  | "rest"
   | "delete";
 
 export interface NoteContextMenuProps {
   contextMenu: NoteContextMenuState;
   collapsedSections: CollapsedSections;
   onToggleSection: (
-    section: "duration" | "accidental" | "changeNote" | "octave",
+    section: "duration" | "accidental" | "changeNote" | "octave" | "rest",
   ) => void;
   onChangeDuration: (duration: number) => void;
   onChangeAccidental: (accidental: "#" | "b" | null) => void;
   onChangePitchLetter: (letter: string) => void;
   onChangeOctave: (direction: "up" | "down") => void;
+  /** Convert note to rest with specified duration */
+  onConvertToRest: (duration: number) => void;
+  /** Convert rest back to note (keeps duration, defaults pitch to C4) */
+  onConvertToNote: () => void;
   onDelete: () => void;
   /** Which sections to show (undefined = show all) */
   visibleSections?: ContextMenuSection[];
+  /** Whether the selected note is a rest */
+  isRest?: boolean;
 }
 
 export interface EmptyContextMenuProps {
@@ -103,12 +110,27 @@ export function NoteContextMenu({
   onChangeAccidental,
   onChangePitchLetter,
   onChangeOctave,
+  onConvertToRest,
+  onConvertToNote,
   onDelete,
   visibleSections,
+  isRest = false,
 }: NoteContextMenuProps) {
   // Helper to check if a section should be shown
-  const showSection = (section: ContextMenuSection) =>
-    !visibleSections || visibleSections.includes(section);
+  // Hide pitch-related sections (accidental, changeNote, octave) for rests
+  const showSection = (section: ContextMenuSection) => {
+    if (visibleSections && !visibleSections.includes(section)) return false;
+    // Rests don't have pitch-related properties
+    if (
+      isRest &&
+      (section === "accidental" ||
+        section === "changeNote" ||
+        section === "octave")
+    ) {
+      return false;
+    }
+    return true;
+  };
 
   return (
     <div
@@ -189,6 +211,62 @@ export function NoteContextMenu({
             </>
           )}
         </>
+      )}
+
+      {/* Convert to Rest section (shown for notes) / Convert to Note button (shown for rests) */}
+      {isRest ? (
+        <>
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            onClick={onConvertToNote}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+          >
+            <MenuNoteIcon duration={1} color="#7c3aed" /> Convert to Note
+          </button>
+        </>
+      ) : (
+        showSection("rest") && (
+          <>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              onClick={() => onToggleSection("rest")}
+              className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
+            >
+              <span>Convert to Rest</span>
+              <span className="text-gray-400">
+                {collapsedSections.rest ? "▸" : "▾"}
+              </span>
+            </button>
+            {!collapsedSections.rest && (
+              <>
+                <button
+                  onClick={() => onConvertToRest(0.5)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuRestIcon duration={0.5} /> Eighth Rest
+                </button>
+                <button
+                  onClick={() => onConvertToRest(1)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuRestIcon duration={1} /> Quarter Rest
+                </button>
+                <button
+                  onClick={() => onConvertToRest(2)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuRestIcon duration={2} /> Half Rest
+                </button>
+                <button
+                  onClick={() => onConvertToRest(4)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuRestIcon duration={4} /> Whole Rest
+                </button>
+              </>
+            )}
+          </>
+        )
       )}
 
       {/* Accidental section */}
