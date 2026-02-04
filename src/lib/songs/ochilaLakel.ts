@@ -12,13 +12,14 @@ export const ochilaLakel: SongData = {
     // ═══════════════════════════════════════════════════════════════════
     // SECTION A (Measures 1-12)
     // ═══════════════════════════════════════════════════════════════════
+    { id: "ochila-r1", pitch: "REST", duration: 1.5, absoluteBeat: 0 },
     { id: "ochila-1", pitch: "A4", duration: 0.5, absoluteBeat: 1.5 },
     { id: "ochila-2", pitch: "A4", duration: 0.5, absoluteBeat: 2 },
     { id: "ochila-3", pitch: "F4", duration: 0.5, absoluteBeat: 2.5 },
     { id: "ochila-4", pitch: "G4", duration: 0.5, absoluteBeat: 3 },
     { id: "ochila-5", pitch: "A4", duration: 0.5, absoluteBeat: 3.5 },
     { id: "ochila-6", pitch: "G4", duration: 4, absoluteBeat: 4 },
-
+    { id: "ochila-r2", pitch: "REST", duration: 2, absoluteBeat: 8 },
     { id: "ochila-7", pitch: "G4", duration: 0.5, absoluteBeat: 10 },
     { id: "ochila-8", pitch: "A4", duration: 0.5, absoluteBeat: 10.5 },
     { id: "ochila-9", pitch: "Bb4", duration: 0.5, absoluteBeat: 11 },
@@ -31,7 +32,7 @@ export const ochilaLakel: SongData = {
     { id: "ochila-15", pitch: "Bb4", duration: 1.5, absoluteBeat: 20 },
     { id: "ochila-16", pitch: "A4", duration: 0.5, absoluteBeat: 21.5 },
     { id: "ochila-17", pitch: "G4", duration: 2, absoluteBeat: 22 },
-
+    { id: "ochila-r3", pitch: "REST", duration: 1.5, absoluteBeat: 24 },
     { id: "ochila-18", pitch: "D4", duration: 0.5, absoluteBeat: 25.5 },
     { id: "ochila-19", pitch: "G4", duration: 0.5, absoluteBeat: 26 },
     { id: "ochila-20", pitch: "A4", duration: 0.5, absoluteBeat: 26.5 },
@@ -40,6 +41,7 @@ export const ochilaLakel: SongData = {
     { id: "ochila-23", pitch: "F4", duration: 1.5, absoluteBeat: 28 },
     { id: "ochila-24", pitch: "E4", duration: 0.5, absoluteBeat: 29.5 },
     { id: "ochila-25", pitch: "D4", duration: 2, absoluteBeat: 30 },
+    { id: "ochila-r4", pitch: "REST", duration: 1.5, absoluteBeat: 32 },
 
     // ═══════════════════════════════════════════════════════════════════
     // SECTION B (Measures 13-24)
@@ -50,14 +52,14 @@ export const ochilaLakel: SongData = {
     { id: "ochila-29", pitch: "E4", duration: 0.5, absoluteBeat: 35 },
     { id: "ochila-30", pitch: "F4", duration: 0.5, absoluteBeat: 35.5 },
     { id: "ochila-31", pitch: "E4", duration: 4, absoluteBeat: 36 },
-
+    { id: "ochila-r5", pitch: "REST", duration: 1.5, absoluteBeat: 40 },
     { id: "ochila-32", pitch: "E4", duration: 0.5, absoluteBeat: 41.5 },
     { id: "ochila-33", pitch: "G4", duration: 1, absoluteBeat: 42 },
     { id: "ochila-34", pitch: "E4", duration: 1, absoluteBeat: 43 },
     { id: "ochila-35", pitch: "F4", duration: 1, absoluteBeat: 44 },
     { id: "ochila-36", pitch: "E4", duration: 0.5, absoluteBeat: 45 },
     { id: "ochila-37", pitch: "D4", duration: 1.5, absoluteBeat: 45.5 },
-
+    { id: "ochila-r6", pitch: "REST", duration: 4, absoluteBeat: 47 },
     { id: "ochila-38", pitch: "A3", duration: 0.5, absoluteBeat: 51.5 },
     { id: "ochila-39", pitch: "F4", duration: 0.5, absoluteBeat: 52 },
     { id: "ochila-40", pitch: "E4", duration: 0.5, absoluteBeat: 52.5 },
@@ -162,7 +164,7 @@ export const ochilaLakel: SongData = {
       timeSignature: "4/4",
       features: [
         "Traditional Jewish liturgical song",
-        "Some gaps indicate rests",
+        "Rests added for phrase breaks",
         "Accidentals: Bb4, C#4",
       ],
     },

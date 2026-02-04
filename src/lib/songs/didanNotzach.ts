@@ -52,6 +52,7 @@ export const didanNotzach: SongData = {
     { id: "didan-34", pitch: "G4", duration: 1, absoluteBeat: 18 },
     { id: "didan-35", pitch: "G4", duration: 1, absoluteBeat: 19 },
     // M6: (rest) Bb G Bb | A. G F(q)
+    { id: "didan-r1", pitch: "REST", duration: 0.5, absoluteBeat: 20 },
     { id: "didan-36", pitch: "Bb4", duration: 0.5, absoluteBeat: 20.5 },
     { id: "didan-37", pitch: "G4", duration: 0.5, absoluteBeat: 21 },
     { id: "didan-38", pitch: "Bb4", duration: 0.5, absoluteBeat: 21.5 },
@@ -64,6 +65,7 @@ export const didanNotzach: SongData = {
     { id: "didan-44", pitch: "G4", duration: 1, absoluteBeat: 26 },
     { id: "didan-45", pitch: "G4", duration: 1, absoluteBeat: 27 },
     // M8: (rest) Bb G Bb | A. G F(q)
+    { id: "didan-r2", pitch: "REST", duration: 0.5, absoluteBeat: 28 },
     { id: "didan-46", pitch: "Bb4", duration: 0.5, absoluteBeat: 28.5 },
     { id: "didan-47", pitch: "G4", duration: 0.5, absoluteBeat: 29 },
     { id: "didan-48", pitch: "Bb4", duration: 0.5, absoluteBeat: 29.5 },

@@ -12,6 +12,7 @@ export const drorYikra: SongData = {
     // ═══════════════════════════════════════════════════════════════════
     // VERSE 1 (Measures 1-16)
     // ═══════════════════════════════════════════════════════════════════
+    { id: "dror-r1", pitch: "REST", duration: 1.5, absoluteBeat: 0 },
     { id: "dror-1", pitch: "G3", duration: 0.5, absoluteBeat: 1.5 },
     { id: "dror-2", pitch: "C4", duration: 1, absoluteBeat: 2 },
     { id: "dror-3", pitch: "C4", duration: 1, absoluteBeat: 3 },
@@ -46,6 +47,7 @@ export const drorYikra: SongData = {
     { id: "dror-32", pitch: "D4", duration: 1.5, absoluteBeat: 28 },
     { id: "dror-33", pitch: "C4", duration: 0.5, absoluteBeat: 29.5 },
     { id: "dror-34", pitch: "G3", duration: 2, absoluteBeat: 30 },
+    { id: "dror-r2", pitch: "REST", duration: 1.5, absoluteBeat: 32 },
 
     // ═══════════════════════════════════════════════════════════════════
     // VERSE 2 (Measures 17-32)
@@ -82,6 +84,7 @@ export const drorYikra: SongData = {
     { id: "dror-64", pitch: "D4", duration: 1.5, absoluteBeat: 60 },
     { id: "dror-65", pitch: "C4", duration: 0.5, absoluteBeat: 61.5 },
     { id: "dror-66", pitch: "C4", duration: 2, absoluteBeat: 62 },
+    { id: "dror-r3", pitch: "REST", duration: 1.5, absoluteBeat: 64 },
 
     // ═══════════════════════════════════════════════════════════════════
     // CHORUS / REFRAIN (Measures 33-48)
@@ -267,7 +270,7 @@ export const drorYikra: SongData = {
       features: [
         "Traditional Shabbat piyut",
         "10th century poem by Dunash ben Labrat",
-        "Some gaps indicate rests",
+        "Rests added for phrase breaks",
         "Accidentals: Eb5, Ab4 in climax section",
       ],
     },

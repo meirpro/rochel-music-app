@@ -17,6 +17,7 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-4", pitch: "C5", duration: 0.5, absoluteBeat: 2 },
     { id: "ora-5", pitch: "Bb4", duration: 0.5, absoluteBeat: 2.5 },
     { id: "ora-6", pitch: "C5", duration: 1, absoluteBeat: 3 },
+    { id: "ora-r1", pitch: "REST", duration: 0.5, absoluteBeat: 4 },
 
     { id: "ora-7", pitch: "Bb4", duration: 0.25, absoluteBeat: 4.5 },
     { id: "ora-8", pitch: "C5", duration: 0.25, absoluteBeat: 4.75 },
@@ -31,6 +32,11 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-16", pitch: "Bb4", duration: 1, absoluteBeat: 9 },
     { id: "ora-17", pitch: "Bb4", duration: 0.5, absoluteBeat: 10 },
     { id: "ora-18", pitch: "A4", duration: 1, absoluteBeat: 10.5 },
+    // Instrumental break (10.5 beats)
+    { id: "ora-r2", pitch: "REST", duration: 0.5, absoluteBeat: 11.5 },
+    { id: "ora-r3", pitch: "REST", duration: 4, absoluteBeat: 12 },
+    { id: "ora-r4", pitch: "REST", duration: 4, absoluteBeat: 16 },
+    { id: "ora-r5", pitch: "REST", duration: 2, absoluteBeat: 20 },
 
     // ═══════════════════════════════════════════════════════════════════
     // VERSE (Measures 6-12)
@@ -41,6 +47,8 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-22", pitch: "Bb4", duration: 0.5, absoluteBeat: 24 },
     { id: "ora-23", pitch: "Bb4", duration: 0.5, absoluteBeat: 24.5 },
     { id: "ora-24", pitch: "Bb4", duration: 1, absoluteBeat: 25 },
+    { id: "ora-r6", pitch: "REST", duration: 4, absoluteBeat: 26 },
+    { id: "ora-r7", pitch: "REST", duration: 0.5, absoluteBeat: 30 },
 
     { id: "ora-25", pitch: "C5", duration: 0.5, absoluteBeat: 30.5 },
     { id: "ora-26", pitch: "F5", duration: 2, absoluteBeat: 31 },
@@ -65,6 +73,7 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-43", pitch: "D5", duration: 0.5, absoluteBeat: 46 },
     { id: "ora-44", pitch: "C5", duration: 0.5, absoluteBeat: 46.5 },
     { id: "ora-45", pitch: "C5", duration: 3, absoluteBeat: 47 },
+    { id: "ora-r8", pitch: "REST", duration: 0.5, absoluteBeat: 50 },
 
     // ═══════════════════════════════════════════════════════════════════
     // CHORUS (Measures 13-22)
@@ -80,6 +89,7 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-54", pitch: "Eb5", duration: 0.5, absoluteBeat: 54.5 },
     { id: "ora-55", pitch: "Eb5", duration: 0.5, absoluteBeat: 55 },
     { id: "ora-56", pitch: "D5", duration: 1.5, absoluteBeat: 55.5 },
+    { id: "ora-r9", pitch: "REST", duration: 1.5, absoluteBeat: 57 },
 
     { id: "ora-57", pitch: "Bb4", duration: 0.5, absoluteBeat: 58.5 },
     { id: "ora-58", pitch: "Bb4", duration: 0.5, absoluteBeat: 59 },
@@ -111,6 +121,7 @@ export const omarRabbiAkiva: SongData = {
     { id: "ora-82", pitch: "C5", duration: 0.5, absoluteBeat: 77.5 },
     { id: "ora-83", pitch: "D5", duration: 0.5, absoluteBeat: 78 },
     { id: "ora-84", pitch: "C5", duration: 0.5, absoluteBeat: 78.5 },
+    { id: "ora-r10", pitch: "REST", duration: 0.5, absoluteBeat: 79 },
 
     // ═══════════════════════════════════════════════════════════════════
     // ENDING (Measures 20-23)
@@ -153,15 +164,10 @@ export const omarRabbiAkiva: SongData = {
       features: [
         "Popular Jewish song about loving your neighbor",
         "Upbeat tempo",
-        "Some gaps in source (rests not rendered)",
+        "10.5-beat instrumental break between intro and verse",
       ],
     },
-    changes: [
-      {
-        what: "Kept beat positions as parsed",
-        why: "Gaps may be rests - app doesn't render rests yet",
-      },
-    ],
+    changes: [],
     sources: {
       sheetMusic: "Israeli Note - Omar Rabbi Akiva",
     },

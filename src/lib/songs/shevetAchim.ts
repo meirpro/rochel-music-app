@@ -23,7 +23,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-6", pitch: "G4", duration: 1, absoluteBeat: 4 },
     { id: "shevet-7", pitch: "A4", duration: 1, absoluteBeat: 5 },
     { id: "shevet-8", pitch: "A4", duration: 1, absoluteBeat: 6 },
-    // rest beat 7
+    { id: "shevet-r1", pitch: "REST", duration: 1, absoluteBeat: 7 },
     // Measure 3 (repeat of phrase)
     { id: "shevet-9", pitch: "C5", duration: 0.5, absoluteBeat: 8.5 },
     { id: "shevet-10", pitch: "C5", duration: 0.5, absoluteBeat: 9 },
@@ -34,7 +34,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-14", pitch: "G4", duration: 1, absoluteBeat: 12 },
     { id: "shevet-15", pitch: "A4", duration: 1, absoluteBeat: 13 },
     { id: "shevet-16", pitch: "A4", duration: 1, absoluteBeat: 14 },
-    // rest beat 15
+    { id: "shevet-r2", pitch: "REST", duration: 1, absoluteBeat: 15 },
 
     // ═══════════════════════════════════════════════════════════════════
     // SECTION B - Bridge (9/8 feel, Measures 5-8)
@@ -51,7 +51,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-24", pitch: "D5", duration: 0.75, absoluteBeat: 20 },
     { id: "shevet-25", pitch: "C5", duration: 0.25, absoluteBeat: 20.75 },
     { id: "shevet-26", pitch: "A4", duration: 1, absoluteBeat: 21 },
-    // rest
+    { id: "shevet-r3", pitch: "REST", duration: 2, absoluteBeat: 22 },
     // Measure 7
     { id: "shevet-27", pitch: "D5", duration: 0.5, absoluteBeat: 24.5 },
     { id: "shevet-28", pitch: "D5", duration: 0.5, absoluteBeat: 25 },
@@ -62,14 +62,14 @@ export const shevetAchim: SongData = {
     { id: "shevet-33", pitch: "E5", duration: 0.5, absoluteBeat: 27.5 },
     // Measure 8
     { id: "shevet-34", pitch: "A4", duration: 1, absoluteBeat: 28 },
-    // rest
+    { id: "shevet-r4", pitch: "REST", duration: 1, absoluteBeat: 29 },
     { id: "shevet-35", pitch: "C5", duration: 0.5, absoluteBeat: 30 },
     { id: "shevet-36", pitch: "B4", duration: 0.5, absoluteBeat: 30.5 },
     { id: "shevet-37", pitch: "A4", duration: 0.5, absoluteBeat: 31 },
-    // rest
+    { id: "shevet-r5", pitch: "REST", duration: 0.5, absoluteBeat: 31.5 },
     // Measure 9
     { id: "shevet-38", pitch: "A4", duration: 1, absoluteBeat: 32 },
-    // rest
+    { id: "shevet-r6", pitch: "REST", duration: 3, absoluteBeat: 33 },
 
     // ═══════════════════════════════════════════════════════════════════
     // SECTION C - Interlude (Measures 10-11)
@@ -84,7 +84,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-45", pitch: "E5", duration: 0.5, absoluteBeat: 39.5 },
     // Measure 11
     { id: "shevet-46", pitch: "A4", duration: 2, absoluteBeat: 40 },
-    // rest
+    { id: "shevet-r7", pitch: "REST", duration: 2, absoluteBeat: 42 },
 
     // ═══════════════════════════════════════════════════════════════════
     // SECTION D - Second Bridge (Measures 12-13)
@@ -101,7 +101,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-54", pitch: "D5", duration: 0.75, absoluteBeat: 48 },
     { id: "shevet-55", pitch: "C5", duration: 0.25, absoluteBeat: 48.75 },
     { id: "shevet-56", pitch: "A4", duration: 1, absoluteBeat: 49 },
-    // rest
+    { id: "shevet-r8", pitch: "REST", duration: 1.5, absoluteBeat: 50 },
     { id: "shevet-57", pitch: "D5", duration: 0.5, absoluteBeat: 51.5 },
 
     // ═══════════════════════════════════════════════════════════════════
@@ -146,7 +146,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-85", pitch: "B4", duration: 1, absoluteBeat: 71 },
     // Measure 19
     { id: "shevet-86", pitch: "C5", duration: 1, absoluteBeat: 72 },
-    // rest
+    { id: "shevet-r9", pitch: "REST", duration: 1, absoluteBeat: 73 },
     { id: "shevet-87", pitch: "C5", duration: 1, absoluteBeat: 74 },
     { id: "shevet-88", pitch: "E5", duration: 1, absoluteBeat: 75 },
     // Measure 20
@@ -156,7 +156,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-92", pitch: "E5", duration: 1, absoluteBeat: 79 },
     // Measure 21
     { id: "shevet-93", pitch: "C5", duration: 1, absoluteBeat: 80 },
-    // rest
+    { id: "shevet-r10", pitch: "REST", duration: 1, absoluteBeat: 81 },
     { id: "shevet-94", pitch: "C5", duration: 1, absoluteBeat: 82 },
     { id: "shevet-95", pitch: "A4", duration: 1, absoluteBeat: 83 },
     // Measure 22
@@ -166,7 +166,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-99", pitch: "E5", duration: 1, absoluteBeat: 87 },
     // Measure 23
     { id: "shevet-100", pitch: "D5", duration: 1, absoluteBeat: 88 },
-    // rest
+    { id: "shevet-r11", pitch: "REST", duration: 1, absoluteBeat: 89 },
     { id: "shevet-101", pitch: "D5", duration: 1, absoluteBeat: 90 },
     { id: "shevet-102", pitch: "E5", duration: 1, absoluteBeat: 91 },
     // Measure 24
@@ -181,7 +181,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-110", pitch: "B4", duration: 1, absoluteBeat: 99 },
     // Measure 26
     { id: "shevet-111", pitch: "C5", duration: 2, absoluteBeat: 100 },
-    // rest
+    { id: "shevet-r12", pitch: "REST", duration: 2, absoluteBeat: 102 },
     // Measure 27
     { id: "shevet-112", pitch: "D5", duration: 0.5, absoluteBeat: 104 },
     { id: "shevet-113", pitch: "D5", duration: 0.5, absoluteBeat: 104.5 },
@@ -194,7 +194,7 @@ export const shevetAchim: SongData = {
     { id: "shevet-119", pitch: "C5", duration: 0.75, absoluteBeat: 108 },
     { id: "shevet-120", pitch: "B4", duration: 0.25, absoluteBeat: 108.75 },
     { id: "shevet-121", pitch: "A4", duration: 1, absoluteBeat: 109 },
-    // rest (ending)
+    { id: "shevet-r13", pitch: "REST", duration: 2, absoluteBeat: 110 },
   ],
 
   repeatMarkers: [],
@@ -247,10 +247,6 @@ export const shevetAchim: SongData = {
       {
         what: "Combined tied notes into single duration",
         why: "App does not support ties",
-      },
-      {
-        what: "Omitted rests",
-        why: "Rest rendering not yet implemented",
       },
     ],
     sources: {

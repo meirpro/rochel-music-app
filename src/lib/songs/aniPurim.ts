@@ -17,8 +17,9 @@ export const aniPurim: SongData = {
 
     // ═══════════════════════════════════════════════════════════════════
     // PICKUP MEASURE (app measure 1, beats 1-4)
-    // Beats 1-3 silent (rests not rendered), beat 4 has pickup G
+    // Beats 1-3 silent, beat 4 has pickup G
     // ═══════════════════════════════════════════════════════════════════
+    { id: "ap-r1", pitch: "REST", duration: 3, absoluteBeat: 0 }, // dotted half rest
     { id: "ap-1", pitch: "G4", duration: 1, absoluteBeat: 3 }, // pickup
 
     // ═══════════════════════════════════════════════════════════════════
