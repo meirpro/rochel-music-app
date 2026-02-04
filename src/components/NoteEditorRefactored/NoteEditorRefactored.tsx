@@ -128,6 +128,20 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     // Measure validation
     showMeasureErrors = false,
   } = props;
+
+  // Debug: Check if onVoltaBracketsChange changes
+  const prevCallbackRef = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    const hasCallback = typeof onVoltaBracketsChange === "function";
+    if (prevCallbackRef.current !== hasCallback) {
+      console.log("[NoteEditorRefactored] onVoltaBracketsChange changed:", {
+        hasCallback,
+        voltaBracketsCount: voltaBrackets.length,
+      });
+      prevCallbackRef.current = hasCallback;
+    }
+  }, [onVoltaBracketsChange, voltaBrackets.length]);
+
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
 
@@ -488,7 +502,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         e.preventDefault();
         const originalNote = dragOriginalNoteRef.current;
         // Restore the note to its original position
-        handleNotesChangeWithConversion(
+        // Use drag-specific handler to avoid creating an undo entry for the cancel
+        handleNotesChangeForDragInternal(
           renderedNotes.map((n) =>
             n.id === draggedNote
               ? {
@@ -522,7 +537,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     contextMenu,
     setContextMenu,
     renderedNotes,
-    handleNotesChangeWithConversion,
+    handleNotesChangeForDragInternal,
   ]);
 
   // Note click handler for delete tool and learn mode interaction
@@ -760,7 +775,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
       // Handle volta tool - delegate to hook
       if (selectedTool === "volta") {
-        console.log("[NoteEditorRefactored] Volta tool click:", { x, system });
+        console.log("[NoteEditorRefactored] Volta tool click:", {
+          x,
+          system,
+          hasOnVoltaBracketsChange: typeof onVoltaBracketsChange === "function",
+        });
         handleVoltaClick(x, system);
         return;
       }
@@ -830,6 +849,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       handleRepeatClick,
       handleVoltaClick,
       handleLyricsClick,
+      onVoltaBracketsChange, // For debug logging
       notes,
       renderedNotes,
       allowChords,

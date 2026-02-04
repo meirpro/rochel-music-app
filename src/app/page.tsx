@@ -85,6 +85,7 @@ interface EditorSettings {
   noteSpacing: number; // 1.0-2.0 (100%-200%) - controls beat width multiplier
   volume: number; // 0-100 (percentage) - master volume control
   instrumentGains?: Record<InstrumentType, number>; // Per-instrument gain offsets in dB (-12 to +12)
+  showMeasureErrors?: boolean; // Highlight measures with incorrect beat counts
 }
 
 interface EditorUI {
@@ -575,6 +576,40 @@ export default function Home() {
     },
     [composition, history, historyIndex, setComposition],
   );
+
+  // Update composition WITHOUT pushing to history (for drag operations)
+  const updateCompositionWithoutHistory = useCallback(
+    (updates: Partial<EditorComposition>) => {
+      const newComposition = {
+        ...composition,
+        ...updates,
+      } as EditorComposition;
+      setComposition(newComposition);
+      // Don't push to history - caller will call commitToHistory when done
+    },
+    [composition, setComposition],
+  );
+
+  // Commit current composition to history (call after drag ends)
+  const commitToHistory = useCallback(() => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(composition);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [composition, history, historyIndex]);
+
+  // Handle notes change during drag (without pushing to undo history)
+  const handleNotesChangeForDrag = useCallback(
+    (newNotes: EditorNote[]) => {
+      updateCompositionWithoutHistory({ notes: newNotes });
+    },
+    [updateCompositionWithoutHistory],
+  );
+
+  // Handle drag end - commit to undo history
+  const handleDragEnd = useCallback(() => {
+    commitToHistory();
+  }, [commitToHistory]);
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
@@ -1068,6 +1103,8 @@ export default function Home() {
                 onNotesChange={(newNotes) => {
                   updateComposition({ notes: newNotes });
                 }}
+                onNotesChangeForDrag={handleNotesChangeForDrag}
+                onDragEnd={handleDragEnd}
                 repeatMarkers={composition.repeatMarkers as RepeatMarker[]}
                 onRepeatMarkersChange={(newMarkers) => {
                   updateComposition({ repeatMarkers: newMarkers });
@@ -1075,6 +1112,10 @@ export default function Home() {
                 lyrics={(composition as Composition).lyrics || []}
                 onLyricsChange={(newLyrics) => {
                   updateComposition({ lyrics: newLyrics });
+                }}
+                voltaBrackets={(composition as Composition).voltaBrackets || []}
+                onVoltaBracketsChange={(newBrackets) => {
+                  updateComposition({ voltaBrackets: newBrackets });
                 }}
                 selectedTool={settings.selectedTool}
                 showLabels={settings.showLabels}
@@ -1095,6 +1136,8 @@ export default function Home() {
                 staffLines={settings.staffLines ?? 3}
                 noteSpacing={settings.noteSpacing ?? 1.0}
                 songMetadata={currentSongMetadata}
+                showMeasureErrors={settings.showMeasureErrors ?? false}
+                timeSignatureChanges={timeSignatureChanges}
               />
             </div>
           </div>
@@ -1208,6 +1251,10 @@ export default function Home() {
         noteSpacing={settings.noteSpacing ?? 1.0}
         onNoteSpacingChange={(spacing) =>
           setSettings({ ...settings, noteSpacing: spacing })
+        }
+        showMeasureErrors={settings.showMeasureErrors ?? false}
+        onShowMeasureErrorsChange={(show) =>
+          setSettings({ ...settings, showMeasureErrors: show })
         }
       />
 
