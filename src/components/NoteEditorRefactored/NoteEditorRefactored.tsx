@@ -41,6 +41,7 @@ import {
 import { snapX } from "./utils/beatUtils";
 import { getDurationFromTool, isRestTool } from "./utils/durationUtils";
 import { groupEighthNotes } from "./utils/beamingUtils";
+import { validateMeasures, MeasureValidation } from "./utils/measureValidation";
 
 // Import types
 import { EditorNote, RenderedNote, BeamGroup, NoteEditorProps } from "./types";
@@ -55,11 +56,13 @@ import {
 import { NoteContextMenu, EmptyContextMenu } from "./components/ContextMenus";
 import { Playhead } from "./components/Playhead";
 import { LyricsLayer } from "./components/LyricsLayer";
+import { VoltaBracketLayer } from "./components/VoltaBracketLayer";
 
 // Import hooks
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useLyricsEditing } from "./hooks/useLyricsEditing";
 import { useRepeatPlacement } from "./hooks/useRepeatPlacement";
+import { useVoltaPlacement } from "./hooks/useVoltaPlacement";
 import {
   useTimeSigPicker,
   TIME_SIG_NUMERATORS,
@@ -82,6 +85,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     onNotesChange,
     repeatMarkers,
     onRepeatMarkersChange,
+    voltaBrackets = [],
+    onVoltaBracketsChange,
     lyrics = [],
     onLyricsChange,
     selectedTool,
@@ -118,6 +123,8 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     onNoteInteraction,
     // Song metadata for title/footer
     songMetadata,
+    // Measure validation
+    showMeasureErrors = false,
   } = props;
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = externalSvgRef || internalSvgRef;
@@ -128,6 +135,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   // Playhead drag state
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+
+  // Volta hover state
+  const [hoveredVolta, setHoveredVolta] = useState<string | null>(null);
 
   // Measures per system for calculations
   const measuresPerSystem = measuresPerRow ?? 4;
@@ -213,6 +223,23 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     }
     return ids;
   }, [beamGroups]);
+
+  // Calculate measure validation errors (when enabled)
+  const measureErrors = useMemo(() => {
+    if (!showMeasureErrors) return undefined;
+    return validateMeasures(
+      notes,
+      timeSignature,
+      timeSignatureChanges,
+      totalMeasures,
+    );
+  }, [
+    showMeasureErrors,
+    notes,
+    timeSignature,
+    timeSignatureChanges,
+    totalMeasures,
+  ]);
 
   // Play a note sound
   const playNoteSound = useCallback(
@@ -342,6 +369,22 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   } = useRepeatPlacement({
     repeatMarkers: renderedRepeatMarkers,
     onRepeatMarkersChange,
+    systemLayouts,
+    measuresPerSystem,
+    beatsPerMeasure: defaultLayout.beatsPerMeasure,
+    selectedTool,
+  });
+
+  // Use extracted volta placement hook
+  const {
+    voltaStart: _voltaStart,
+    handleVoltaClick,
+    handleVoltaHover: _handleVoltaHover,
+    isPlacingVolta: _isPlacingVolta,
+  } = useVoltaPlacement({
+    voltaBrackets,
+    onVoltaBracketsChange,
+    repeatMarkers, // Need absolute measures for finding repeat sections
     systemLayouts,
     measuresPerSystem,
     beatsPerMeasure: defaultLayout.beatsPerMeasure,
@@ -615,6 +658,12 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         return;
       }
 
+      // Handle volta tool - delegate to hook
+      if (selectedTool === "volta") {
+        handleVoltaClick(x, system);
+        return;
+      }
+
       // Handle lyrics tool - delegate to hook
       if (selectedTool === "lyrics") {
         handleLyricsClick(x, y, system);
@@ -678,6 +727,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       systemCount,
       systemLayouts,
       handleRepeatClick,
+      handleVoltaClick,
       handleLyricsClick,
       notes,
       renderedNotes,
@@ -753,8 +803,35 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             onTimeSigPickerOpen={openTimeSigPicker}
             onMarkerDragStart={handleMarkerDragStart}
             isDraggingMarker={isDraggingMarker}
+            measureErrors={measureErrors}
+            showMeasureErrors={showMeasureErrors}
           />
         ))}
+
+        {/* Volta brackets (1st/2nd endings) - render above staff */}
+        {Array.from({ length: systemCount }, (_, systemIndex) => {
+          const staffCenterY = getStaffCenterY(systemIndex, staffLines);
+          return (
+            <VoltaBracketLayer
+              key={`volta-${systemIndex}`}
+              voltaBrackets={voltaBrackets.filter((v) => {
+                // Only render voltas that start in this system
+                const startSystem = Math.floor(
+                  v.startMeasure / measuresPerSystem,
+                );
+                return startSystem === systemIndex;
+              })}
+              onVoltaBracketsChange={onVoltaBracketsChange}
+              systemLayouts={systemLayouts}
+              staffCenterY={staffCenterY}
+              staffLines={staffLines}
+              measuresPerRow={measuresPerSystem}
+              selectedTool={selectedTool}
+              hoveredVolta={hoveredVolta}
+              setHoveredVolta={setHoveredVolta}
+            />
+          );
+        })}
 
         {/* Duration extensions (render behind notes) */}
         {renderedNotes.map((note) => (
@@ -914,13 +991,25 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 LEFT_MARGIN + localEndBeat * sysLayout.beatWidth;
               const staffCenterY = getStaffCenterY(sys, staffLines);
 
+              // Calculate staff bounds based on visible lines
+              const highlightStaffTopOffset =
+                staffLines === 5
+                  ? -2 * LINE_SPACING
+                  : staffLines === 4
+                    ? -1 * LINE_SPACING
+                    : 0;
+              const highlightStaffBottomOffset = 2 * LINE_SPACING;
+              const highlightTop = staffCenterY + highlightStaffTopOffset - 15;
+              const highlightBottom =
+                staffCenterY + highlightStaffBottomOffset + 15;
+
               highlights.push(
                 <rect
                   key={`beat-highlight-${sys}`}
                   x={highlightStartX}
-                  y={staffCenterY - LINE_SPACING * 2 - 15}
+                  y={highlightTop}
                   width={highlightEndX - highlightStartX}
-                  height={LINE_SPACING * 4 + 30}
+                  height={highlightBottom - highlightTop}
                   fill="#bbf7d0"
                   opacity={0.4}
                   rx={4}

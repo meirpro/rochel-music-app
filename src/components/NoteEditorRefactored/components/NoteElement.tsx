@@ -110,20 +110,23 @@ import { RenderedNote, BeamGroup, NoteTool } from "../types";
 // ============================================================================
 // REST SYMBOL COMPONENTS
 // ============================================================================
+// Rest symbols adapted from Wikimedia Commons (Public Domain)
+// Source: https://commons.wikimedia.org/wiki/File:Music_rests.svg
+//
+// All rests are centered vertically at the provided y coordinate (staff center)
 
 /**
  * Render a whole rest (4 beats) - rectangle hanging below a line
- * Positioned at staff center, hanging from the line above center
+ * Centered at staff center, hangs down from the center point
  */
 function WholeRestSymbol({ x, y }: { x: number; y: number }) {
-  const width = 16;
+  const width = 18;
   const height = 8;
-  // Hang from the line above center (y - LINE_SPACING/2)
-  const restY = y - LINE_SPACING / 2;
+  // Center vertically: top edge at y - 4, bottom at y + 4
   return (
     <rect
       x={x - width / 2}
-      y={restY}
+      y={y - height / 2 - 4}
       width={width}
       height={height}
       fill="#374151"
@@ -134,16 +137,16 @@ function WholeRestSymbol({ x, y }: { x: number; y: number }) {
 
 /**
  * Render a half rest (2 beats) - rectangle sitting on a line
- * Positioned at staff center, sitting on the center line
+ * Centered at staff center, sits up from the center point
  */
 function HalfRestSymbol({ x, y }: { x: number; y: number }) {
-  const width = 16;
+  const width = 18;
   const height = 8;
-  // Sit on the center line (y)
+  // Center vertically: top edge at y - 4, bottom at y + 4
   return (
     <rect
       x={x - width / 2}
-      y={y - height}
+      y={y - height / 2 + 4}
       width={width}
       height={height}
       fill="#374151"
@@ -153,58 +156,43 @@ function HalfRestSymbol({ x, y }: { x: number; y: number }) {
 }
 
 /**
- * Render a quarter rest (1 beat) - squiggly zig-zag symbol
- * This is the most complex rest symbol to draw
+ * Render a quarter rest (1 beat) - authentic crotchet rest shape
+ * Based on Wikimedia Commons Music_rests.svg
  */
 function QuarterRestSymbol({ x, y }: { x: number; y: number }) {
-  // Quarter rest is a zig-zag squiggle
-  // Start from above center, zig-zag down
-  const top = y - LINE_SPACING;
-  const bottom = y + LINE_SPACING;
-  const mid = (top + bottom) / 2;
+  // The path is ~17 units tall at scale 1. We want it ~50 units tall (1.5 LINE_SPACING)
+  const scale = 2.8;
+  // Path bounds: roughly 10 wide x 17 tall, center at ~7, 8.5
+  const pathHeight = 17 * scale;
+  const pathCenterX = 7 * scale;
+  const pathCenterY = 8.5 * scale;
 
   return (
     <path
-      d={`
-        M ${x + 4} ${top}
-        L ${x - 6} ${top + 12}
-        L ${x + 4} ${mid}
-        L ${x - 6} ${mid + 8}
-        Q ${x - 2} ${bottom - 4} ${x + 6} ${bottom}
-      `}
-      stroke="#374151"
-      strokeWidth={3.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
+      d="M14 0c-.15.06-.24.28-.17.43l.46.57c.5.56.59.7.7.96.44.9.2 2.04-.57 2.76-.07.09-.35.32-.62.52-.76.66-1.11.97-1.24 1.36-.05.09-.05.17-.05.3-.02.3 0 .33.9 1.38 1.22 1.46 2.1 2.5 2.16 2.56l.06.06-.08-.04c-1.2-.5-2.56-.74-3.02-.52a.52.52 0 0 0-.31.3c-.18.38-.13.92.13 1.73.24.72.72 1.69 1.2 2.41.2.31.57.79.61.81.07.06.16.04.22 0 .06-.09.06-.16-.06-.3-.46-.66-.68-2.02-.42-2.74.11-.33.24-.5.48-.61.64-.28 2.04.07 2.63.65.04.05.13.14.18.16.15.06.37-.02.44-.18.09-.15.04-.26-.16-.5-.37-.44-1.48-1.75-1.64-1.95-.4-.46-.57-.9-.61-1.44-.02-.7.26-1.44.79-1.93.06-.09.35-.33.61-.52.81-.68 1.14-1.05 1.27-1.4.09-.29.05-.55-.15-.79-.07-.06-.83-1-1.73-2.08-1.23-1.44-1.67-1.97-1.73-1.99a.45.45 0 0 0-.29.02"
+      fill="#374151"
+      transform={`translate(${x - pathCenterX}, ${y - pathCenterY}) scale(${scale})`}
     />
   );
 }
 
 /**
- * Render an eighth rest (0.5 beats) - flag with dot
- * A curved flag descending from a dot
+ * Render an eighth rest (0.5 beats) - authentic quaver rest shape
+ * Based on Wikimedia Commons Music_rests.svg
  */
 function EighthRestSymbol({ x, y }: { x: number; y: number }) {
-  const dotY = y - LINE_SPACING / 2;
-  const flagEndY = y + LINE_SPACING / 2;
+  // The path is ~10 units tall at scale 1. We want it ~36 units tall (~1 LINE_SPACING)
+  const scale = 2.4;
+  // Path bounds: roughly 8 wide x 10 tall, center at ~15, 5
+  const pathCenterX = 15 * scale;
+  const pathCenterY = 5 * scale;
 
   return (
-    <g>
-      {/* Dot at top */}
-      <circle cx={x + 4} cy={dotY} r={4} fill="#374151" />
-      {/* Curved stem/flag */}
-      <path
-        d={`
-          M ${x + 4} ${dotY + 4}
-          Q ${x - 8} ${dotY + 16} ${x - 4} ${flagEndY}
-        `}
-        stroke="#374151"
-        strokeWidth={3}
-        strokeLinecap="round"
-        fill="none"
-      />
-    </g>
+    <path
+      d="M14.5 0c-.57.11-1 .5-1.2 1.04-.04.17-.04.22-.04.46 0 .33.02.5.17.76.22.44.68.79 1.2.92.55.15 1.47.02 2.52-.33l.26-.09-1.29 3.57-1.27 3.56s.04.02.11.07c.13.08.35.15.5.15.26 0 .59-.15.64-.28 0-.04.61-2.12 1.36-4.6l1.31-4.53-.04-.06c-.11-.13-.33-.18-.46-.07-.04.04-.11.13-.15.2-.2.33-.7.92-.96 1.14-.24.2-.37.22-.59.13-.2-.11-.26-.22-.4-.81-.13-.59-.28-.85-.61-1.07a1.34 1.34 0 0 0-1.05-.17"
+      fill="#374151"
+      transform={`translate(${x - pathCenterX}, ${y - pathCenterY}) scale(${scale})`}
+    />
   );
 }
 
@@ -230,8 +218,20 @@ export function RestElement({
   const sysLayout = getLayoutForSystem(systemLayouts, note.system);
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysLayout.beatWidth);
-  // Rests are centered on the staff
-  const y = getStaffCenterY(note.system, staffLines);
+
+  // Calculate the VISUAL center of the staff (not the fixed B4 line position)
+  // Staff top varies by line count, bottom is always at +2 * LINE_SPACING
+  const staffCenterY = getStaffCenterY(note.system, staffLines);
+  const staffTopOffset =
+    staffLines === 5
+      ? -2 * LINE_SPACING
+      : staffLines === 4
+        ? -1 * LINE_SPACING
+        : 0;
+  const staffBottomOffset = 2 * LINE_SPACING;
+  // Visual center is midway between top and bottom lines
+  const y = staffCenterY + (staffTopOffset + staffBottomOffset) / 2;
+
   const isActive = activeNoteId === note.id;
 
   // Determine which rest symbol to render based on duration
@@ -343,11 +343,21 @@ export function DurationExtension({
   const x =
     getBeatXInSystem(sysLayout, note.beat) + getNoteOffset(sysBeatWidth);
 
-  // For rests, center on staff; for notes, use pitch position
-  const y =
-    note.pitch === "REST"
-      ? getStaffCenterY(note.system, staffLines)
-      : getYFromPitch(note.pitch, note.system, staffLines);
+  // For rests, use the VISUAL center of the staff; for notes, use pitch position
+  let y: number;
+  if (note.pitch === "REST") {
+    const staffCenterY = getStaffCenterY(note.system, staffLines);
+    const staffTopOffset =
+      staffLines === 5
+        ? -2 * LINE_SPACING
+        : staffLines === 4
+          ? -1 * LINE_SPACING
+          : 0;
+    const staffBottomOffset = 2 * LINE_SPACING;
+    y = staffCenterY + (staffTopOffset + staffBottomOffset) / 2;
+  } else {
+    y = getYFromPitch(note.pitch, note.system, staffLines);
+  }
 
   // Rests use a neutral gray color
   const color = note.pitch === "REST" ? "#6b7280" : getNoteColor(note.pitch);

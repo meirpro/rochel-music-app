@@ -31,6 +31,72 @@ function getStaffCenterY(system: number): number {
 
 If these constants drift out of sync, notes will appear at incorrect vertical positions on the staff.
 
+## Staff-Adaptive Positioning
+
+The app supports variable staff line counts (3, 4, or 5 lines). Elements positioned relative to the staff must calculate offsets dynamically based on `staffLines`.
+
+### Pattern for Staff-Relative Offsets
+
+```typescript
+// ✅ CORRECT: Calculate staff bounds based on staffLines
+const staffTopOffset =
+  staffLines === 5 ? -2 * LINE_SPACING :
+  staffLines === 4 ? -1 * LINE_SPACING : 0;
+const staffBottomOffset = 2 * LINE_SPACING; // Bottom is always at center + 2 lines
+
+const staffTopY = staffCenterY + staffTopOffset;
+const staffBottomY = staffCenterY + staffBottomOffset;
+
+// ❌ INCORRECT: Hardcoded offsets that assume 5 lines
+const staffTopY = staffCenterY - 2 * LINE_SPACING; // Only correct for 5 lines!
+```
+
+### Elements That Must Adapt
+
+| Element | Current Status | Location |
+|---------|---------------|----------|
+| Staff lines | ✅ Adapts | `StaffSystem.tsx` |
+| Ledger lines | ✅ Adapts | `NoteElement.tsx` |
+| Rest symbols | ✅ Centered | `NoteElement.tsx` (uses y directly) |
+| Playhead | ✅ Adapts | `Playhead.tsx` |
+| Volta brackets | ✅ Adapts | `VoltaBracketLayer.tsx` - above staff top |
+| Beat highlight | ✅ Adapts | `NoteEditorRefactored.tsx` - learn mode highlight |
+| Lyrics | ✅ Correct | `LyricsLayer.tsx` - below staff bottom (see below) |
+| Lyrics zone highlight | ✅ Correct | `NoteEditorRefactored.tsx` - UI hint for lyrics tool |
+
+**Note:** `NoteEditor.tsx` is deprecated. Use `NoteEditorRefactored/` for new work.
+
+### Why Lyrics Don't Need to Adapt
+
+Lyrics use `staffCenterY + LINE_SPACING * 3` which equals "staff bottom + 1 line spacing".
+The staff **bottom** is always at `staffCenterY + 2 * LINE_SPACING` regardless of visible lines:
+- 5 lines: top at -2, bottom at +2
+- 4 lines: top at -1, bottom at +2
+- 3 lines: top at 0, bottom at +2
+
+So lyrics are always consistently positioned below the staff bottom.
+
+### Visual Staff Center vs B4 Line Position
+
+`getStaffCenterY()` returns the position of the **B4 line** (middle line of a 5-line staff), NOT the visual center. When fewer lines are visible, the visual center shifts:
+
+```typescript
+// getStaffCenterY returns the B4 line position (fixed reference point)
+const staffCenterY = getStaffCenterY(system, staffLines);
+
+// Visual center calculation (midpoint between top and bottom lines)
+const staffTopOffset = staffLines === 5 ? -2 : staffLines === 4 ? -1 : 0;
+const staffBottomOffset = 2; // Bottom is always at +2 * LINE_SPACING
+const visualCenterY = staffCenterY + ((staffTopOffset + staffBottomOffset) / 2) * LINE_SPACING;
+
+// Results:
+// 5 lines: visualCenter = staffCenterY + 0 (same as B4 line)
+// 4 lines: visualCenter = staffCenterY + 0.5 * LINE_SPACING
+// 3 lines: visualCenter = staffCenterY + 1 * LINE_SPACING
+```
+
+**Rest symbols** use this visual center calculation so they appear centered on the visible staff regardless of line count.
+
 ## Beaming Algorithm
 
 Location: `/src/components/NoteEditor.tsx`
