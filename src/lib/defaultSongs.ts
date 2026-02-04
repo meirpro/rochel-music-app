@@ -14,6 +14,11 @@ import {
   chagPurim,
   maNishtana,
   omarRabbiAkiva,
+  drorYikra,
+  unknownSong323,
+  shevetAchim,
+  sheHashemesh,
+  yeshBiOdKoach,
 } from "./songs";
 
 // Helper to create a SavedSong from a SongData
@@ -52,6 +57,11 @@ const ALL_DEFAULT_SONGS: SongData[] = [
   chagPurim,
   maNishtana,
   omarRabbiAkiva,
+  drorYikra,
+  unknownSong323,
+  shevetAchim,
+  sheHashemesh,
+  yeshBiOdKoach,
 ];
 
 // Generate default songs from individual song files

@@ -14,6 +14,11 @@ export { alYedeyNigunim } from "./alYedeyNigunim";
 export { chagPurim } from "./chagPurim";
 export { maNishtana } from "./maNishtana";
 export { omarRabbiAkiva } from "./omarRabbiAkiva";
+export { drorYikra } from "./drorYikra";
+export { unknownSong323 } from "./unknownSong323";
+export { shevetAchim } from "./shevetAchim";
+export { sheHashemesh } from "./sheHashemesh";
+export { yeshBiOdKoach } from "./yeshBiOdKoach";
 
 // Re-export types
 export type { SongData } from "./types";
