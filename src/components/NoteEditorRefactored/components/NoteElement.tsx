@@ -162,9 +162,9 @@ function HalfRestSymbol({ x, y }: { x: number; y: number }) {
 function QuarterRestSymbol({ x, y }: { x: number; y: number }) {
   // The path is ~17 units tall at scale 1. We want it ~50 units tall (1.5 LINE_SPACING)
   const scale = 2.8;
-  // Path bounds: roughly 10 wide x 17 tall, center at ~7, 8.5
-  const pathHeight = 17 * scale;
-  const pathCenterX = 7 * scale;
+  // Path bounds: X from ~9 to ~18 (center ~13.5), Y from 0 to ~17 (center ~8.5)
+  // The path starts at M14 0, so the center is around x=13.5
+  const pathCenterX = 13.5 * scale;
   const pathCenterY = 8.5 * scale;
 
   return (
@@ -204,14 +204,18 @@ export function RestElement({
   systemLayouts,
   staffLines,
   activeNoteId,
+  hoveredNote,
+  allowMove,
   readOnly,
   selectedTool,
   onContextMenu,
   onMouseDown,
+  onMouseEnter,
+  onMouseLeave,
   onClick,
 }: Omit<
   NoteElementProps,
-  "beamGroups" | "beamedNoteIds" | "showLabels" | "draggedNote" | "allowMove"
+  "beamGroups" | "beamedNoteIds" | "showLabels" | "draggedNote"
 >) {
   if (note.pitch !== "REST") return null;
 
@@ -233,6 +237,7 @@ export function RestElement({
   const y = staffCenterY + (staffTopOffset + staffBottomOffset) / 2;
 
   const isActive = activeNoteId === note.id;
+  const isHoveredForMove = hoveredNote === note.id && allowMove && !readOnly;
 
   // Determine which rest symbol to render based on duration
   let RestSymbol: React.FC<{ x: number; y: number }>;
@@ -252,14 +257,18 @@ export function RestElement({
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note.id)}
       onMouseDown={(e) => onMouseDown(e, note.id)}
+      onMouseEnter={() => onMouseEnter?.(note.id)}
+      onMouseLeave={() => onMouseLeave?.()}
       onClick={(e) => onClick?.(e, note.id)}
       style={{
         cursor:
           selectedTool === "delete"
             ? "pointer"
-            : readOnly
-              ? "default"
-              : "pointer",
+            : allowMove && !readOnly
+              ? "move"
+              : readOnly
+                ? "default"
+                : "pointer",
       }}
     >
       {/* Invisible hit area for interactions */}
@@ -269,8 +278,16 @@ export function RestElement({
         width={36}
         height={50}
         fill="transparent"
-        style={{ cursor: readOnly ? "default" : "pointer" }}
+        style={{
+          cursor:
+            allowMove && !readOnly ? "move" : readOnly ? "default" : "pointer",
+        }}
       />
+
+      {/* Move preview highlight - shows which rest will move on drag */}
+      {isHoveredForMove && (
+        <ellipse cx={x} cy={y} rx={22} ry={22} fill="#3B82F6" opacity={0.15} />
+      )}
 
       {/* Active rest glow */}
       {isActive && (
@@ -301,11 +318,14 @@ export interface NoteElementProps {
   showLabels: boolean;
   activeNoteId: string | null;
   draggedNote: string | null;
+  hoveredNote: string | null;
   allowMove: boolean;
   readOnly: boolean;
   selectedTool?: NoteTool;
   onContextMenu: (e: React.MouseEvent, noteId: string) => void;
   onMouseDown: (e: React.MouseEvent, noteId: string) => void;
+  onMouseEnter?: (noteId: string) => void;
+  onMouseLeave?: () => void;
   onClick?: (e: React.MouseEvent, noteId: string) => void;
 }
 
@@ -392,11 +412,14 @@ export function NoteElement({
   showLabels,
   activeNoteId,
   draggedNote,
+  hoveredNote,
   allowMove,
   readOnly,
   selectedTool,
   onContextMenu,
   onMouseDown,
+  onMouseEnter,
+  onMouseLeave,
   onClick,
 }: NoteElementProps) {
   // Skip rendering if note has invalid data
@@ -417,10 +440,14 @@ export function NoteElement({
         systemLayouts={systemLayouts}
         staffLines={staffLines}
         activeNoteId={activeNoteId}
+        hoveredNote={hoveredNote}
+        allowMove={allowMove}
         readOnly={readOnly}
         selectedTool={selectedTool}
         onContextMenu={onContextMenu}
         onMouseDown={onMouseDown}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         onClick={onClick}
       />
     );
@@ -497,6 +524,7 @@ export function NoteElement({
   }
 
   const isSelected = draggedNote === note.id;
+  const isHoveredForMove = hoveredNote === note.id && allowMove && !readOnly;
 
   return (
     <g
@@ -504,6 +532,8 @@ export function NoteElement({
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note.id)}
       onMouseDown={(e) => onMouseDown(e, note.id)}
+      onMouseEnter={() => onMouseEnter?.(note.id)}
+      onMouseLeave={() => onMouseLeave?.()}
       onClick={(e) => onClick?.(e, note.id)}
       style={{
         cursor:
@@ -536,6 +566,19 @@ export function NoteElement({
         fill="transparent"
         style={{ cursor: allowMove && !readOnly ? "move" : "pointer" }}
       />
+
+      {/* Move preview highlight - shows which note will move on drag */}
+      {isHoveredForMove && (
+        <ellipse
+          cx={x}
+          cy={y}
+          rx={18}
+          ry={14}
+          fill="#3B82F6"
+          opacity={0.2}
+          transform={`rotate(-15 ${x} ${y})`}
+        />
+      )}
 
       {/* Selection indicator - blue dot above the note */}
       {isSelected && <circle cx={x} cy={y - 28} r={4} fill="#3B82F6" />}

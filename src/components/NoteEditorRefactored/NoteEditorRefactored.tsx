@@ -133,6 +133,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const [draggedNote, setDraggedNote] = useState<string | null>(null);
   const justDraggedRef = useRef(false);
 
+  // Note hover state (for move tool preview)
+  const [hoveredNote, setHoveredNote] = useState<string | null>(null);
+
   // Playhead drag state
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
 
@@ -855,11 +858,14 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             showLabels={showLabels}
             activeNoteId={activeNoteId}
             draggedNote={draggedNote}
+            hoveredNote={hoveredNote}
             allowMove={allowMove}
             readOnly={readOnly}
             selectedTool={selectedTool}
             onContextMenu={handleNoteContextMenu}
             onMouseDown={handleNoteMouseDown}
+            onMouseEnter={setHoveredNote}
+            onMouseLeave={() => setHoveredNote(null)}
             onClick={handleNoteClick}
           />
         ))}

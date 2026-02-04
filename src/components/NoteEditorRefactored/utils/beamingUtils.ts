@@ -32,8 +32,11 @@ export function groupEighthNotes(
   staffLines?: number,
 ): BeamGroup[] {
   // Include sixteenths (0.25), eighths (0.5), and dotted eighths (0.75) for beaming
+  // IMPORTANT: Exclude rests - they should never be beamed
   const beamableNotes = allNotes.filter(
-    (n) => n.duration === 0.25 || n.duration === 0.5 || n.duration === 0.75,
+    (n) =>
+      n.pitch !== "REST" &&
+      (n.duration === 0.25 || n.duration === 0.5 || n.duration === 0.75),
   );
 
   // Sort all notes by system, then by beat position (for checking notes in between)
