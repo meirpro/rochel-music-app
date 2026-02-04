@@ -479,7 +479,23 @@ export function getBeatXInSystem(
   );
 }
 
-// Convert X coordinate to beat position within a system (accounts for decorations)
+/**
+ * Convert X coordinate to beat position within a system (accounts for decorations)
+ *
+ * This is the inverse of snapX - given a snapped X coordinate, return the beat number.
+ * Used during drag operations to determine which beat the note should be placed at.
+ *
+ * EPSILON FIX: This function and snapX must use matching epsilon values to ensure
+ * consistency. When snapX snaps a position to (say) beat 2.0, this function must
+ * return exactly 2.0 when given that same X coordinate. Due to floating-point
+ * division, the raw calculation might produce 1.9999999 instead of 2.0, which
+ * would then round to 1.5 (the previous half-beat). The epsilon ensures we
+ * consistently round to the intended beat.
+ *
+ * IMPORTANT: Both snapX and getBeatFromXInSystem must agree on snap boundaries.
+ * If one uses epsilon and the other doesn't, notes will appear to "jump" during
+ * drag operations as the two calculations disagree.
+ */
 export function getBeatFromXInSystem(
   sysLayout: SystemLayout,
   x: number,
@@ -488,30 +504,39 @@ export function getBeatFromXInSystem(
   // Remove note offset for calculation
   const xWithoutOffset = x - noteOffset;
 
+  // Epsilon biases rounding forward - must match snapX epsilon behavior
+  const EPSILON = 0.0001;
+
   // Find which measure this X falls into
   for (const measure of sysLayout.measures) {
     const measureStartX = LEFT_MARGIN + measure.xOffset;
-    const measureEndX =
-      measureStartX + measure.beatsInMeasure * sysLayout.beatWidth;
 
     // Extend left tolerance to include prefixWidth (time sig display area)
     // so clicks in the decoration area are assigned to this measure
     const leftTolerance = measure.prefixWidth + 5;
 
-    if (
-      xWithoutOffset >= measureStartX - leftTolerance &&
-      xWithoutOffset < measureEndX + 5
-    ) {
-      // X is in this measure - clamp xInMeasure to not go negative
+    // Check if X falls within this measure's left boundary
+    if (xWithoutOffset >= measureStartX - leftTolerance) {
+      // X is potentially in this measure - calculate the snap position
       const xInMeasure = Math.max(0, xWithoutOffset - measureStartX);
       const beatInMeasure = xInMeasure / sysLayout.beatWidth;
-      const rawBeat = measure.startBeatInSystem + beatInMeasure;
-      return Math.round(rawBeat * 2) / 2; // Snap to half-beats
+      const rawBeat = measure.startBeatInSystem + beatInMeasure + EPSILON;
+      const snappedBeat = Math.round(rawBeat * 2) / 2; // Snap to half-beats
+
+      // Check if snapped beat is within this measure's valid range
+      // If it exceeds measure bounds, fall through to next measure
+      const maxBeatInMeasure =
+        measure.startBeatInSystem + measure.beatsInMeasure - 0.5;
+      if (snappedBeat <= maxBeatInMeasure) {
+        return snappedBeat;
+      }
+      // Snapped beat exceeds measure - continue to next measure
     }
   }
 
   // Fallback: use simple calculation (should rarely reach here now)
-  const rawBeat = (xWithoutOffset - LEFT_MARGIN) / sysLayout.beatWidth;
+  const rawBeat =
+    (xWithoutOffset - LEFT_MARGIN) / sysLayout.beatWidth + EPSILON;
   return Math.round(rawBeat * 2) / 2;
 }
 
