@@ -31,7 +31,6 @@ import { maNishtana } from "./maNishtana";
 import { omarRabbiAkiva } from "./omarRabbiAkiva";
 import { drorYikra } from "./drorYikra";
 import { ochilaLakel } from "./ochilaLakel";
-import { shevetAchim } from "./shevetAchim";
 import { sheHashemesh } from "./sheHashemesh";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -69,7 +68,6 @@ export const SONG_REGISTRY: SongData[] = [
   omarRabbiAkiva,
   drorYikra,
   ochilaLakel,
-  shevetAchim,
   sheHashemesh,
   // Updated versions with REST notes from MusicXML
   hevenuShalomUpdated,

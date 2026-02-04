@@ -66,7 +66,13 @@ export interface NoteContextMenuProps {
   contextMenu: NoteContextMenuState;
   collapsedSections: CollapsedSections;
   onToggleSection: (
-    section: "duration" | "accidental" | "changeNote" | "octave" | "rest",
+    section:
+      | "duration"
+      | "accidental"
+      | "changeNote"
+      | "octave"
+      | "rest"
+      | "note",
   ) => void;
   onChangeDuration: (duration: number) => void;
   onChangeAccidental: (accidental: "#" | "b" | null) => void;
@@ -74,8 +80,8 @@ export interface NoteContextMenuProps {
   onChangeOctave: (direction: "up" | "down") => void;
   /** Convert note to rest with specified duration */
   onConvertToRest: (duration: number) => void;
-  /** Convert rest back to note (keeps duration, defaults pitch to C4) */
-  onConvertToNote: () => void;
+  /** Convert rest back to note with specified duration (pitch defaults to C4) */
+  onConvertToNote: (duration: number) => void;
   onDelete: () => void;
   /** Which sections to show (undefined = show all) */
   visibleSections?: ContextMenuSection[];
@@ -213,16 +219,47 @@ export function NoteContextMenu({
         </>
       )}
 
-      {/* Convert to Rest section (shown for notes) / Convert to Note button (shown for rests) */}
+      {/* Convert to Rest section (shown for notes) / Convert to Note section (shown for rests) */}
       {isRest ? (
         <>
           <div className="border-t border-gray-200 my-1" />
           <button
-            onClick={onConvertToNote}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            onClick={() => onToggleSection("note")}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
           >
-            <MenuNoteIcon duration={1} color="#7c3aed" /> Convert to Note
+            <span>Convert to Note</span>
+            <span className="text-gray-400">
+              {collapsedSections.note ? "▸" : "▾"}
+            </span>
           </button>
+          {!collapsedSections.note && (
+            <>
+              <button
+                onClick={() => onConvertToNote(0.5)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={0.5} /> Eighth Note
+              </button>
+              <button
+                onClick={() => onConvertToNote(1)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={1} /> Quarter Note
+              </button>
+              <button
+                onClick={() => onConvertToNote(2)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={2} /> Half Note
+              </button>
+              <button
+                onClick={() => onConvertToNote(4)}
+                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <MenuNoteIcon duration={4} /> Whole Note
+              </button>
+            </>
+          )}
         </>
       ) : (
         showSection("rest") && (

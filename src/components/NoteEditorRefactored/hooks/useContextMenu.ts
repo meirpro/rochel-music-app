@@ -46,6 +46,7 @@ export interface CollapsedSections {
   changeNote: boolean;
   octave: boolean;
   rest: boolean;
+  note: boolean; // For converting rest to note
 }
 
 // Hook parameters
@@ -71,7 +72,13 @@ export interface UseContextMenuReturn {
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState>>;
   collapsedSections: CollapsedSections;
   toggleSection: (
-    section: "duration" | "accidental" | "changeNote" | "octave" | "rest",
+    section:
+      | "duration"
+      | "accidental"
+      | "changeNote"
+      | "octave"
+      | "rest"
+      | "note",
   ) => void;
   handleNoteContextMenu: (e: React.MouseEvent, noteId: string) => void;
   handleEmptyContextMenu: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -82,8 +89,8 @@ export interface UseContextMenuReturn {
   handleChangeOctave: (direction: "up" | "down") => void;
   /** Convert note to rest with specified duration */
   handleConvertToRest: (duration: number) => void;
-  /** Convert rest back to a note (uses current duration, pitch defaults to C4) */
-  handleConvertToNote: () => void;
+  /** Convert rest back to a note with specified duration (pitch defaults to C4) */
+  handleConvertToNote: (duration: number) => void;
   handleAddNoteFromMenu: (duration: number) => void;
   /** Returns true if the currently selected note is a rest */
   isSelectedNoteRest: boolean;
@@ -122,12 +129,21 @@ export function useContextMenu({
         changeNote: false,
         octave: false,
         rest: false,
+        note: false,
       },
       { initializeWithValue: false },
     );
 
   const toggleSection = useCallback(
-    (section: "duration" | "accidental" | "changeNote" | "octave" | "rest") => {
+    (
+      section:
+        | "duration"
+        | "accidental"
+        | "changeNote"
+        | "octave"
+        | "rest"
+        | "note",
+    ) => {
       setCollapsedSections((prev) => ({
         ...prev,
         [section]: !prev[section],
@@ -367,33 +383,38 @@ export function useContextMenu({
     ],
   );
 
-  // Handler for converting rest back to note (defaults to C4, keeps duration)
-  const handleConvertToNote = useCallback(() => {
-    if (!contextMenu || contextMenu.type !== "note") return;
-    if (isPlaying) {
-      onPlaybackBlock?.();
+  // Handler for converting rest back to note with specified duration (defaults to C4)
+  const handleConvertToNote = useCallback(
+    (duration: number) => {
+      if (!contextMenu || contextMenu.type !== "note") return;
+      if (isPlaying) {
+        onPlaybackBlock?.();
+        setContextMenu(null);
+        return;
+      }
+
+      const note = notes.find((n) => n.id === contextMenu.noteId);
+      if (!note || note.pitch !== "REST") return;
+
+      onNotesChange(
+        notes.map((n) =>
+          n.id === contextMenu.noteId
+            ? { ...n, pitch: "C4" as Pitch, duration }
+            : n,
+        ),
+      );
+      onContextMenuAction?.();
       setContextMenu(null);
-      return;
-    }
-
-    const note = notes.find((n) => n.id === contextMenu.noteId);
-    if (!note || note.pitch !== "REST") return;
-
-    onNotesChange(
-      notes.map((n) =>
-        n.id === contextMenu.noteId ? { ...n, pitch: "C4" as Pitch } : n,
-      ),
-    );
-    onContextMenuAction?.();
-    setContextMenu(null);
-  }, [
-    contextMenu,
-    notes,
-    onNotesChange,
-    isPlaying,
-    onPlaybackBlock,
-    onContextMenuAction,
-  ]);
+    },
+    [
+      contextMenu,
+      notes,
+      onNotesChange,
+      isPlaying,
+      onPlaybackBlock,
+      onContextMenuAction,
+    ],
+  );
 
   // Check if the currently selected note is a rest
   const isSelectedNoteRest =
