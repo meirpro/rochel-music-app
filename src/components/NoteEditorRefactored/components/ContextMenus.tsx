@@ -66,22 +66,12 @@ export interface NoteContextMenuProps {
   contextMenu: NoteContextMenuState;
   collapsedSections: CollapsedSections;
   onToggleSection: (
-    section:
-      | "duration"
-      | "accidental"
-      | "changeNote"
-      | "octave"
-      | "rest"
-      | "note",
+    section: "duration" | "accidental" | "changeNote" | "octave",
   ) => void;
   onChangeDuration: (duration: number) => void;
   onChangeAccidental: (accidental: "#" | "b" | null) => void;
   onChangePitchLetter: (letter: string) => void;
   onChangeOctave: (direction: "up" | "down") => void;
-  /** Convert note to rest with specified duration */
-  onConvertToRest: (duration: number) => void;
-  /** Convert rest back to note with specified duration (pitch defaults to C4) */
-  onConvertToNote: (duration: number) => void;
   onDelete: () => void;
   /** Which sections to show (undefined = show all) */
   visibleSections?: ContextMenuSection[];
@@ -116,8 +106,6 @@ export function NoteContextMenu({
   onChangeAccidental,
   onChangePitchLetter,
   onChangeOctave,
-  onConvertToRest,
-  onConvertToNote,
   onDelete,
   visibleSections,
   isRest = false,
@@ -152,7 +140,7 @@ export function NoteContextMenu({
         maxHeight: "calc(100vh - 40px)",
       }}
     >
-      {/* Duration section */}
+      {/* Duration section - shows rest icons for rests (4 options), note icons for notes (8 options) */}
       {showSection("duration") && (
         <>
           <button
@@ -164,146 +152,89 @@ export function NoteContextMenu({
               {collapsedSections.duration ? "▸" : "▾"}
             </span>
           </button>
-          {!collapsedSections.duration && (
-            <>
-              <button
-                onClick={() => onChangeDuration(0.25)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.25} /> Sixteenth
-              </button>
-              <button
-                onClick={() => onChangeDuration(0.5)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.5} /> Eighth
-              </button>
-              <button
-                onClick={() => onChangeDuration(0.75)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.75} /> Dotted Eighth
-              </button>
-              <button
-                onClick={() => onChangeDuration(1)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={1} /> Quarter
-              </button>
-              <button
-                onClick={() => onChangeDuration(1.5)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={1.5} /> Dotted Quarter
-              </button>
-              <button
-                onClick={() => onChangeDuration(2)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={2} /> Half
-              </button>
-              <button
-                onClick={() => onChangeDuration(3)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={3} /> Dotted Half
-              </button>
-              <button
-                onClick={() => onChangeDuration(4)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={4} /> Whole
-              </button>
-            </>
-          )}
-        </>
-      )}
-
-      {/* Convert to Rest section (shown for notes) / Convert to Note section (shown for rests) */}
-      {isRest ? (
-        <>
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={() => onToggleSection("note")}
-            className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-          >
-            <span>Convert to Note</span>
-            <span className="text-gray-400">
-              {collapsedSections.note ? "▸" : "▾"}
-            </span>
-          </button>
-          {!collapsedSections.note && (
-            <>
-              <button
-                onClick={() => onConvertToNote(0.5)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={0.5} /> Eighth Note
-              </button>
-              <button
-                onClick={() => onConvertToNote(1)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={1} /> Quarter Note
-              </button>
-              <button
-                onClick={() => onConvertToNote(2)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={2} /> Half Note
-              </button>
-              <button
-                onClick={() => onConvertToNote(4)}
-                className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                <MenuNoteIcon duration={4} /> Whole Note
-              </button>
-            </>
-          )}
-        </>
-      ) : (
-        showSection("rest") && (
-          <>
-            <div className="border-t border-gray-200 my-1" />
-            <button
-              onClick={() => onToggleSection("rest")}
-              className="w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between hover:bg-gray-50"
-            >
-              <span>Convert to Rest</span>
-              <span className="text-gray-400">
-                {collapsedSections.rest ? "▸" : "▾"}
-              </span>
-            </button>
-            {!collapsedSections.rest && (
+          {!collapsedSections.duration &&
+            (isRest ? (
+              // Rest durations: only 4 options (no dotted rests)
               <>
                 <button
-                  onClick={() => onConvertToRest(0.5)}
+                  onClick={() => onChangeDuration(0.5)}
                   className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <MenuRestIcon duration={0.5} /> Eighth Rest
                 </button>
                 <button
-                  onClick={() => onConvertToRest(1)}
+                  onClick={() => onChangeDuration(1)}
                   className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <MenuRestIcon duration={1} /> Quarter Rest
                 </button>
                 <button
-                  onClick={() => onConvertToRest(2)}
+                  onClick={() => onChangeDuration(2)}
                   className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <MenuRestIcon duration={2} /> Half Rest
                 </button>
                 <button
-                  onClick={() => onConvertToRest(4)}
+                  onClick={() => onChangeDuration(4)}
                   className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <MenuRestIcon duration={4} /> Whole Rest
                 </button>
               </>
-            )}
-          </>
-        )
+            ) : (
+              // Note durations: 8 options including dotted
+              <>
+                <button
+                  onClick={() => onChangeDuration(0.25)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={0.25} /> Sixteenth
+                </button>
+                <button
+                  onClick={() => onChangeDuration(0.5)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={0.5} /> Eighth
+                </button>
+                <button
+                  onClick={() => onChangeDuration(0.75)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={0.75} /> Dotted Eighth
+                </button>
+                <button
+                  onClick={() => onChangeDuration(1)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={1} /> Quarter
+                </button>
+                <button
+                  onClick={() => onChangeDuration(1.5)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={1.5} /> Dotted Quarter
+                </button>
+                <button
+                  onClick={() => onChangeDuration(2)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={2} /> Half
+                </button>
+                <button
+                  onClick={() => onChangeDuration(3)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={3} /> Dotted Half
+                </button>
+                <button
+                  onClick={() => onChangeDuration(4)}
+                  className="w-full px-2 py-1 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <MenuNoteIcon duration={4} /> Whole
+                </button>
+              </>
+            ))}
+        </>
       )}
 
       {/* Accidental section */}

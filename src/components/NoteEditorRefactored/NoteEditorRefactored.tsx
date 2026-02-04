@@ -328,8 +328,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     handleChangeAccidental,
     handleChangePitchLetter,
     handleChangeOctave,
-    handleConvertToRest,
-    handleConvertToNote,
     handleAddNoteFromMenu,
     isSelectedNoteRest,
   } = useContextMenu({
@@ -1518,8 +1516,6 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           onChangeAccidental={handleChangeAccidental}
           onChangePitchLetter={handleChangePitchLetter}
           onChangeOctave={handleChangeOctave}
-          onConvertToRest={handleConvertToRest}
-          onConvertToNote={handleConvertToNote}
           onDelete={handleDeleteFromMenu}
           visibleSections={visibleContextMenuSections}
           isRest={isSelectedNoteRest}
