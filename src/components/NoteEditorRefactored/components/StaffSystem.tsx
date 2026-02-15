@@ -247,29 +247,45 @@ export function StaffSystem({
                 rx={4}
                 style={{ pointerEvents: "none" }}
               />
-              {/* Error label above staff */}
-              <rect
-                x={measureStartX + measureWidth / 2 - 35}
-                y={staffCenterY + staffTopOffset - staffPadding - 28}
-                width={70}
-                height={18}
-                fill="#fef2f2"
-                stroke="#ef4444"
-                strokeWidth={1}
-                rx={4}
-                style={{ pointerEvents: "none" }}
-              />
-              <text
-                x={measureStartX + measureWidth / 2}
-                y={staffCenterY + staffTopOffset - staffPadding - 15}
-                textAnchor="middle"
-                fontSize={11}
-                fontWeight="600"
-                fill="#dc2626"
-                style={{ pointerEvents: "none" }}
-              >
-                {validation.errorLabel}
-              </text>
+              {/* Error label above staff (with hover tooltip) */}
+              <g className="group/error" style={{ cursor: "default" }}>
+                <rect
+                  x={measureStartX + measureWidth / 2 - 35}
+                  y={staffCenterY + staffTopOffset - staffPadding - 28}
+                  width={70}
+                  height={18}
+                  fill="#fef2f2"
+                  stroke="#ef4444"
+                  strokeWidth={1}
+                  rx={4}
+                />
+                <text
+                  x={measureStartX + measureWidth / 2}
+                  y={staffCenterY + staffTopOffset - staffPadding - 15}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fontWeight="600"
+                  fill="#dc2626"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {validation.errorLabel}
+                </text>
+                {/* Dark tooltip - pointer-events: none so user can hover through to notes below */}
+                <foreignObject
+                  x={measureStartX + measureWidth / 2 - 130}
+                  y={staffCenterY + staffTopOffset - staffPadding - 56}
+                  width={260}
+                  height={30}
+                  style={{ pointerEvents: "none", overflow: "visible" }}
+                  className="opacity-0 group-hover/error:opacity-100 transition-opacity"
+                >
+                  <div className="flex justify-center">
+                    <div className="bg-gray-900 text-white px-3 py-1 rounded-lg text-xs shadow-xl whitespace-nowrap">
+                      Turn off in Settings
+                    </div>
+                  </div>
+                </foreignObject>
+              </g>
             </g>
           );
         })}

@@ -625,7 +625,7 @@ export default function EditorPage() {
             activeNoteId={playback.activeNoteId}
             onPlayheadBeatChange={handlePlayheadSeek}
             songMetadata={editor.currentSongMetadata}
-            showMeasureErrors={editor.settings.showMeasureErrors ?? false}
+            showMeasureErrors={editor.settings.showMeasureErrors ?? true}
             voltaBrackets={editor.voltaBrackets}
             onVoltaBracketsChange={editor.setVoltaBrackets}
           />
@@ -736,7 +736,7 @@ export default function EditorPage() {
         onStaffLinesChange={editor.setStaffLines}
         noteSpacing={editor.settings.noteSpacing}
         onNoteSpacingChange={editor.setNoteSpacing}
-        showMeasureErrors={editor.settings.showMeasureErrors ?? false}
+        showMeasureErrors={editor.settings.showMeasureErrors ?? true}
         onShowMeasureErrorsChange={editor.setShowMeasureErrors}
       />
 

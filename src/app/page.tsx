@@ -118,6 +118,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   noteSpacing: 1.0, // Default: 100% (compact) - range 1.0-2.0
   volume: 80, // Default: 80% volume
   instrumentGains: DEFAULT_INSTRUMENT_GAINS,
+  showMeasureErrors: true, // On by default
 };
 
 const DEFAULT_UI: EditorUI = {
@@ -1136,7 +1137,7 @@ export default function Home() {
                 staffLines={settings.staffLines ?? 3}
                 noteSpacing={settings.noteSpacing ?? 1.0}
                 songMetadata={currentSongMetadata}
-                showMeasureErrors={settings.showMeasureErrors ?? false}
+                showMeasureErrors={settings.showMeasureErrors ?? true}
                 timeSignatureChanges={timeSignatureChanges}
               />
             </div>
@@ -1252,7 +1253,7 @@ export default function Home() {
         onNoteSpacingChange={(spacing) =>
           setSettings({ ...settings, noteSpacing: spacing })
         }
-        showMeasureErrors={settings.showMeasureErrors ?? false}
+        showMeasureErrors={settings.showMeasureErrors ?? true}
         onShowMeasureErrorsChange={(show) =>
           setSettings({ ...settings, showMeasureErrors: show })
         }

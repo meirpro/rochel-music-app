@@ -87,7 +87,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   staffLines: 3,
   volume: 80, // Default: 80% volume
   instrumentGains: DEFAULT_INSTRUMENT_GAINS,
-  showMeasureErrors: false, // Off by default
+  showMeasureErrors: true, // On by default
 };
 
 // Composition data - uses absoluteBeat format (layout-independent)

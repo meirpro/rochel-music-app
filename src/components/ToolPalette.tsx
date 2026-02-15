@@ -808,7 +808,7 @@ export function ToolPalette({
   };
 
   return (
-    <Tooltip.Provider>
+    <Tooltip.Provider disableHoverableContent>
       <div
         id={TOUR_ELEMENT_IDS.toolPalette}
         className={`w-[120px] bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-3 shadow-sm overflow-y-auto overflow-x-hidden ${
