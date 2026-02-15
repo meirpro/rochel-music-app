@@ -25,7 +25,7 @@ export const sheHashemesh: SongData = {
     { id: "sheh-7", pitch: "C5", duration: 0.5, absoluteBeat: 5 },
     // Measure 3
     { id: "sheh-8", pitch: "B4", duration: 0.75, absoluteBeat: 5.5 },
-    { id: "sheh-9", pitch: "B4", duration: 1.25, absoluteBeat: 6.25 }, // tied note combined
+    { id: "sheh-9", pitch: "B4", duration: 1.25, absoluteBeat: 6 }, // tied note combined
     { id: "sheh-r2", pitch: "REST", duration: 0.5, absoluteBeat: 7.5 },
     { id: "sheh-10", pitch: "A4", duration: 0.5, absoluteBeat: 8 },
     { id: "sheh-11", pitch: "C5", duration: 0.5, absoluteBeat: 8.5 },
@@ -61,7 +61,7 @@ export const sheHashemesh: SongData = {
     { id: "sheh-30", pitch: "C5", duration: 0.5, absoluteBeat: 25 },
     // Measure 8
     { id: "sheh-31", pitch: "B4", duration: 0.75, absoluteBeat: 25.5 },
-    { id: "sheh-32", pitch: "B4", duration: 1.25, absoluteBeat: 26.25 }, // tied
+    { id: "sheh-32", pitch: "B4", duration: 1.25, absoluteBeat: 26 }, // tied
     { id: "sheh-r6", pitch: "REST", duration: 0.5, absoluteBeat: 27.5 },
     { id: "sheh-33", pitch: "B4", duration: 0.5, absoluteBeat: 28 },
     { id: "sheh-34", pitch: "E5", duration: 0.5, absoluteBeat: 28.5 },
@@ -90,13 +90,13 @@ export const sheHashemesh: SongData = {
     { id: "sheh-47", pitch: "C5", duration: 0.5, absoluteBeat: 41 },
     // Measure 12
     { id: "sheh-48", pitch: "B4", duration: 0.75, absoluteBeat: 41.5 },
-    { id: "sheh-49", pitch: "B4", duration: 1.25, absoluteBeat: 42.25 }, // tied
+    { id: "sheh-49", pitch: "B4", duration: 1.25, absoluteBeat: 42 }, // tied
     { id: "sheh-r10", pitch: "REST", duration: 1, absoluteBeat: 43.5 },
     { id: "sheh-50", pitch: "C5", duration: 0.5, absoluteBeat: 44.5 },
     { id: "sheh-51", pitch: "A4", duration: 0.5, absoluteBeat: 45 },
     // Measure 13
     { id: "sheh-52", pitch: "G4", duration: 0.75, absoluteBeat: 45.5 },
-    { id: "sheh-53", pitch: "G4", duration: 1.25, absoluteBeat: 46.25 }, // tied
+    { id: "sheh-53", pitch: "G4", duration: 1.25, absoluteBeat: 46 }, // tied
     { id: "sheh-54", pitch: "A4", duration: 0.25, absoluteBeat: 47.5 },
     { id: "sheh-55", pitch: "A4", duration: 0.75, absoluteBeat: 47.75 },
     { id: "sheh-56", pitch: "F#4", duration: 0.5, absoluteBeat: 48.5 },
@@ -128,11 +128,11 @@ export const sheHashemesh: SongData = {
     { id: "sheh-73", pitch: "E5", duration: 1, absoluteBeat: 62.5 },
     { id: "sheh-74", pitch: "E5", duration: 0.25, absoluteBeat: 63.5 },
     { id: "sheh-75", pitch: "E5", duration: 0.5, absoluteBeat: 63.75 },
-    { id: "sheh-76", pitch: "D5", duration: 0.5, absoluteBeat: 64.25 }, // tied combined
+    { id: "sheh-76", pitch: "D5", duration: 0.5, absoluteBeat: 64 }, // tied combined
     { id: "sheh-77", pitch: "C5", duration: 0.5, absoluteBeat: 64.75 },
     // Measure 18
-    { id: "sheh-78", pitch: "B4", duration: 2, absoluteBeat: 65.25 },
-    { id: "sheh-r12", pitch: "REST", duration: 1.25, absoluteBeat: 67.25 },
+    { id: "sheh-78", pitch: "B4", duration: 2, absoluteBeat: 65 },
+    { id: "sheh-r12", pitch: "REST", duration: 1.25, absoluteBeat: 67 },
     { id: "sheh-79", pitch: "G4", duration: 0.5, absoluteBeat: 68.5 },
     { id: "sheh-80", pitch: "B4", duration: 0.5, absoluteBeat: 69 },
     // Measure 19

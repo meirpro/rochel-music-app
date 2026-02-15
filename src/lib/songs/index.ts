@@ -29,7 +29,6 @@ export { sheHashemesh } from "./sheHashemesh";
 // yeshBiOdKoach moved to _needs_redo/ - requires chords to sound correct
 
 // Updated versions with REST notes from MusicXML
-export { hevenuShalomUpdated } from "./hevenuShalomUpdated";
 export { sheHashemeshUpdated } from "./sheHashemeshUpdated";
 export { shevetAchimUpdated } from "./shevetAchimUpdated";
 export { ochilaLakelUpdated } from "./ochilaLakelUpdated";

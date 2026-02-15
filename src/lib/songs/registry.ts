@@ -36,7 +36,6 @@ import { sheHashemesh } from "./sheHashemesh";
 // ═══════════════════════════════════════════════════════════════════
 // UPDATED SONGS (with REST notes from MusicXML extraction)
 // ═══════════════════════════════════════════════════════════════════
-import { hevenuShalomUpdated } from "./hevenuShalomUpdated";
 import { sheHashemeshUpdated } from "./sheHashemeshUpdated";
 import { shevetAchimUpdated } from "./shevetAchimUpdated";
 import { ochilaLakelUpdated } from "./ochilaLakelUpdated";
@@ -70,7 +69,6 @@ export const SONG_REGISTRY: SongData[] = [
   ochilaLakel,
   sheHashemesh,
   // Updated versions with REST notes from MusicXML
-  hevenuShalomUpdated,
   sheHashemeshUpdated,
   shevetAchimUpdated,
   ochilaLakelUpdated,

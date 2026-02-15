@@ -10,128 +10,138 @@ export const aniPurim: SongData = {
   description: "שיר פורים לילדים - מילים: לוין קיפניס, לחן: נחום נרדי",
   notes: [
     // ═══════════════════════════════════════════════════════════════════
-    // BEAT NUMBERING: absoluteBeat is 0-indexed
-    // absoluteBeat 0 = beat 1, absoluteBeat 3 = beat 4
-    // Display position = absoluteBeat + 1
+    // STRUCTURE: Pickup + A Section (M1-M3 shared + M4 volta1 + M5 volta2) + B Section
+    // Volta 1 in M4, Volta 2 in M5 (matching PDF layout)
     // ═══════════════════════════════════════════════════════════════════
 
     // ═══════════════════════════════════════════════════════════════════
-    // PICKUP MEASURE (app measure 1, beats 1-4)
-    // Beats 1-3 silent, beat 4 has pickup G
+    // PICKUP MEASURE (Measure 0, beats 0-3)
     // ═══════════════════════════════════════════════════════════════════
-    { id: "ap-r1", pitch: "REST", duration: 3, absoluteBeat: 0 }, // dotted half rest
+    { id: "ap-r1", pitch: "REST", duration: 3, absoluteBeat: 0 },
     { id: "ap-1", pitch: "G4", duration: 1, absoluteBeat: 3 }, // pickup
 
     // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - FIRST PASS (with volta 1 ending)
-    // PDF M1-M4, App M2-M5
+    // A SECTION - SHARED (Measures 1-3, beats 4-15)
+    // Plays on BOTH passes
     // ═══════════════════════════════════════════════════════════════════
 
-    // PDF M1 / App M2 (C chord): C G G G
+    // Measure 1 (beats 4-7): C G G G
     { id: "ap-2", pitch: "C5", duration: 1, absoluteBeat: 4 },
     { id: "ap-3", pitch: "G4", duration: 1, absoluteBeat: 5 },
     { id: "ap-4", pitch: "G4", duration: 1, absoluteBeat: 6 },
     { id: "ap-5", pitch: "G4", duration: 1, absoluteBeat: 7 },
 
-    // PDF M2 / App M3 (G chord): A E E E
+    // Measure 2 (beats 8-11): A E E E
     { id: "ap-6", pitch: "A4", duration: 1, absoluteBeat: 8 },
     { id: "ap-7", pitch: "E4", duration: 1, absoluteBeat: 9 },
     { id: "ap-8", pitch: "E4", duration: 1, absoluteBeat: 10 },
     { id: "ap-9", pitch: "E4", duration: 1, absoluteBeat: 11 },
 
-    // PDF M3 / App M4: G F E D (descending)
+    // Measure 3 (beats 12-15): G F E D
     { id: "ap-10", pitch: "G4", duration: 1, absoluteBeat: 12 },
     { id: "ap-11", pitch: "F4", duration: 1, absoluteBeat: 13 },
     { id: "ap-12", pitch: "E4", duration: 1, absoluteBeat: 14 },
     { id: "ap-13", pitch: "D4", duration: 1, absoluteBeat: 15 },
 
-    // PDF M4 / App M5 - VOLTA 1: E F (8ths) + G (half) + G (quarter pickup)
-    { id: "ap-14", pitch: "E4", duration: 0.5, absoluteBeat: 16 },
-    { id: "ap-15", pitch: "F4", duration: 0.5, absoluteBeat: 16.5 },
-    { id: "ap-16", pitch: "G4", duration: 2, absoluteBeat: 17 },
-    { id: "ap-17", pitch: "G4", duration: 1, absoluteBeat: 19 }, // pickup for repeat
+    // ═══════════════════════════════════════════════════════════════════
+    // VOLTA 1 - Measure 4 (beats 16-19)
+    // First ending - plays on pass 1 only
+    // ═══════════════════════════════════════════════════════════════════
+    { id: "ap-v1-1", pitch: "E4", duration: 0.5, absoluteBeat: 16 },
+    { id: "ap-v1-2", pitch: "F4", duration: 0.5, absoluteBeat: 16.5 },
+    { id: "ap-v1-3", pitch: "G4", duration: 2, absoluteBeat: 17 },
+    { id: "ap-v1-4", pitch: "G4", duration: 1, absoluteBeat: 19 }, // pickup for repeat
 
     // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - SECOND PASS (with volta 2 ending)
-    // Linearized repeat: M1-M3 again, then M5 (volta 2) instead of M4
+    // VOLTA 2 - Measure 5 (beats 20-23)
+    // Second ending - plays on pass 2 only, then continues to B section
     // ═══════════════════════════════════════════════════════════════════
-
-    // PDF M1 repeat: C G G G
-    { id: "ap-18", pitch: "C5", duration: 1, absoluteBeat: 20 },
-    { id: "ap-19", pitch: "G4", duration: 1, absoluteBeat: 21 },
-    { id: "ap-20", pitch: "G4", duration: 1, absoluteBeat: 22 },
-    { id: "ap-21", pitch: "G4", duration: 1, absoluteBeat: 23 },
-
-    // PDF M2 repeat: A E E E
-    { id: "ap-22", pitch: "A4", duration: 1, absoluteBeat: 24 },
-    { id: "ap-23", pitch: "E4", duration: 1, absoluteBeat: 25 },
-    { id: "ap-24", pitch: "E4", duration: 1, absoluteBeat: 26 },
-    { id: "ap-25", pitch: "E4", duration: 1, absoluteBeat: 27 },
-
-    // PDF M3 repeat: G F E D
-    { id: "ap-26", pitch: "G4", duration: 1, absoluteBeat: 28 },
-    { id: "ap-27", pitch: "F4", duration: 1, absoluteBeat: 29 },
-    { id: "ap-28", pitch: "E4", duration: 1, absoluteBeat: 30 },
-    { id: "ap-29", pitch: "D4", duration: 1, absoluteBeat: 31 },
-
-    // PDF M5 - VOLTA 2: E D (8ths) + C4 (half) + C4 (quarter)
-    { id: "ap-30", pitch: "E4", duration: 0.5, absoluteBeat: 32 },
-    { id: "ap-31", pitch: "D4", duration: 0.5, absoluteBeat: 32.5 },
-    { id: "ap-32", pitch: "C4", duration: 2, absoluteBeat: 33 },
-    { id: "ap-33", pitch: "C4", duration: 1, absoluteBeat: 35 },
+    { id: "ap-v2-1", pitch: "E4", duration: 0.5, absoluteBeat: 20 },
+    { id: "ap-v2-2", pitch: "D4", duration: 0.5, absoluteBeat: 20.5 },
+    { id: "ap-v2-3", pitch: "C4", duration: 2, absoluteBeat: 21 },
+    { id: "ap-v2-4", pitch: "C4", duration: 1, absoluteBeat: 23 },
 
     // ═══════════════════════════════════════════════════════════════════
-    // B SECTION (PDF Lines 2-3, M6-M13)
+    // B SECTION - CHORUS (Measures 6-13, beats 24-55)
     // ═══════════════════════════════════════════════════════════════════
 
-    // PDF M6: D D (half notes)
-    { id: "ap-34", pitch: "D4", duration: 2, absoluteBeat: 36 },
-    { id: "ap-35", pitch: "D4", duration: 2, absoluteBeat: 38 },
+    // Measure 6 (beats 24-27): D D (half notes)
+    { id: "ap-14", pitch: "D4", duration: 2, absoluteBeat: 24 },
+    { id: "ap-15", pitch: "D4", duration: 2, absoluteBeat: 26 },
 
-    // PDF M7: E F (8ths) + G (half) + G (quarter)
-    { id: "ap-36", pitch: "E4", duration: 0.5, absoluteBeat: 40 },
-    { id: "ap-37", pitch: "F4", duration: 0.5, absoluteBeat: 40.5 },
-    { id: "ap-38", pitch: "G4", duration: 2, absoluteBeat: 41 },
-    { id: "ap-39", pitch: "G4", duration: 1, absoluteBeat: 43 },
+    // Measure 7 (beats 28-31): E F (8ths) + G (half) + G (quarter)
+    { id: "ap-16", pitch: "E4", duration: 0.5, absoluteBeat: 28 },
+    { id: "ap-17", pitch: "F4", duration: 0.5, absoluteBeat: 28.5 },
+    { id: "ap-18", pitch: "G4", duration: 2, absoluteBeat: 29 },
+    { id: "ap-19", pitch: "G4", duration: 1, absoluteBeat: 31 },
 
-    // PDF M8: A B (half notes)
-    { id: "ap-40", pitch: "A4", duration: 2, absoluteBeat: 44 },
-    { id: "ap-41", pitch: "B4", duration: 2, absoluteBeat: 46 },
+    // Measure 8 (beats 32-35): A B (half notes)
+    { id: "ap-20", pitch: "A4", duration: 2, absoluteBeat: 32 },
+    { id: "ap-21", pitch: "B4", duration: 2, absoluteBeat: 34 },
 
-    // PDF M9: C5 (quarter) + G (half) + G (quarter)
-    { id: "ap-42", pitch: "C5", duration: 1, absoluteBeat: 48 },
-    { id: "ap-43", pitch: "G4", duration: 2, absoluteBeat: 49 },
-    { id: "ap-44", pitch: "G4", duration: 1, absoluteBeat: 51 },
+    // Measure 9 (beats 36-39): C5 (quarter) + G (half) + G (quarter)
+    { id: "ap-22", pitch: "C5", duration: 1, absoluteBeat: 36 },
+    { id: "ap-23", pitch: "G4", duration: 2, absoluteBeat: 37 },
+    { id: "ap-24", pitch: "G4", duration: 1, absoluteBeat: 39 },
 
-    // PDF M10: D D (half notes) - like M6
-    { id: "ap-45", pitch: "D4", duration: 2, absoluteBeat: 52 },
-    { id: "ap-46", pitch: "D4", duration: 2, absoluteBeat: 54 },
+    // Measure 10 (beats 40-43): D D (half notes)
+    { id: "ap-25", pitch: "D4", duration: 2, absoluteBeat: 40 },
+    { id: "ap-26", pitch: "D4", duration: 2, absoluteBeat: 42 },
 
-    // PDF M11: E F (8ths) + G (half) + G (quarter) - like M7
-    { id: "ap-47", pitch: "E4", duration: 0.5, absoluteBeat: 56 },
-    { id: "ap-48", pitch: "F4", duration: 0.5, absoluteBeat: 56.5 },
-    { id: "ap-49", pitch: "G4", duration: 2, absoluteBeat: 57 },
-    { id: "ap-50", pitch: "G4", duration: 1, absoluteBeat: 59 },
+    // Measure 11 (beats 44-47): E F (8ths) + G (half) + G (quarter)
+    { id: "ap-27", pitch: "E4", duration: 0.5, absoluteBeat: 44 },
+    { id: "ap-28", pitch: "F4", duration: 0.5, absoluteBeat: 44.5 },
+    { id: "ap-29", pitch: "G4", duration: 2, absoluteBeat: 45 },
+    { id: "ap-30", pitch: "G4", duration: 1, absoluteBeat: 47 },
 
-    // PDF M12: A B (half notes) - like M8
-    { id: "ap-51", pitch: "A4", duration: 2, absoluteBeat: 60 },
-    { id: "ap-52", pitch: "B4", duration: 2, absoluteBeat: 62 },
+    // Measure 12 (beats 48-51): A B (half notes)
+    { id: "ap-31", pitch: "A4", duration: 2, absoluteBeat: 48 },
+    { id: "ap-32", pitch: "B4", duration: 2, absoluteBeat: 50 },
 
-    // PDF M13: C5 (whole note) - final cadence
-    { id: "ap-53", pitch: "C5", duration: 4, absoluteBeat: 64 },
+    // Measure 13 (beats 52-55): C5 (whole note) - final cadence
+    { id: "ap-33", pitch: "C5", duration: 4, absoluteBeat: 52 },
   ],
 
   repeatMarkers: [
-    // No repeat markers - volta brackets not supported
-    // A section linearized: Pass 1 (volta 1) + Pass 2 (volta 2)
+    // A section repeat - includes shared (M1-M3) + both voltas (M4, M5)
+    // Note: Visual repeat barline should be at end of M4 (volta 1)
+    // but the logical section must include M5 (volta 2) for playback filtering
+    {
+      id: "ap-repeat-start",
+      pairId: "ap-section-a",
+      type: "start",
+      measureNumber: 1,
+    },
+    {
+      id: "ap-repeat-end",
+      pairId: "ap-section-a",
+      type: "end",
+      measureNumber: 6, // Exclusive - includes both volta measures for playback
+    },
+  ],
+
+  voltaBrackets: [
+    // Volta 1: Measure 4 - first ending
+    {
+      id: "ap-volta-1",
+      repeatPairId: "ap-section-a",
+      startMeasure: 4,
+      endMeasure: 5, // Exclusive
+      voltaNumber: 1,
+    },
+    // Volta 2: Measure 5 - second ending
+    {
+      id: "ap-volta-2",
+      repeatPairId: "ap-section-a",
+      startMeasure: 5,
+      endMeasure: 6, // Exclusive
+      voltaNumber: 2,
+    },
   ],
 
   lyrics: [
-    // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - FIRST PASS (volta 1)
-    // "Ani Purim, ani Purim, Sameach Umvadeyach"
-    // ═══════════════════════════════════════════════════════════════════
-    { text: "A", absoluteBeat: 3 }, // pickup
+    // A SECTION - Verse 1
+    { text: "A", absoluteBeat: 3 },
     { text: "ni", absoluteBeat: 4 },
     { text: "Pu", absoluteBeat: 5 },
     { text: "rim,", absoluteBeat: 6 },
@@ -144,63 +154,40 @@ export const aniPurim: SongData = {
     { text: "ach", absoluteBeat: 13 },
     { text: "Um", absoluteBeat: 14 },
     { text: "va", absoluteBeat: 15 },
+    // Volta 1 lyrics
     { text: "de", absoluteBeat: 16 },
     { text: "ya", absoluteBeat: 16.5 },
     { text: "ch.", absoluteBeat: 17 },
+    // Volta 2 lyrics
+    { text: "re", absoluteBeat: 20 },
+    { text: "ya", absoluteBeat: 20.5 },
+    { text: "ch.", absoluteBeat: 21 },
 
-    // ═══════════════════════════════════════════════════════════════════
-    // A SECTION - SECOND PASS (volta 2)
-    // "Halo rak pa'am bashana, Avo lehitareyach"
-    // ═══════════════════════════════════════════════════════════════════
-    { text: "Ha", absoluteBeat: 19 }, // pickup for second verse line
-    { text: "lo", absoluteBeat: 20 },
-    { text: "rak", absoluteBeat: 21 },
-    { text: "pa", absoluteBeat: 22 },
-    { text: "'am", absoluteBeat: 23 },
-    { text: "ba", absoluteBeat: 24 },
-    { text: "sha", absoluteBeat: 25 },
-    { text: "na", absoluteBeat: 26 },
-    { text: "A", absoluteBeat: 27 },
-    { text: "vo", absoluteBeat: 28 },
-    { text: "le", absoluteBeat: 29 },
-    { text: "hi", absoluteBeat: 30 },
-    { text: "ta", absoluteBeat: 31 },
-    { text: "re", absoluteBeat: 32 },
-    { text: "ya", absoluteBeat: 32.5 },
-    { text: "ch.", absoluteBeat: 33 },
-
-    // ═══════════════════════════════════════════════════════════════════
     // B SECTION - CHORUS
-    // "La la la - la la" (repeated pattern)
-    // ═══════════════════════════════════════════════════════════════════
-    // Line 1: "La la la - la la"
-    { text: "La", absoluteBeat: 36 },
-    { text: "la", absoluteBeat: 38 },
-    { text: "la", absoluteBeat: 40 },
-    { text: "-", absoluteBeat: 40.5 },
-    { text: "la", absoluteBeat: 41 },
-    { text: "la", absoluteBeat: 43 },
-    // Line 2: "La la la - la la"
-    { text: "La", absoluteBeat: 44 },
-    { text: "la", absoluteBeat: 46 },
-    { text: "la", absoluteBeat: 48 },
-    { text: "-", absoluteBeat: 49 },
-    { text: "la", absoluteBeat: 51 },
-    // Line 3: "La la la - la la"
-    { text: "La", absoluteBeat: 52 },
-    { text: "la", absoluteBeat: 54 },
-    { text: "la", absoluteBeat: 56 },
-    { text: "-", absoluteBeat: 56.5 },
-    { text: "la", absoluteBeat: 57 },
-    { text: "la", absoluteBeat: 59 },
-    // Line 4: "La la - la."
-    { text: "La", absoluteBeat: 60 },
-    { text: "la", absoluteBeat: 62 },
-    { text: "la.", absoluteBeat: 64 },
+    { text: "La", absoluteBeat: 24 },
+    { text: "la", absoluteBeat: 26 },
+    { text: "la", absoluteBeat: 28 },
+    { text: "-", absoluteBeat: 28.5 },
+    { text: "la", absoluteBeat: 29 },
+    { text: "la", absoluteBeat: 31 },
+    { text: "La", absoluteBeat: 32 },
+    { text: "la", absoluteBeat: 34 },
+    { text: "la", absoluteBeat: 36 },
+    { text: "-", absoluteBeat: 37 },
+    { text: "la", absoluteBeat: 39 },
+    { text: "La", absoluteBeat: 40 },
+    { text: "la", absoluteBeat: 42 },
+    { text: "la", absoluteBeat: 44 },
+    { text: "-", absoluteBeat: 44.5 },
+    { text: "la", absoluteBeat: 45 },
+    { text: "la", absoluteBeat: 47 },
+    { text: "La", absoluteBeat: 48 },
+    { text: "la", absoluteBeat: 50 },
+    { text: "la.", absoluteBeat: 52 },
   ],
 
   settings: {
-    tempo: 200, // Fast, lively Purim tempo
+    tempo: 200,
     timeSignature: { numerator: 4, denominator: 4 },
   },
 
@@ -213,7 +200,7 @@ export const aniPurim: SongData = {
       features: [
         "pickup beat (anacrusis)",
         "volta brackets (1st/2nd endings) on A section",
-        "repeat at end of PDF M4/M5",
+        "repeat at end of A section",
       ],
     },
     changes: [
@@ -222,12 +209,8 @@ export const aniPurim: SongData = {
         why: "App doesn't support anacrusis - G at beat 4 (absoluteBeat 3)",
       },
       {
-        what: "Linearized volta brackets",
-        why: "App doesn't support volta - wrote out both A section passes explicitly",
-      },
-      {
-        what: "No repeat markers used",
-        why: "Repeat with volta brackets can't work - entire song written sequentially",
+        what: "Volta brackets in separate measures",
+        why: "M4 = volta 1, M5 = volta 2 (matching PDF layout)",
       },
     ],
     sources: {

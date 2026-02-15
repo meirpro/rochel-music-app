@@ -419,6 +419,9 @@ export function useEditorState(
           !savedSongs[id] ||
           JSON.stringify(savedSongs[id]) !== JSON.stringify(merged[id]),
       );
+
+      // Debug: log merge results for Ani Purim
+      const aniPurimId = "default-ani-purim";
       if (needsUpdate) {
         setSavedSongs(merged);
       }

@@ -160,7 +160,7 @@ export const shevetAchimUpdated: SongData = {
     { id: "shevet-117", pitch: "D5", duration: 0.5, absoluteBeat: 109.5 },
     { id: "shevet-118", pitch: "E5", duration: 0.5, absoluteBeat: 110 },
     { id: "shevet-119", pitch: "C5", duration: 0.75, absoluteBeat: 110.5 },
-    { id: "shevet-120", pitch: "B4", duration: 0.25, absoluteBeat: 111.25 },
+    { id: "shevet-120", pitch: "B4", duration: 0.25, absoluteBeat: 111 },
     { id: "shevet-121", pitch: "A4", duration: 1, absoluteBeat: 111.5 },
     { id: "shevet-r26", pitch: "REST", duration: 2, absoluteBeat: 112.5 },
     { id: "shevet-r27", pitch: "REST", duration: 4, absoluteBeat: 114.5 },
