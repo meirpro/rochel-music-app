@@ -632,7 +632,7 @@ const MARKUP_TOOLS: Array<{
     icon: <VoltaIcon />,
     label: "Volta (1st/2nd Ending)",
     description: "Click inside repeat to add 1st/2nd endings",
-    color: "bg-violet-100 border-violet-300 text-violet-600",
+    color: "bg-red-100 border-red-400 text-red-800",
   },
   {
     id: "lyrics",

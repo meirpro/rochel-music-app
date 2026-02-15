@@ -141,7 +141,7 @@ export function VoltaBracketLayer({
               y1={y}
               x2={endX}
               y2={y}
-              stroke="#374151"
+              stroke="#991b1b"
               strokeWidth={VOLTA_LINE_WIDTH}
             />
 
@@ -151,7 +151,7 @@ export function VoltaBracketLayer({
               y1={y}
               x2={startX}
               y2={y + VOLTA_HEIGHT}
-              stroke="#374151"
+              stroke="#991b1b"
               strokeWidth={VOLTA_LINE_WIDTH}
             />
 
@@ -161,7 +161,7 @@ export function VoltaBracketLayer({
               y1={y}
               x2={endX}
               y2={y + VOLTA_HEIGHT}
-              stroke="#374151"
+              stroke="#991b1b"
               strokeWidth={VOLTA_LINE_WIDTH}
               strokeDasharray="4,4"
             />
@@ -172,7 +172,7 @@ export function VoltaBracketLayer({
               y={y - 4}
               fontSize="14"
               fontWeight="bold"
-              fill="#1f2937"
+              fill="#991b1b"
               className="select-none"
             >
               {volta.voltaNumber}.
