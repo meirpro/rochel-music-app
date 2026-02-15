@@ -93,10 +93,21 @@ export function SettingsModal({
             <h2 className="text-2xl font-semibold">Settings</h2>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-2xl transition-colors text-purple-700"
+              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center transition-colors text-purple-700"
               aria-label="Close"
             >
-              ×
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <line x1="3" y1="3" x2="13" y2="13" />
+                <line x1="13" y1="3" x2="3" y2="13" />
+              </svg>
             </button>
           </div>
         </div>
