@@ -6,7 +6,7 @@ Usage:
   python scripts/parse_musicxml.py /path/to/song.mxl
   python scripts/parse_musicxml.py /path/to/song.xml
 
-Outputs TypeScript note arrays that can be copied into song files.
+Outputs TypeScript arrays for notes, rests, repeats, voltas, time signatures, and lyrics.
 """
 
 import xml.etree.ElementTree as ET
@@ -14,6 +14,17 @@ import sys
 import os
 import zipfile
 import tempfile
+import math
+
+
+def snap_to_half_beat(beat):
+    """
+    Snap beat position to nearest half-beat (0, 0.5, 1, 1.5, etc.)
+    The app's editor uses a half-beat grid, so positions like 6.25 or 30.75
+    need to be snapped to 6.0 or 31.0 respectively.
+    """
+    return math.floor(beat * 2 + 0.5) / 2
+
 
 def parse_musicxml(xml_path):
     tree = ET.parse(xml_path)
@@ -25,20 +36,22 @@ def parse_musicxml(xml_path):
         divisions = int(attr.text)
         break
 
-    # Get key signature
+    # Get initial key signature
     fifths = 0
     for key in root.findall('.//key/fifths'):
         fifths = int(key.text)
         break
 
-    # Get time signature
+    # Get initial time signature
     beats = 4
     beat_type = 4
     for time in root.findall('.//time'):
         b = time.find('beats')
         bt = time.find('beat-type')
-        if b is not None: beats = int(b.text)
-        if bt is not None: beat_type = int(bt.text)
+        if b is not None:
+            beats = int(b.text)
+        if bt is not None:
+            beat_type = int(bt.text)
         break
 
     # Key signature names
@@ -61,15 +74,19 @@ def parse_musicxml(xml_path):
     }
 
     # Sharp/flat notes by key
-    sharps = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
-    flats = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
+    sharps_order = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
+    flats_order = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
 
-    key_sharps = set()
-    key_flats = set()
-    if fifths > 0:
-        key_sharps = set(sharps[:fifths])
-    elif fifths < 0:
-        key_flats = set(flats[:abs(fifths)])
+    def get_key_accidentals(fifths_val):
+        key_sharps = set()
+        key_flats = set()
+        if fifths_val > 0:
+            key_sharps = set(sharps_order[:fifths_val])
+        elif fifths_val < 0:
+            key_flats = set(flats_order[:abs(fifths_val)])
+        return key_sharps, key_flats
+
+    current_key_sharps, current_key_flats = get_key_accidentals(fifths)
 
     print(f"// Key: {key_names.get(fifths, f'{fifths} fifths')}")
     print(f"// Time: {beats}/{beat_type}")
@@ -77,22 +94,85 @@ def parse_musicxml(xml_path):
     print()
 
     notes = []
+    rests = []
+    lyrics_list = []
     current_beat = 0
     note_id = 1
+    rest_id = 1
     repeats = []
+    voltas = []
+    time_sig_changes = []
     measure_beats = {}  # Track beat position at start of each measure
+
+    # Track accidentals within a measure (for natural handling)
+    measure_accidentals = {}
 
     for measure in root.findall('.//measure'):
         measure_num = int(measure.get('number'))
         measure_beats[measure_num] = current_beat
+        measure_accidentals = {}  # Reset accidentals at each bar line
 
-        # Check for repeats
+        # Check for attribute changes (time sig, key sig, divisions)
+        for attr in measure.findall('attributes'):
+            # Divisions can change mid-piece
+            div_elem = attr.find('divisions')
+            if div_elem is not None:
+                divisions = int(div_elem.text)
+
+            # Key signature change
+            key_elem = attr.find('key')
+            if key_elem is not None:
+                fifths_elem = key_elem.find('fifths')
+                if fifths_elem is not None:
+                    new_fifths = int(fifths_elem.text)
+                    if new_fifths != fifths:
+                        fifths = new_fifths
+                        current_key_sharps, current_key_flats = get_key_accidentals(fifths)
+                        print(f"// Measure {measure_num}: Key change to {key_names.get(fifths, f'{fifths} fifths')}")
+
+            # Time signature change
+            time_elem = attr.find('time')
+            if time_elem is not None:
+                new_beats_elem = time_elem.find('beats')
+                new_beat_type_elem = time_elem.find('beat-type')
+                if new_beats_elem is not None and new_beat_type_elem is not None:
+                    new_b = int(new_beats_elem.text)
+                    new_bt = int(new_beat_type_elem.text)
+                    if new_b != beats or new_bt != beat_type:
+                        beats = new_b
+                        beat_type = new_bt
+                        time_sig_changes.append({
+                            'measureNumber': measure_num,
+                            'timeSignature': {'numerator': beats, 'denominator': beat_type}
+                        })
+                        print(f"// Measure {measure_num}: Time signature change to {beats}/{beat_type}")
+
+        # Check for repeats and voltas in barlines
         for barline in measure.findall('barline'):
+            location = barline.get('location', 'right')
+
             repeat = barline.find('repeat')
             if repeat is not None:
                 direction = repeat.get('direction')
-                repeats.append({'measure': measure_num, 'direction': direction, 'beat': current_beat})
+                repeats.append({
+                    'measure': measure_num,
+                    'direction': direction,
+                    'beat': current_beat,
+                    'location': location
+                })
                 print(f"// Measure {measure_num}: repeat {direction} (beat {current_beat})")
+
+            ending = barline.find('ending')
+            if ending is not None:
+                ending_type = ending.get('type')  # start, stop, discontinue
+                ending_number = ending.get('number', '1')
+                voltas.append({
+                    'measure': measure_num,
+                    'type': ending_type,
+                    'number': ending_number,
+                    'beat': current_beat
+                })
+                print(f"// Measure {measure_num}: volta {ending_number} {ending_type}")
 
         for elem in measure:
             if elem.tag == 'note':
@@ -100,17 +180,25 @@ def parse_musicxml(xml_path):
                 if elem.find('rest') is not None:
                     dur = elem.find('duration')
                     if dur is not None:
-                        current_beat += int(dur.text) / divisions
+                        dur_beats = int(dur.text) / divisions
+                        rests.append({
+                            'id': f'r{rest_id}',
+                            'pitch': 'REST',
+                            'duration': round(dur_beats, 2),
+                            'absoluteBeat': snap_to_half_beat(current_beat),
+                            'measure': measure_num
+                        })
+                        rest_id += 1
+                        current_beat += dur_beats
                     continue
 
                 # Check for chord (simultaneous note)
                 is_chord = elem.find('chord') is not None
 
-                # Check for tie stop (skip this note, it's continuation)
-                tie = elem.find('tie')
-                if tie is not None and tie.get('type') == 'stop':
-                    # Don't advance beat for tied note
-                    continue
+                # Check for ties - a note can have multiple tie elements (start AND stop)
+                ties = elem.findall('tie')
+                is_tie_start = any(t.get('type') == 'start' for t in ties)
+                is_tie_stop = any(t.get('type') == 'stop' for t in ties)
 
                 pitch = elem.find('pitch')
                 dur = elem.find('duration')
@@ -118,27 +206,48 @@ def parse_musicxml(xml_path):
                 if pitch is not None and dur is not None:
                     step = pitch.find('step').text
                     octave = int(pitch.find('octave').text)
-                    alter = pitch.find('alter')
+                    alter_elem = pitch.find('alter')
 
                     # Handle accidentals
                     pitch_str = step
-                    if alter is not None:
-                        alt = int(alter.text)
-                        if alt == 1: pitch_str += '#'
-                        elif alt == -1: pitch_str += 'b'
-                    else:
-                        # Apply key signature
-                        if step in key_sharps:
+
+                    if alter_elem is not None:
+                        alt = int(float(alter_elem.text))
+                        if alt == 2:
+                            pitch_str += '##'  # double sharp
+                        elif alt == 1:
                             pitch_str += '#'
-                        elif step in key_flats:
+                        elif alt == -1:
                             pitch_str += 'b'
+                        elif alt == -2:
+                            pitch_str += 'bb'  # double flat
+                        # alt == 0 means natural (no accidental added)
+
+                        # Track this accidental for the measure
+                        measure_accidentals[step] = alt
+                    else:
+                        # Check if this note was altered earlier in the measure
+                        if step in measure_accidentals:
+                            alt = measure_accidentals[step]
+                            if alt == 1:
+                                pitch_str += '#'
+                            elif alt == -1:
+                                pitch_str += 'b'
+                            elif alt == 2:
+                                pitch_str += '##'
+                            elif alt == -2:
+                                pitch_str += 'bb'
+                            # alt == 0 means natural
+                        else:
+                            # Apply key signature
+                            if step in current_key_sharps:
+                                pitch_str += '#'
+                            elif step in current_key_flats:
+                                pitch_str += 'b'
 
                     pitch_str += str(octave)
 
                     dur_beats = int(dur.text) / divisions
-
-                    # Check for tie start
-                    is_tie_start = tie is not None and tie.get('type') == 'start'
 
                     # For chords, don't advance the beat
                     note_beat = current_beat if not is_chord else notes[-1]['absoluteBeat'] if notes else current_beat
@@ -147,10 +256,23 @@ def parse_musicxml(xml_path):
                         'id': note_id,
                         'pitch': pitch_str,
                         'duration': dur_beats,
-                        'absoluteBeat': round(note_beat, 2),
+                        'absoluteBeat': snap_to_half_beat(note_beat),
                         'measure': measure_num,
-                        'tie_start': is_tie_start
+                        'tie_start': is_tie_start,
+                        'tie_stop': is_tie_stop
                     })
+
+                    # Extract lyrics
+                    for lyric in elem.findall('lyric'):
+                        text_elem = lyric.find('text')
+                        syllabic = lyric.find('syllabic')
+                        if text_elem is not None and text_elem.text:
+                            lyrics_list.append({
+                                'text': text_elem.text,
+                                'absoluteBeat': snap_to_half_beat(note_beat),
+                                'syllabic': syllabic.text if syllabic is not None else None
+                            })
+
                     note_id += 1
 
                     if not is_chord:
@@ -158,10 +280,10 @@ def parse_musicxml(xml_path):
 
     # Combine tied notes
     final_notes = []
-    skip_until = -1
+    skip_indices = set()
 
     for i, note in enumerate(notes):
-        if i < skip_until:
+        if i in skip_indices:
             continue
 
         new_note = {
@@ -172,35 +294,137 @@ def parse_musicxml(xml_path):
             'measure': note['measure']
         }
 
-        # If this note starts a tie, combine durations
+        # If this note starts a tie, combine durations with following tied notes
         if note.get('tie_start'):
             j = i + 1
             while j < len(notes):
-                if notes[j]['pitch'] == note['pitch']:
+                if notes[j]['pitch'] == note['pitch'] and notes[j].get('tie_stop'):
                     new_note['duration'] += notes[j]['duration']
+                    skip_indices.add(j)
+                    # If this note also starts a new tie, continue
                     if not notes[j].get('tie_start'):
-                        skip_until = j + 1
                         break
                 j += 1
 
         new_note['duration'] = round(new_note['duration'], 2)
         final_notes.append(new_note)
 
+    # Merge notes and rests, sorted by absoluteBeat
+    all_items = final_notes + rests
+    all_items.sort(key=lambda x: (x['absoluteBeat'], 0 if x['pitch'] != 'REST' else 1))
+
     print()
     print(f"// Total notes: {len(final_notes)}")
+    print(f"// Total rests: {len(rests)}")
     print(f"// Total beats: {current_beat}")
-    print(f"// Total measures: {max(n['measure'] for n in final_notes)}")
+    if all_items:
+        print(f"// Total measures: {max(n['measure'] for n in all_items)}")
     print()
 
-    return final_notes, repeats, {'fifths': fifths, 'beats': beats, 'beat_type': beat_type}
+    return all_items, repeats, voltas, time_sig_changes, lyrics_list, {
+        'fifths': fifths,
+        'beats': beats,
+        'beat_type': beat_type
+    }
 
 
-def print_notes(notes, slug="song", start_id=1):
-    """Print notes in TypeScript format"""
+def print_notes(items, slug="song", start_id=1):
+    """Print notes and rests in TypeScript format"""
     print("  notes: [")
-    for i, n in enumerate(notes):
-        note_id = f"{slug}-{start_id + i}"
-        print(f'    {{ id: "{note_id}", pitch: "{n["pitch"]}", duration: {n["duration"]}, absoluteBeat: {n["absoluteBeat"]} }},')
+    note_num = start_id
+    rest_num = 1
+    for item in items:
+        if item['pitch'] == 'REST':
+            item_id = f"{slug}-r{rest_num}"
+            rest_num += 1
+        else:
+            item_id = f"{slug}-{note_num}"
+            note_num += 1
+        print(f'    {{ id: "{item_id}", pitch: "{item["pitch"]}", duration: {item["duration"]}, absoluteBeat: {item["absoluteBeat"]} }},')
+    print("  ],")
+
+
+def print_repeats(repeats, slug="song"):
+    """Print repeat markers in TypeScript format"""
+    if not repeats:
+        print("  repeatMarkers: [],")
+        return
+
+    print("  repeatMarkers: [")
+    # Group repeats into pairs
+    forwards = [r for r in repeats if r['direction'] == 'forward']
+    backwards = [r for r in repeats if r['direction'] == 'backward']
+
+    pair_id = 1
+    for backward in backwards:
+        # Find matching forward (the one before this backward)
+        matching_forward = None
+        for fwd in forwards:
+            if fwd['measure'] < backward['measure']:
+                matching_forward = fwd
+
+        if matching_forward:
+            print(f'    {{ id: "{slug}-repeat-start-{pair_id}", pairId: "{slug}-repeat-{pair_id}", type: "start", measureNumber: {matching_forward["measure"] - 1} }},')
+        print(f'    {{ id: "{slug}-repeat-end-{pair_id}", pairId: "{slug}-repeat-{pair_id}", type: "end", measureNumber: {backward["measure"] - 1} }},')
+        pair_id += 1
+
+    print("  ],")
+
+
+def print_voltas(voltas, slug="song"):
+    """Print volta brackets in TypeScript format"""
+    if not voltas:
+        print("  voltaBrackets: [],")
+        return
+
+    print("  voltaBrackets: [")
+    # Group voltas by number
+    volta_groups = {}
+    for v in voltas:
+        num = v['number']
+        if num not in volta_groups:
+            volta_groups[num] = []
+        volta_groups[num].append(v)
+
+    volta_id = 1
+    for num, group in sorted(volta_groups.items()):
+        starts = [v for v in group if v['type'] == 'start']
+        stops = [v for v in group if v['type'] in ('stop', 'discontinue')]
+
+        for start in starts:
+            # Find matching stop
+            stop = next((s for s in stops if s['measure'] >= start['measure']), None)
+            end_measure = stop['measure'] if stop else start['measure']
+
+            print(f'    {{ id: "{slug}-volta-{volta_id}", number: {num}, startMeasure: {start["measure"] - 1}, endMeasure: {end_measure - 1} }},')
+            volta_id += 1
+
+    print("  ],")
+
+
+def print_time_sig_changes(changes):
+    """Print time signature changes in TypeScript format"""
+    if not changes:
+        print("  timeSignatureChanges: [],")
+        return
+
+    print("  timeSignatureChanges: [")
+    for change in changes:
+        ts = change['timeSignature']
+        print(f'    {{ measureNumber: {change["measureNumber"] - 1}, timeSignature: {{ numerator: {ts["numerator"]}, denominator: {ts["denominator"]} }} }},')
+    print("  ],")
+
+
+def print_lyrics(lyrics, slug="song"):
+    """Print lyrics in TypeScript format"""
+    if not lyrics:
+        print("  lyrics: [],")
+        return
+
+    print("  lyrics: [")
+    for lyric in lyrics:
+        text = lyric['text'].replace('"', '\\"').replace('\n', '\\n')
+        print(f'    {{ text: "{text}", absoluteBeat: {lyric["absoluteBeat"]} }},')
     print("  ],")
 
 
@@ -226,12 +450,23 @@ def main():
                         xml_path = os.path.join(tmpdir, f)
                         break
 
-            notes, repeats, info = parse_musicxml(xml_path)
+            items, repeats, voltas, time_sigs, lyrics, info = parse_musicxml(xml_path)
     else:
-        notes, repeats, info = parse_musicxml(input_path)
+        items, repeats, voltas, time_sigs, lyrics, info = parse_musicxml(input_path)
 
-    print("// Full notes array:")
-    print_notes(notes)
+    print("// ═══════════════════════════════════════════════════════════════════")
+    print("// Full song data:")
+    print("// ═══════════════════════════════════════════════════════════════════")
+    print()
+    print_notes(items)
+    print()
+    print_repeats(repeats)
+    print()
+    print_voltas(voltas)
+    print()
+    print_time_sig_changes(time_sigs)
+    print()
+    print_lyrics(lyrics)
 
     # If there are repeats, also output the repeated section
     if repeats:
@@ -240,17 +475,19 @@ def main():
 
         if forward and backward:
             print()
+            print(f"// ═══════════════════════════════════════════════════════════════════")
             print(f"// Repeated section (measures {forward['measure']}-{backward['measure']}):")
-            section_notes = [n for n in notes if forward['measure'] <= n['measure'] <= backward['measure']]
+            print(f"// ═══════════════════════════════════════════════════════════════════")
+            section_items = [n for n in items if forward['measure'] <= n['measure'] <= backward['measure']]
 
             # Adjust absoluteBeat to start from 0
-            if section_notes:
-                offset = section_notes[0]['absoluteBeat']
+            if section_items:
+                offset = section_items[0]['absoluteBeat']
                 adjusted = []
-                for n in section_notes:
+                for n in section_items:
                     adjusted.append({
                         **n,
-                        'absoluteBeat': round(n['absoluteBeat'] - offset, 2)
+                        'absoluteBeat': snap_to_half_beat(n['absoluteBeat'] - offset)
                     })
                 print_notes(adjusted)
 

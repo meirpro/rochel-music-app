@@ -9,56 +9,55 @@ This document describes features needed in the Rochel Music App to support impor
 | Note durations | ✅ Supported | whole, half, quarter, eighth, sixteenth + dotted |
 | Time signatures | ✅ Supported | 2/4, 3/4, 4/4, 6/8 and others |
 | Simple repeats | ✅ Supported | Start/end repeat signs |
+| Volta brackets | ✅ Supported | 1st/2nd endings with automatic playback |
+| Rests | ✅ Supported | whole, half, quarter, eighth rests |
 | Lyrics | ✅ Supported | Syllable alignment with notes |
 | Pickup beats | ⚠️ Partial | Works by placing notes at fractional beats, no formal anacrusis |
 | Range | ✅ Supported | C3-C6 (treble clef only) |
 
 ## Missing Features
 
-### HIGH PRIORITY - Blocks Many Songs
+### ~~HIGH PRIORITY - Blocks Many Songs~~ (Completed!)
 
-#### 1. Rest Rendering
+#### 1. ~~Rest Rendering~~ ✅ IMPLEMENTED
 
 | Attribute | Value |
 |-----------|-------|
 | **What it is** | Visual display of silence/pause in music (quarter rest, half rest, eighth rest, etc.) |
-| **Current state** | `RestNote` type exists in code but is NOT rendered visually |
-| **Songs blocked** | 12+ songs (Bore Olam, Hevenu Shalom, Al Yedey Nigunim, Avinu Malcenu, etc.) |
-| **Implementation** | Add SVG symbols for each rest type in NoteEditor.tsx rendering logic |
-| **Complexity** | 🟢 LOW |
+| **Status** | ✅ **IMPLEMENTED** - pitch "REST" creates silence with SVG symbols |
+| **Songs unblocked** | 12+ songs (Bore Olam, Hevenu Shalom, Al Yedey Nigunim, Avinu Malcenu, etc.) |
 
-**Rest SVG symbols needed:**
-- Whole rest (rectangle hanging from line)
-- Half rest (rectangle sitting on line)
-- Quarter rest (squiggly vertical symbol)
-- Eighth rest (flag with dot)
-- Sixteenth rest (double flag with dot)
+**Rest SVG symbols available:**
+- Whole rest (4 beats) - rectangle hanging from line
+- Half rest (2 beats) - rectangle sitting on line
+- Quarter rest (1 beat) - squiggly vertical symbol
+- Eighth rest (0.5 beats) - flag with dot
 
 ---
 
-#### 2. Volta Brackets (1st/2nd Endings)
+#### 2. ~~Volta Brackets (1st/2nd Endings)~~ ✅ IMPLEMENTED
 
 | Attribute | Value |
 |-----------|-------|
 | **What it is** | Numbered brackets above measures indicating which ending to play on each repeat pass |
 | **Example** | "1." bracket = play first time, "2." bracket = play second time (skipping 1.) |
-| **Current state** | NOT SUPPORTED - RepeatMarker only has start/end, no volta numbers |
-| **Songs blocked** | Ani Purim, many folk songs with verse/chorus structures |
-| **Implementation** | Extend RepeatMarker type with `voltaNumber?: number`, add bracket rendering |
-| **Complexity** | 🟡 MEDIUM |
+| **Status** | ✅ **IMPLEMENTED** - VoltaBracket type with automatic playback filtering |
+| **Songs unblocked** | Ani Purim, many folk songs with verse/chorus structures |
 
-**Required changes:**
+**VoltaBracket data structure:**
 ```typescript
-interface RepeatMarker {
+interface VoltaBracket {
   id: string;
-  pairId: string;
-  type: "start" | "end" | "volta-start" | "volta-end";
-  measureNumber: number;
-  voltaNumber?: number; // 1, 2, 3, etc.
+  repeatPairId: string;  // Links to RepeatMarker.pairId
+  startMeasure: number;  // Absolute measure where volta begins
+  endMeasure: number;    // Absolute measure where volta ends (exclusive)
+  voltaNumber: number;   // 1, 2, 3, etc.
 }
 ```
 
 ---
+
+### HIGH PRIORITY - Still Missing
 
 #### 3. D.C. / D.S. / Coda Navigation
 
@@ -231,20 +230,20 @@ interface ChordSymbol {
 
 Based on song analysis and complexity:
 
-| Priority | Feature | Complexity | Songs Unlocked | ROI |
-|----------|---------|------------|----------------|-----|
-| 1 | **Rest rendering** | 🟢 LOW | 12+ songs | ⭐⭐⭐⭐⭐ |
-| 2 | **Volta brackets** | 🟡 MEDIUM | 5+ songs | ⭐⭐⭐⭐ |
-| 3 | **D.C./D.S./Coda** | 🟡 MEDIUM | 4 songs | ⭐⭐⭐ |
-| 4 | **Fermata** | 🟢 LOW | 1 song | ⭐⭐ |
-| 5 | **Triplets** | 🟡 MEDIUM | 1+ songs | ⭐⭐ |
-| 6 | **Ties** | 🟡 MEDIUM | Future songs | ⭐⭐ |
-| 7 | **Pickup (formal)** | 🟢 LOW | Quality improvement | ⭐ |
-| 8 | **Time sig changes** | 🔴 HIGH | 2 songs | ⭐ |
-| 9 | **Key changes** | 🔴 HIGH | 2 songs | ⭐ |
-| 10 | **Chord symbols** | 🟢 LOW | Cosmetic only | ⭐ |
+| Priority | Feature | Complexity | Songs Unlocked | Status |
+|----------|---------|------------|----------------|--------|
+| ~~1~~ | ~~**Rest rendering**~~ | 🟢 LOW | 12+ songs | ✅ DONE |
+| ~~2~~ | ~~**Volta brackets**~~ | 🟡 MEDIUM | 5+ songs | ✅ DONE |
+| 3 | **D.C./D.S./Coda** | 🟡 MEDIUM | 4 songs | ⏳ Next |
+| 4 | **Fermata** | 🟢 LOW | 1 song | |
+| 5 | **Triplets** | 🟡 MEDIUM | 1+ songs | |
+| 6 | **Ties** | 🟡 MEDIUM | Future songs | |
+| 7 | **Pickup (formal)** | 🟢 LOW | Quality improvement | |
+| 8 | **Time sig changes** | 🔴 HIGH | 2 songs | |
+| 9 | **Key changes** | 🔴 HIGH | 2 songs | |
+| 10 | **Chord symbols** | 🟢 LOW | Cosmetic only | |
 
-**Recommendation:** Implement **Rest rendering** and **Volta brackets** first - together they unlock the majority of beginner songs with reasonable effort.
+**Next recommendation:** Implement **D.C./D.S./Coda navigation** - this unlocks 4 more songs with moderate effort.
 
 ---
 
@@ -278,9 +277,8 @@ From the 24 songs in the collection:
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Compatible now | 3 | 12.5% |
-| Needs transposition only | 9 | 37.5% |
-| Needs rest rendering | 7 | 29.2% |
-| Too complex (multiple features) | 5 | 20.8% |
+| Compatible now (with rests + voltas) | 17 | ~70% |
+| Needs transposition only | 3 | 12.5% |
+| Needs D.C./D.S./Coda | 4 | 16.7% |
 
-**With rest rendering + volta brackets:** ~70% of songs would be fully transcribable.
+**With D.C./D.S./Coda implemented:** ~85% of songs would be fully transcribable.
