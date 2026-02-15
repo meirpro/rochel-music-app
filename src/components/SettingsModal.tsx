@@ -45,6 +45,9 @@ interface SettingsModalProps {
 
   noteSpacing: number;
   onNoteSpacingChange: (spacing: number) => void;
+
+  showMeasureErrors: boolean;
+  onShowMeasureErrorsChange: (show: boolean) => void;
 }
 
 export function SettingsModal({
@@ -70,6 +73,8 @@ export function SettingsModal({
   onStaffLinesChange,
   noteSpacing,
   onNoteSpacingChange,
+  showMeasureErrors,
+  onShowMeasureErrorsChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -477,6 +482,14 @@ export function SettingsModal({
                 checked={allowChords}
                 onChange={onAllowChordsChange}
                 color="purple"
+              />
+
+              <ToggleSwitchWithDescription
+                label="Measure Validation"
+                description="Highlight measures with incorrect beat counts in red"
+                checked={showMeasureErrors}
+                onChange={onShowMeasureErrorsChange}
+                color="pink"
               />
             </div>
           </div>

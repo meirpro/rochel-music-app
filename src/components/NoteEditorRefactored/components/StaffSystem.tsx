@@ -181,6 +181,31 @@ export function StaffSystem({
           }),
         )}
 
+      {/* Half-beat grid lines - dotted, lighter style */}
+      {showGrid &&
+        sysMeasures.flatMap((measure) =>
+          Array.from({ length: measure.beatsInMeasure }, (_, beatInMeasure) => {
+            const halfBeatX =
+              LEFT_MARGIN +
+              measure.xOffset +
+              (beatInMeasure + 0.5) * sysBeatWidth +
+              getNoteOffset(sysBeatWidth);
+            return (
+              <line
+                key={`grid-half-${systemIndex}-${measure.startBeatInSystem + beatInMeasure}`}
+                x1={halfBeatX}
+                y1={staffCenterY + staffTopOffset - staffPadding + 15}
+                x2={halfBeatX}
+                y2={staffCenterY + staffBottomOffset + staffPadding - 15}
+                stroke="#e2e8f0"
+                strokeWidth={1}
+                strokeDasharray="2,4"
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          }),
+        )}
+
       {/* Measure error highlights - render above beat shading with 30% opacity */}
       {showMeasureErrors &&
         sysMeasures.map((measure) => {
