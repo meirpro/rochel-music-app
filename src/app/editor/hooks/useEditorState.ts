@@ -777,9 +777,9 @@ export function useEditorState(
     [savedSongs, currentSongId, setSavedSongs, setCurrentSongId],
   );
 
-  // Restore default songs
+  // Restore default songs (preserves user-created songs)
   const restoreDefaults = useCallback(() => {
-    setSavedSongs(getDefaultSongs());
+    setSavedSongs((prev) => mergeWithDefaults(prev));
   }, [setSavedSongs]);
 
   // Export all songs

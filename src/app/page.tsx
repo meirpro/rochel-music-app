@@ -945,9 +945,9 @@ export default function Home() {
     setUI,
   ]);
 
-  // Restore defaults handler
+  // Restore defaults handler (preserves user-created songs)
   const handleRestoreDefaults = useCallback(() => {
-    setSavedSongs(getDefaultSongs());
+    setSavedSongs((prev) => mergeWithDefaults(prev));
     toast.success("Default songs restored");
   }, [setSavedSongs]);
 
