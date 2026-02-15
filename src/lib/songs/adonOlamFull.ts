@@ -301,7 +301,7 @@ export const adonOlamFull: SongData = {
   settings: {
     tempo: 120,
     timeSignature: { numerator: 4, denominator: 4 },
-    staffLines: 6,
+    staffLines: 5,
   },
 
   releaseDate: "2026-02-03",

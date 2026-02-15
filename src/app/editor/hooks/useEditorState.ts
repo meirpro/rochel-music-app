@@ -614,7 +614,8 @@ export function useEditorState(
 
   const setStaffLines = useCallback(
     (staffLines: number) => {
-      setSettings((prev) => ({ ...prev, staffLines }));
+      const clamped = Math.max(3, Math.min(5, staffLines));
+      setSettings((prev) => ({ ...prev, staffLines: clamped }));
     },
     [setSettings],
   );

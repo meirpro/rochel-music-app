@@ -766,8 +766,13 @@ export default function Home() {
         tempo: preserveTempo ? settings.tempo : migratedSong.settings.tempo,
         timeSignature: migratedSong.settings.timeSignature,
         // Apply song's staffLines if specified
-        staffLines:
-          migratedSong.settings.staffLines ?? settings.staffLines ?? 3,
+        staffLines: Math.max(
+          3,
+          Math.min(
+            5,
+            migratedSong.settings.staffLines ?? settings.staffLines ?? 3,
+          ),
+        ),
       });
       setCurrentSongId(migratedSong.id);
       setUI({ ...ui, showSongLibrary: false });
@@ -860,7 +865,10 @@ export default function Home() {
           tempo: userTempo, // Use localStorage tempo, not song tempo
           timeSignature: song.settings.timeSignature,
           // Apply song's staffLines if specified, otherwise keep user's preference
-          staffLines: song.settings.staffLines ?? prev.staffLines ?? 3,
+          staffLines: Math.max(
+            3,
+            Math.min(5, song.settings.staffLines ?? prev.staffLines ?? 3),
+          ),
         }));
         setCurrentSongId(song.id);
 
@@ -1247,7 +1255,10 @@ export default function Home() {
         }
         staffLines={settings.staffLines ?? 3}
         onStaffLinesChange={(count) =>
-          setSettings({ ...settings, staffLines: count })
+          setSettings({
+            ...settings,
+            staffLines: Math.max(3, Math.min(5, count)),
+          })
         }
         noteSpacing={settings.noteSpacing ?? 1.0}
         onNoteSpacingChange={(spacing) =>
