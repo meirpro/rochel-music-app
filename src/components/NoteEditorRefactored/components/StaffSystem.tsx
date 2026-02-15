@@ -10,7 +10,11 @@ import {
   getNoteOffset,
   getStaffCenterY,
 } from "@/lib/layoutUtils";
-import { TREBLE_CLEF_PATH } from "@/lib/constants";
+import {
+  StaffLines,
+  TrebleClef,
+  TimeSignatureDisplay,
+} from "@/lib/staffPrimitives";
 import {
   getLayoutForSystem,
   getBeatXInSystem,
@@ -59,8 +63,6 @@ export interface StaffSystemProps {
   /** Whether to show measure error highlights */
   showMeasureErrors?: boolean;
 }
-
-// TREBLE_CLEF_PATH imported from @/lib/constants
 
 /**
  * StaffSystem - Renders a single staff system
@@ -273,32 +275,12 @@ export function StaffSystem({
         })}
 
       {/* Staff lines */}
-      {(() => {
-        const allLineOffsets = [
-          -2 * LINE_SPACING,
-          -1 * LINE_SPACING,
-          0,
-          1 * LINE_SPACING,
-          2 * LINE_SPACING,
-        ];
-        const linesToShow =
-          staffLines === 5
-            ? [0, 1, 2, 3, 4]
-            : staffLines === 4
-              ? [1, 2, 3, 4]
-              : [2, 3, 4];
-        return linesToShow.map((lineIndex) => (
-          <line
-            key={`staff-line-${lineIndex}`}
-            x1={STAFF_LEFT}
-            y1={staffCenterY + allLineOffsets[lineIndex]}
-            x2={sysStaffRight}
-            y2={staffCenterY + allLineOffsets[lineIndex]}
-            stroke="#4a5568"
-            strokeWidth={2}
-          />
-        ));
-      })()}
+      <StaffLines
+        staffCenterY={staffCenterY}
+        staffLeft={STAFF_LEFT}
+        staffRight={sysStaffRight}
+        staffLines={staffLines}
+      />
 
       {/* Bar lines */}
       {[...sysMeasures, null].map((measure, measureIndex) => {
@@ -341,28 +323,13 @@ export function StaffSystem({
 
             {/* Time signature display at mid-row changes */}
             {measure?.showTimeSig && measureIndex !== 0 && (
-              <g>
-                <text
-                  x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
-                  y={staffCenterY + visibleCenterOffset - decorationSpread + 7}
-                  fontSize={20}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  fill="#334155"
-                >
-                  {measure.timeSignature.numerator}
-                </text>
-                <text
-                  x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
-                  y={staffCenterY + visibleCenterOffset + decorationSpread + 7}
-                  fontSize={20}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  fill="#334155"
-                >
-                  {measure.timeSignature.denominator}
-                </text>
-              </g>
+              <TimeSignatureDisplay
+                staffCenterY={staffCenterY}
+                x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
+                numerator={measure.timeSignature.numerator}
+                denominator={measure.timeSignature.denominator}
+                staffLines={staffLines}
+              />
             )}
 
             {/* Time signature tool hover zone - at any bar line (not last) */}
@@ -909,12 +876,7 @@ export function StaffSystem({
 
       {/* Treble Clef */}
       <g clipPath={`url(#system-clip-${systemIndex})`}>
-        <g
-          transform={`translate(0, ${staffCenterY - 98}) scale(5.2)`}
-          style={{ pointerEvents: "none" }}
-        >
-          <path d={TREBLE_CLEF_PATH} fill="#334155" />
-        </g>
+        <TrebleClef staffCenterY={staffCenterY} />
       </g>
 
       {/* Time signature (first system only) */}
@@ -935,26 +897,13 @@ export function StaffSystem({
             height={staffBottomOffset - staffTopOffset}
             fill="transparent"
           />
-          <text
+          <TimeSignatureDisplay
+            staffCenterY={staffCenterY}
             x={85}
-            y={staffCenterY + visibleCenterOffset - decorationSpread + 7}
-            fontSize={20}
-            fontWeight="bold"
-            textAnchor="middle"
-            fill="#334155"
-          >
-            {timeSignature.numerator}
-          </text>
-          <text
-            x={85}
-            y={staffCenterY + visibleCenterOffset + decorationSpread + 7}
-            fontSize={20}
-            fontWeight="bold"
-            textAnchor="middle"
-            fill="#334155"
-          >
-            {timeSignature.denominator}
-          </text>
+            numerator={timeSignature.numerator}
+            denominator={timeSignature.denominator}
+            staffLines={staffLines}
+          />
         </g>
       )}
 

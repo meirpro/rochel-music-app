@@ -97,6 +97,50 @@ const visualCenterY = staffCenterY + ((staffTopOffset + staffBottomOffset) / 2) 
 
 **Rest symbols** use this visual center calculation so they appear centered on the visible staff regardless of line count.
 
+## Treble Clef SVG Dimensions
+
+The treble clef is rendered with `translate(x, staffCenterY - 98) scale(5.2)` using `TREBLE_CLEF_PATH` from `constants.ts`. The original path spans roughly y=0 to y=40. At scale 5.2, the rendered clef occupies **~208px vertically**.
+
+```
+Clef top:    staffCenterY - 98          (the upper curl)
+Clef bottom: staffCenterY - 98 + 208 =  staffCenterY + 110  (the lower dot)
+```
+
+### SVG viewBox Sizing Rule
+
+Any standalone SVG containing a treble clef **must** have a viewBox tall enough to show the full clef. Minimum viewBox height formula:
+
+```
+minViewBoxHeight = staffCenterY + 110 + padding
+```
+
+Example with `staffCenterY = 140` and 20px padding: `minViewBoxHeight = 140 + 110 + 20 = 270`.
+
+| staffCenterY | Clef top (y) | Clef bottom (y) | Min viewBox height |
+|-------------|-------------|-----------------|-------------------|
+| 100 | 2 | 210 | ~230 |
+| 120 | 22 | 230 | ~250 |
+| 130 | 32 | 240 | ~260 |
+| 140 | 42 | 250 | ~270 |
+
+### Shared Primitives
+
+Location: `/src/lib/staffPrimitives.tsx`
+
+Reusable SVG components extracted from `StaffSystem.tsx` for use in both the editor and standalone contexts (e.g. 404 pages):
+
+| Component | Description |
+|-----------|-------------|
+| `StaffLines` | Renders 3/4/5 staff lines at a given `staffCenterY` |
+| `TrebleClef` | Renders the clef with correct transform |
+| `TimeSignatureDisplay` | Renders numerator/denominator with editor-identical positioning |
+| `Note` | Note head + stem with color-by-pitch |
+| `BarLine` | Vertical bar line spanning the staff |
+| `LedgerLine` | Short line for notes outside the staff |
+| `pitchToY()` | Converts pitch string to Y coordinate |
+
+These components use constants from `@/lib/constants` and `@/lib/layoutUtils` — nothing is duplicated.
+
 ## Beaming Algorithm
 
 Location: `/src/components/NoteEditor.tsx`
