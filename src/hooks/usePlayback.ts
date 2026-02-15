@@ -181,6 +181,7 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
   }, []);
 
   // Build playback data (extracted for reuse)
+  // NOTE: Layout logic here must stay in sync with calculateSystemLayouts() in systemLayout.ts
   const buildPlaybackData = useCallback(() => {
     const layout = getLayoutConfig(timeSignature, measuresPerRow);
     const defaultBeatsPerMeasure = layout.beatsPerMeasure;
@@ -272,7 +273,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         const isFirstInRow = m === 0;
         const showTimeSig = shouldShowTimeSig(measureNum, isFirstInRow);
         const hasRepeatStart = repeatStartMeasures.has(measureNum);
-        const hasRepeatEnd = repeatEndMeasures.has(measureNum);
+        // END marker at measureNumber N is visually at the END of measure N-1
+        const hasRepeatEnd = repeatEndMeasures.has(measureNum + 1);
 
         // Note: For first measure of row, time sig is rendered in preamble area
         // (with clef), not as a prefix after bar line. Match NoteEditor logic.
@@ -338,7 +340,8 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
 
         measures[m].xOffset = currentX + prefixWidth;
 
-        const hasRepeatEnd = repeatEndMeasures.has(measureNum);
+        // END marker at measureNumber N is visually at the END of measure N-1
+        const hasRepeatEnd = repeatEndMeasures.has(measureNum + 1);
         let suffixWidth = 0;
         if (hasRepeatEnd) suffixWidth += REPEAT_MARKER_WIDTH;
 

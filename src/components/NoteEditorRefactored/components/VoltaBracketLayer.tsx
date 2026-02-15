@@ -98,15 +98,16 @@ export function VoltaBracketLayer({
           return null;
         }
 
-        // Calculate X coordinates from beat positions
-        // MeasureInfo stores startBeatInSystem (beat offset), multiply by beatWidth for pixels
+        // Calculate X coordinates using xOffset (accounts for decoration spacing)
+        // This matches how StaffSystem.tsx positions barlines and ensures the bracket
+        // extends over repeat marker spacing (prefix/suffix widths).
         const startX =
-          LEFT_MARGIN +
-          startMeasureInfo.startBeatInSystem * systemLayout.beatWidth;
+          LEFT_MARGIN + startMeasureInfo.xOffset - startMeasureInfo.prefixWidth;
         const endX =
           LEFT_MARGIN +
-          (endMeasureInfo.startBeatInSystem + endMeasureInfo.beatsInMeasure) *
-            systemLayout.beatWidth;
+          endMeasureInfo.xOffset +
+          endMeasureInfo.beatsInMeasure * systemLayout.beatWidth +
+          endMeasureInfo.suffixWidth;
 
         // Y position (above staff top)
         const y = staffTopY - VOLTA_ABOVE_STAFF;
