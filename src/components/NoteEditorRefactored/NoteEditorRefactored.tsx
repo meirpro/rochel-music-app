@@ -1452,6 +1452,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             );
             const dragStaffCenterY = getStaffCenterY(
               markerDragPosition.targetSystem,
+              staffLines,
             );
             // Calculate staff extents based on visible lines (same as StaffSystem)
             const dragStaffTopOffset =
@@ -1483,19 +1484,26 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 (lastMeasure.suffixWidth || 0);
             }
 
+            // Match static repeat marker line span: staffTopOffset-8 to staffBottomOffset+8
+            const lineTop = dragStaffCenterY + dragStaffTopOffset - 8;
+            const lineBottom = dragStaffCenterY + dragStaffBottomOffset + 8;
+            // Beat numbers sit at staffBottomOffset + 14
+            const belowBeatNumbers =
+              dragStaffCenterY + dragStaffBottomOffset + 26;
+            // START label must clear the "Drag to move" tooltip (at staffTopOffset - 45, h=22)
+            const labelY =
+              draggedMarker.type === "start" ? lineTop - 52 : belowBeatNumbers;
+            const circleY =
+              draggedMarker.type === "start" ? lineTop - 2 : lineBottom + 2;
+
             return (
               <g style={{ pointerEvents: "none" }}>
-                {/* Vertical line at target position - extends from above staff to below lyrics */}
+                {/* Vertical line at target position - spans staff area */}
                 <line
                   x1={dragPreviewX}
-                  y1={dragStaffCenterY + dragStaffTopOffset - 25}
+                  y1={lineTop}
                   x2={dragPreviewX}
-                  y2={
-                    dragStaffCenterY +
-                    dragStaffBottomOffset +
-                    LINE_SPACING * 2 +
-                    20
-                  }
+                  y2={lineBottom}
                   stroke="#8b5cf6"
                   strokeWidth={3}
                   strokeDasharray="6,4"
@@ -1503,14 +1511,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 {/* Indicator circle */}
                 <circle
                   cx={dragPreviewX}
-                  cy={
-                    draggedMarker.type === "start"
-                      ? dragStaffCenterY + dragStaffTopOffset - 35
-                      : dragStaffCenterY +
-                        dragStaffBottomOffset +
-                        LINE_SPACING * 2 +
-                        30
-                  }
+                  cy={circleY}
                   r={8}
                   fill="#8b5cf6"
                   stroke="white"
@@ -1519,14 +1520,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 {/* Label */}
                 <rect
                   x={dragPreviewX - 30}
-                  y={
-                    draggedMarker.type === "start"
-                      ? dragStaffCenterY + dragStaffTopOffset - 65
-                      : dragStaffCenterY +
-                        dragStaffBottomOffset +
-                        LINE_SPACING * 2 +
-                        40
-                  }
+                  y={labelY}
                   width={60}
                   height={20}
                   fill="#8b5cf6"
@@ -1534,14 +1528,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
                 />
                 <text
                   x={dragPreviewX}
-                  y={
-                    draggedMarker.type === "start"
-                      ? dragStaffCenterY + dragStaffTopOffset - 51
-                      : dragStaffCenterY +
-                        dragStaffBottomOffset +
-                        LINE_SPACING * 2 +
-                        54
-                  }
+                  y={labelY + 14}
                   fontSize={11}
                   fontWeight="600"
                   fill="white"
