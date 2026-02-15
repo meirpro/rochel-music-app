@@ -369,6 +369,10 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       (a, b) => a.absoluteBeat - b.absoluteBeat,
     );
 
+    // Volta brackets needed before repeat section building
+    // (volta ranges may extend beyond the repeat end marker)
+    const voltaBrackets = composition.voltaBrackets || [];
+
     // Build repeat sections from paired markers
     interface RepeatSection {
       pairId: string;
@@ -386,7 +390,20 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       );
       if (endMarker) {
         const startAbsoluteBeat = marker.measureNumber * beatsPerMeasure;
-        const endAbsoluteBeat = endMarker.measureNumber * beatsPerMeasure;
+        let endAbsoluteBeat = endMarker.measureNumber * beatsPerMeasure;
+
+        // In standard notation the repeat end sign is at the end of volta 1,
+        // but the logical section must include ALL volta brackets (including
+        // volta 2+) for correct scheduling. Extend to cover them.
+        const sectionVoltas = voltaBrackets.filter(
+          (v) => v.repeatPairId === marker.pairId,
+        );
+        for (const volta of sectionVoltas) {
+          const voltaEndBeat = volta.endMeasure * beatsPerMeasure;
+          if (voltaEndBeat > endAbsoluteBeat) {
+            endAbsoluteBeat = voltaEndBeat;
+          }
+        }
 
         if (endAbsoluteBeat > startAbsoluteBeat) {
           repeatSections.push({
@@ -403,11 +420,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     // Build playback sequence with repeat handling
     const playbackSequence: PlaybackNote[] = [];
     const getNoteAbsoluteBeat = (note: EditorNote) => note.absoluteBeat;
-    const voltaBrackets = composition.voltaBrackets || [];
-
-    // DEBUG: Log repeat sections and voltas
-    console.log("[DEBUG] Repeat sections:", repeatSections);
-    console.log("[DEBUG] Volta brackets:", voltaBrackets);
 
     // Helper to check if a note should play on a given pass (volta-aware)
     // Returns true if note is NOT in any volta, OR is in a volta matching the pass number
@@ -484,12 +496,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
           }))
           .sort((a, b) => a.start - b.start);
 
-        console.log(
-          `[DEBUG] Pass ${pass}: skipRanges=`,
-          skipRanges,
-          `currentBeatOffset=${currentBeatOffset}`,
-        );
-
         // Helper: calculate how many beats before 'absBeat' are in skipped ranges
         const getSkippedBeatsBefore = (absBeat: number): number => {
           let skipped = 0;
@@ -541,9 +547,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
             };
           }
         }
-        console.log(
-          `[DEBUG] Pass ${pass} notes: ${notesScheduledThisPass} scheduled, first=${JSON.stringify(firstNoteThisPass)}, last=${JSON.stringify(lastNoteThisPass)}`,
-        );
 
         // Advance beat offset by section length minus skipped volta beats
         const totalSkippedBeats = skipRanges.reduce(
@@ -554,9 +557,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
           section.endAbsoluteBeat -
           section.startAbsoluteBeat -
           totalSkippedBeats;
-        console.log(
-          `[DEBUG] Pass ${pass} complete: skippedBeats=${totalSkippedBeats}, passLength=${passLength}, newOffset=${currentBeatOffset + passLength}`,
-        );
         currentBeatOffset += passLength;
       }
 
@@ -650,9 +650,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
           startX: startVisual.x,
           endX: segmentEndBeat === systemEndBeat ? sys.staffRight : endVisual.x,
         };
-        console.log(
-          `[DEBUG-SEG] Timeline segment: abs[${currentBeat}-${segmentEndBeat}] -> timeline[${segment.startBeat}-${segment.endBeat}]`,
-        );
         timeline.push(segment);
 
         currentTimelineBeat += duration;
@@ -695,12 +692,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
           }))
           .sort((a, b) => a.start - b.start);
 
-        console.log(
-          `[DEBUG-TL] Pass ${pass}: skipRanges=`,
-          skipRanges,
-          `timelineBeat=${timelineBeat}`,
-        );
-
         // Add segments, jumping over skipped volta ranges
         let segmentStart = section.startAbsoluteBeat;
         for (const range of skipRanges) {
@@ -723,9 +714,6 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
             timelineBeat,
           );
         }
-        console.log(
-          `[DEBUG-TL] Pass ${pass} complete: timelineBeat=${timelineBeat}`,
-        );
       }
 
       lastProcessedAbsBeat = section.endAbsoluteBeat;

@@ -103,9 +103,9 @@ export const aniPurim: SongData = {
   ],
 
   repeatMarkers: [
-    // A section repeat - includes shared (M1-M3) + both voltas (M4, M5)
-    // Note: Visual repeat barline should be at end of M4 (volta 1)
-    // but the logical section must include M5 (volta 2) for playback filtering
+    // A section repeat: shared (M1-M3) + volta endings (M4, M5)
+    // Repeat end sign at end of volta 1 (standard notation).
+    // Scheduling auto-extends to include volta 2 via voltaBrackets.
     {
       id: "ap-repeat-start",
       pairId: "ap-section-a",
@@ -116,7 +116,7 @@ export const aniPurim: SongData = {
       id: "ap-repeat-end",
       pairId: "ap-section-a",
       type: "end",
-      measureNumber: 6, // Exclusive - includes both volta measures for playback
+      measureNumber: 5, // End of volta 1 (M4) — scheduling extends to include M5 via volta brackets
     },
   ],
 
