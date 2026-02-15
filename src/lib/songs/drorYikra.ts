@@ -248,6 +248,7 @@ export const drorYikra: SongData = {
   },
 
   releaseDate: "2026-02-03",
+  category: "experimental",
 
   transcriptionNotes: {
     original: {

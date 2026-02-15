@@ -1,8 +1,193 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { SavedSong, SavedSongsMap, Composition } from "@/lib/types";
 import { DEFAULT_SONG_IDS } from "@/lib/defaultSongs";
+
+// ─── Extracted sub-components (must be outside render to avoid state resets) ───
+
+const SECTION_COLORS = {
+  emerald: {
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
+    chevron: "text-emerald-500",
+    count: "bg-emerald-100 text-emerald-700",
+  },
+  amber: {
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
+    chevron: "text-amber-500",
+    count: "bg-amber-100 text-amber-700",
+  },
+} as const;
+
+function SongCard({
+  song,
+  currentSongId,
+  confirmingDelete,
+  isSelectMode,
+  selectedForExport,
+  onToggleSelection,
+  onLoadSong,
+  onUpdateCurrentSong,
+  onDelete,
+  formatDate,
+}: {
+  song: SavedSong;
+  currentSongId: string | null;
+  confirmingDelete: string | null;
+  isSelectMode: boolean;
+  selectedForExport: Set<string>;
+  onToggleSelection: (id: string) => void;
+  onLoadSong: (song: SavedSong) => void;
+  onUpdateCurrentSong: () => void;
+  onDelete: (id: string) => void;
+  formatDate: (timestamp: number) => string;
+}) {
+  const isCurrent = song.id === currentSongId;
+  const isConfirming = confirmingDelete === song.id;
+  const isSelected = selectedForExport.has(song.id);
+
+  return (
+    <div
+      className={`p-3 rounded-lg border transition-all ${
+        isCurrent
+          ? "bg-purple-50 border-purple-300"
+          : isSelectMode && isSelected
+            ? "bg-indigo-50 border-indigo-300"
+            : "bg-white border-gray-200 hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {isSelectMode && (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelection(song.id)}
+            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+            title="Select for export"
+          />
+        )}
+        <h3 className="text-sm font-semibold text-gray-800 truncate flex-1">
+          {song.name}
+        </h3>
+        {isCurrent && (
+          <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 text-xs font-medium rounded">
+            Current
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-1">
+        <span>{song.composition.notes.length} notes</span>
+        <span>
+          {song.settings.timeSignature.numerator}/
+          {song.settings.timeSignature.denominator}
+        </span>
+        <span>{song.settings.tempo} BPM</span>
+      </div>
+      <div className="text-xs text-gray-400 mb-2">
+        {DEFAULT_SONG_IDS.includes(song.id) ? (
+          <span className="text-emerald-600">
+            Added {formatDate(song.createdAt)}
+          </span>
+        ) : (
+          <span>Updated {formatDate(song.updatedAt)}</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        {isCurrent ? (
+          <button
+            onClick={onUpdateCurrentSong}
+            className="flex-1 px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-800 text-xs font-medium rounded-lg transition-colors"
+          >
+            Update
+          </button>
+        ) : (
+          <button
+            onClick={() => onLoadSong(song)}
+            className="flex-1 px-3 py-1.5 bg-blue-200 hover:bg-blue-300 text-blue-800 text-xs font-medium rounded-lg transition-colors"
+          >
+            Load
+          </button>
+        )}
+        <button
+          onClick={() => onDelete(song.id)}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            isConfirming
+              ? "bg-red-200 text-red-800 hover:bg-red-300 flex-1"
+              : "bg-gray-100 hover:bg-gray-200 text-gray-500"
+          }`}
+        >
+          {isConfirming ? "Confirm?" : "Delete"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CategorySection({
+  title,
+  songs: sectionSongs,
+  isOpen: sectionOpen,
+  onToggle,
+  accentColor,
+  subtitle,
+  cardProps,
+}: {
+  title: string;
+  songs: SavedSong[];
+  isOpen: boolean;
+  onToggle: () => void;
+  accentColor: "emerald" | "amber";
+  subtitle?: string;
+  cardProps: Omit<React.ComponentProps<typeof SongCard>, "song">;
+}) {
+  if (sectionSongs.length === 0) return null;
+  const colors = SECTION_COLORS[accentColor];
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg ${colors.bg} ${colors.border} border mb-2 transition-colors hover:opacity-80`}
+      >
+        <svg
+          className={`w-3.5 h-3.5 ${colors.chevron} transition-transform ${sectionOpen ? "rotate-90" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+        <span className={`text-xs font-semibold ${colors.text}`}>{title}</span>
+        <span
+          className={`text-xs font-medium px-1.5 py-0.5 rounded ${colors.count}`}
+        >
+          {sectionSongs.length}
+        </span>
+        {subtitle && (
+          <span className="text-xs text-gray-400 ml-auto">{subtitle}</span>
+        )}
+      </button>
+      {sectionOpen && (
+        <div className="space-y-2 mb-3">
+          {sectionSongs.map((song) => (
+            <SongCard key={song.id} song={song} {...cardProps} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 interface SongLibraryModalProps {
   isOpen: boolean;
@@ -50,6 +235,8 @@ export function SongLibraryModal({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveDescription, setSaveDescription] = useState("");
+  const [songsOpen, setSongsOpen] = useState(true);
+  const [experimentalOpen, setExperimentalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const saveNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,8 +264,26 @@ export function SongLibraryModal({
   const songs = useMemo(() => {
     if (!searchQuery.trim()) return allSongs;
     const query = searchQuery.toLowerCase();
-    return allSongs.filter((song) => song.name.toLowerCase().includes(query));
+    return allSongs.filter(
+      (song) =>
+        song.name.toLowerCase().includes(query) ||
+        song.hebrewName?.toLowerCase().includes(query),
+    );
   }, [allSongs, searchQuery]);
+
+  // Split songs into finished vs experimental
+  const songsByCategory = useMemo(() => {
+    const finished: SavedSong[] = [];
+    const experimental: SavedSong[] = [];
+    for (const song of songs) {
+      if (song.category === "experimental") {
+        experimental.push(song);
+      } else {
+        finished.push(song);
+      }
+    }
+    return { finished, experimental };
+  }, [songs]);
 
   // Format date for display
   const formatDate = (timestamp: number) => {
@@ -162,6 +367,19 @@ export function SongLibraryModal({
   const exitSelectMode = () => {
     setIsSelectMode(false);
     setSelectedForExport(new Set());
+  };
+
+  // Shared props for SongCard, passed through CategorySection
+  const cardProps: Omit<React.ComponentProps<typeof SongCard>, "song"> = {
+    currentSongId,
+    confirmingDelete,
+    isSelectMode,
+    selectedForExport,
+    onToggleSelection: toggleSelection,
+    onLoadSong,
+    onUpdateCurrentSong,
+    onDelete: handleDelete,
+    formatDate,
   };
 
   return (
@@ -373,95 +591,25 @@ export function SongLibraryModal({
               <p className="text-gray-500 text-sm">No saved songs</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {songs.map((song) => {
-                const isCurrent = song.id === currentSongId;
-                const isConfirming = confirmingDelete === song.id;
-                const isSelected = selectedForExport.has(song.id);
-
-                return (
-                  <div
-                    key={song.id}
-                    className={`p-3 rounded-lg border transition-all ${
-                      isCurrent
-                        ? "bg-purple-50 border-purple-300"
-                        : isSelectMode && isSelected
-                          ? "bg-indigo-50 border-indigo-300"
-                          : "bg-white border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    {/* Song Info */}
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Export checkbox - only in select mode */}
-                      {isSelectMode && (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelection(song.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
-                          title="Select for export"
-                        />
-                      )}
-                      <h3 className="text-sm font-semibold text-gray-800 truncate flex-1">
-                        {song.name}
-                      </h3>
-                      {isCurrent && (
-                        <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 text-xs font-medium rounded">
-                          Current
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-1">
-                      <span>{song.composition.notes.length} notes</span>
-                      <span>
-                        {song.settings.timeSignature.numerator}/
-                        {song.settings.timeSignature.denominator}
-                      </span>
-                      <span>{song.settings.tempo} BPM</span>
-                    </div>
-                    {/* Date display - show "Added" for defaults, "Updated" for user songs */}
-                    <div className="text-xs text-gray-400 mb-2">
-                      {DEFAULT_SONG_IDS.includes(song.id) ? (
-                        <span className="text-emerald-600">
-                          Added {formatDate(song.createdAt)}
-                        </span>
-                      ) : (
-                        <span>Updated {formatDate(song.updatedAt)}</span>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {isCurrent ? (
-                        <button
-                          onClick={onUpdateCurrentSong}
-                          className="flex-1 px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-800 text-xs font-medium rounded-lg transition-colors"
-                        >
-                          Update
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => onLoadSong(song)}
-                          className="flex-1 px-3 py-1.5 bg-blue-200 hover:bg-blue-300 text-blue-800 text-xs font-medium rounded-lg transition-colors"
-                        >
-                          Load
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(song.id)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                          isConfirming
-                            ? "bg-red-200 text-red-800 hover:bg-red-300 flex-1"
-                            : "bg-gray-100 hover:bg-gray-200 text-gray-500"
-                        }`}
-                      >
-                        {isConfirming ? "Confirm?" : "Delete"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <CategorySection
+                title="Songs"
+                songs={songsByCategory.finished}
+                isOpen={songsOpen}
+                onToggle={() => setSongsOpen(!songsOpen)}
+                accentColor="emerald"
+                cardProps={cardProps}
+              />
+              <CategorySection
+                title="Experimental"
+                songs={songsByCategory.experimental}
+                isOpen={experimentalOpen}
+                onToggle={() => setExperimentalOpen(!experimentalOpen)}
+                accentColor="amber"
+                subtitle="WIP"
+                cardProps={cardProps}
+              />
+            </>
           )}
         </div>
 

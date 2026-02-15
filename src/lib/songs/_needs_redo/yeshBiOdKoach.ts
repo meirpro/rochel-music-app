@@ -266,6 +266,7 @@ export const yeshBiOdKoach: SongData = {
   },
 
   releaseDate: "2026-02-03",
+  category: "experimental",
 
   transcriptionNotes: {
     original: {

@@ -228,6 +228,7 @@ export interface SavedSong {
   name: string; // User-provided name
   hebrewName?: string; // Hebrew name for display (e.g., "אני פורים")
   description?: string; // Brief description or attribution
+  category?: "experimental"; // Omit for finished songs; "experimental" = work-in-progress
   createdAt: number; // Unix timestamp
   updatedAt: number; // Unix timestamp
   composition: Composition | LegacyComposition; // Support both formats during migration

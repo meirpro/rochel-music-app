@@ -109,4 +109,5 @@ export const avinuMalkenu: SongData = {
     // No mid-song time signature changes - UI only supports changes at system starts
   },
   releaseDate: "2025-01-15",
+  category: "experimental",
 };

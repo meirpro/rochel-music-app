@@ -28,10 +28,19 @@ import { hevenuShalom } from "./hevenuShalom";
 import { alYedeyNigunim } from "./alYedeyNigunim";
 import { chagPurim } from "./chagPurim";
 import { maNishtana } from "./maNishtana";
-import { omarRabbiAkiva } from "./omarRabbiAkiva";
 import { drorYikra } from "./drorYikra";
-import { ochilaLakel } from "./ochilaLakel";
-import { sheHashemesh } from "./sheHashemesh";
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPERIMENTAL SONGS (needs redo - WIP transcriptions)
+// ═══════════════════════════════════════════════════════════════════
+import { animZemirot } from "./_needs_redo/animZemirot";
+import { avinuMalkenu } from "./_needs_redo/avinuMalkenu";
+import { eimatiKaatiMar } from "./_needs_redo/eimatiKaatiMar";
+import { gamKiElech } from "./_needs_redo/gamKiElech";
+import { koliDodiDofek } from "./_needs_redo/koliDodiDofek";
+import { nigunSimcha } from "./_needs_redo/nigunSimcha";
+import { shibnehBeitHamikdash } from "./_needs_redo/shibnehBeitHamikdash";
+import { yeshBiOdKoach } from "./_needs_redo/yeshBiOdKoach";
 
 // ═══════════════════════════════════════════════════════════════════
 // UPDATED SONGS (with REST notes from MusicXML extraction)
@@ -48,7 +57,7 @@ import { yeshBiOdKoachUpdated } from "./yeshBiOdKoachUpdated";
 
 /**
  * All active songs in the app, in order of release.
- * Songs in _needs_redo/ are excluded until properly transcribed.
+ * Songs with category: "experimental" appear in a separate section in the UI.
  */
 export const SONG_REGISTRY: SongData[] = [
   // Original transcriptions
@@ -64,16 +73,22 @@ export const SONG_REGISTRY: SongData[] = [
   alYedeyNigunim,
   chagPurim,
   maNishtana,
-  omarRabbiAkiva,
   drorYikra,
-  ochilaLakel,
-  sheHashemesh,
   // Updated versions with REST notes from MusicXML
   sheHashemeshUpdated,
   shevetAchimUpdated,
   ochilaLakelUpdated,
   omarRabbiAkivaUpdated,
   yeshBiOdKoachUpdated,
+  // Experimental (needs redo)
+  animZemirot,
+  avinuMalkenu,
+  eimatiKaatiMar,
+  gamKiElech,
+  koliDodiDofek,
+  nigunSimcha,
+  shibnehBeitHamikdash,
+  yeshBiOdKoach,
 ];
 
 // Re-export for convenience

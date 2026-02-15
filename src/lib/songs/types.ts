@@ -44,4 +44,5 @@ export interface SongData {
   };
   releaseDate: string; // ISO date string (YYYY-MM-DD) when song was added to the app
   transcriptionNotes?: TranscriptionNotes; // Documentation for transcribed songs
+  category?: "experimental"; // Omit for finished songs; "experimental" = work-in-progress
 }

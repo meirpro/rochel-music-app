@@ -10,6 +10,7 @@ function createSavedSong(song: SongData): SavedSong {
     name: song.name,
     hebrewName: song.hebrewName,
     description: song.description,
+    category: song.category,
     createdAt: releaseTimestamp,
     updatedAt: releaseTimestamp,
     composition: {
@@ -31,12 +32,22 @@ export function getDefaultSongs(): SavedSongsMap {
 // Merge default songs into existing saved songs
 // - Adds any missing default songs
 // - Updates existing default songs with latest versions (fixes, new features like voltas)
+// - Removes stale defaults no longer in the registry (e.g. superseded songs)
 // - Preserves user-created songs (non-default IDs)
 export function mergeWithDefaults(existingSongs: SavedSongsMap): SavedSongsMap {
   const defaults = getDefaultSongs();
-  const merged = { ...existingSongs };
+  const defaultIdSet = new Set(DEFAULT_SONG_IDS);
+  const merged: SavedSongsMap = {};
 
-  // Add or update all default songs
+  // Keep user-created songs and current defaults, drop stale defaults
+  for (const [id, song] of Object.entries(existingSongs)) {
+    const isOldDefault = id.startsWith("default-") && !defaultIdSet.has(id);
+    if (!isOldDefault) {
+      merged[id] = song;
+    }
+  }
+
+  // Add or update all current default songs
   for (const [id, song] of Object.entries(defaults)) {
     merged[id] = song;
   }
