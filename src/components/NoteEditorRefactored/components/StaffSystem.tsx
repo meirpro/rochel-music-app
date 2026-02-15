@@ -10,6 +10,7 @@ import {
   getNoteOffset,
   getStaffCenterY,
 } from "@/lib/layoutUtils";
+import { TREBLE_CLEF_PATH } from "@/lib/constants";
 import {
   getLayoutForSystem,
   getBeatXInSystem,
@@ -59,9 +60,7 @@ export interface StaffSystemProps {
   showMeasureErrors?: boolean;
 }
 
-// Treble clef SVG path data (optimized via Inkscape + SVGOMG)
-const TREBLE_CLEF_PATH =
-  "M7.942 11.231c-.922.911-.155.148-.644.594-.102-.479-.299-1.73-.28-2.11.13-2.693 2.32-6.587 4.238-8.023 1.044 1.95 2.024 4.262-3.314 9.54m4.728 8.441c-1.232-.906-2.85-1.144-4.334-.885l-.574-3.764c2.35-2.329 4.78-5.65 5.04-8.54S12.528 1.814 11.126 0c-1.7.128-3.058 1.884-3.802 3.417-1.283 2.643-1.141 5.916-.57 8.796-.81.952-1.148 1.082-2.727 2.734-1.58 1.652-4.299 5.485-4.005 8.878s2.592 6.424 5.87 7.227a8.9 8.9 0 0 0 3.824.099c.22 2.25 1.096 4.66.093 6.813-.9 1.933-2.83 3.034-4.81 1.94 1.069-.257 1.975-1.049 2.26-1.565.813-1.477-.143-3.522-2.156-3.358S1.934 38.1 3.366 39.666c1.37 1.499 3.725 1.405 5.43.318s2.042-3.512 1.903-4.86-.473-3.372-.514-4.089c7.072-2.527 5.36-9.357 2.485-11.363m-2.518 10.717c-.482-3.03-.925-5.962-1.379-8.956 1.625-.168 3.162-.005 4.023 2.184s-.086 5.965-2.644 6.772m-2.07.236c-2.545.117-4.942-1.76-5.634-4.081s-.49-4.603.82-6.504c1.155-1.676 2.607-3.105 4.03-4.543l.548 3.382c-6.058 2.499-4.036 9.695-.45 9.085-3.399-2.107-1.448-5.912.843-6.425.438 2.869.94 6.073 1.38 8.943-.506.1-1.022.12-1.537.143";
+// TREBLE_CLEF_PATH imported from @/lib/constants
 
 /**
  * StaffSystem - Renders a single staff system
@@ -103,14 +102,11 @@ export function StaffSystem({
   const staffBottomOffset = 2 * LINE_SPACING;
   const staffPadding = 20;
 
-  // Visual center for decorations
-  const visibleCenterOffset = (staffTopOffset + staffBottomOffset) / 2;
-  const decorationSpread =
-    staffLines === 5
-      ? LINE_SPACING
-      : staffLines === 4
-        ? LINE_SPACING * 0.875
-        : LINE_SPACING / 2;
+  // Center offset for decoration elements (time sig numbers, repeat dots)
+  // Places them in the two spaces flanking the middle visible staff line:
+  // 5/4 lines: B4 (staffCenterY), 3 lines: G4 (staffCenterY + LINE_SPACING)
+  const visibleCenterOffset = staffLines <= 3 ? LINE_SPACING : 0;
+  const decorationSpread = LINE_SPACING / 2;
 
   // Clip area
   const clipTopOffset = staffTopOffset - 1.5 * LINE_SPACING;
@@ -348,7 +344,7 @@ export function StaffSystem({
               <g>
                 <text
                   x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
-                  y={staffCenterY + visibleCenterOffset - decorationSpread + 6}
+                  y={staffCenterY + visibleCenterOffset - decorationSpread + 7}
                   fontSize={20}
                   fontWeight="bold"
                   textAnchor="middle"
@@ -358,7 +354,7 @@ export function StaffSystem({
                 </text>
                 <text
                   x={barX + TIME_SIG_DISPLAY_WIDTH / 2}
-                  y={staffCenterY + visibleCenterOffset + decorationSpread + 6}
+                  y={staffCenterY + visibleCenterOffset + decorationSpread + 7}
                   fontSize={20}
                   fontWeight="bold"
                   textAnchor="middle"
@@ -941,7 +937,7 @@ export function StaffSystem({
           />
           <text
             x={85}
-            y={staffCenterY + visibleCenterOffset - decorationSpread + 6}
+            y={staffCenterY + visibleCenterOffset - decorationSpread + 7}
             fontSize={20}
             fontWeight="bold"
             textAnchor="middle"
@@ -951,7 +947,7 @@ export function StaffSystem({
           </text>
           <text
             x={85}
-            y={staffCenterY + visibleCenterOffset + decorationSpread + 6}
+            y={staffCenterY + visibleCenterOffset + decorationSpread + 7}
             fontSize={20}
             fontWeight="bold"
             textAnchor="middle"
