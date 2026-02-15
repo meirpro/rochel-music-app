@@ -8,13 +8,13 @@ import {
   NoteTool,
   calculateSystemLayouts,
   getLayoutConfig,
+  TimeSignature,
 } from "@/components/NoteEditorRefactored";
 import {
   getEffectiveSystemHeight,
   getEffectiveTopMargin,
   getEffectiveBottomPadding,
 } from "@/lib/layoutUtils";
-import { TimeSignature } from "@/components/NoteEditor";
 import { PianoDrawer } from "@/components/PianoDrawer";
 import { EditorHeader } from "@/components/EditorHeader";
 import { ToolPalette } from "@/components/ToolPalette";

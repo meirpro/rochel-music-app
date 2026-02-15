@@ -41,34 +41,33 @@ export function getPitchPosition(pitch: Pitch | undefined | null): number {
   const match = pitch.match(/^([A-G])(#|b)?(\d)$/);
   if (!match) return 0;
 
-  const [, note, accidental, octaveStr] = match;
+  const [, note, _accidental, octaveStr] = match;
   const octave = parseInt(octaveStr, 10);
 
   // Position within octave (0-6 for C-B)
   const positionInOctave = NOTE_BASE_POSITIONS[note];
-  // Accidentals shift position slightly for visual distinction
-  const accidentalOffset =
-    accidental === "#" ? 0.5 : accidental === "b" ? -0.5 : 0;
+  // Accidentals do NOT change staff position - F# sits on the same line as F
+  // The accidental symbol is rendered separately beside the notehead
 
   // Calculate position relative to C4 (octave 4 starts at position 0)
   const octaveOffset = (octave - 4) * 7;
 
-  return octaveOffset + positionInOctave + accidentalOffset;
+  return octaveOffset + positionInOctave;
 }
 
 // Legacy lookup for common pitches (for backwards compatibility)
 export const PITCH_POSITIONS: Partial<Record<Pitch, number>> = {
   C4: 0,
-  "C#4": 0.5,
+  "C#4": 0,
   D4: 1,
-  "D#4": 1.5,
+  "D#4": 1,
   E4: 2,
   F4: 3,
-  "F#4": 3.5,
+  "F#4": 3,
   G4: 4,
-  "G#4": 4.5,
+  "G#4": 4,
   A4: 5,
-  "A#4": 5.5,
+  "A#4": 5,
   B4: 6,
   C5: 7,
   REST: -1,
@@ -265,11 +264,9 @@ export function getYFromPitch(
   const staffCenterY = getStaffCenterY(system, staffLines);
   if (pos < 0) return staffCenterY;
 
-  // Round to handle accidentals (sharps/flats share visual position with their natural)
-  const roundedPos = Math.round(pos);
-
   // Line 5 (E4, position 2) is at staffCenterY + 2*LINE_SPACING (64px below center)
   // Each position step moves by LINE_SPACING/2 (16px)
+  // Sharps/flats use the same staff position as their natural note
   const bottomLineY = staffCenterY + 2 * LINE_SPACING;
-  return bottomLineY - (roundedPos - 2) * (LINE_SPACING / 2);
+  return bottomLineY - (pos - 2) * (LINE_SPACING / 2);
 }

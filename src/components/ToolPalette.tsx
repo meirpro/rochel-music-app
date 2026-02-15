@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { NoteTool } from "./NoteEditor";
+import { NoteTool } from "./NoteEditorRefactored";
 import { TOUR_ELEMENT_IDS } from "@/lib/tourSteps/driverSteps";
 import { useInteractiveTutorial } from "@/hooks/useInteractiveTutorial";
 

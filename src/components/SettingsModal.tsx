@@ -4,7 +4,7 @@ import {
   TimeSignature,
   TIME_SIG_NUMERATORS,
   TIME_SIG_DENOMINATORS,
-} from "./NoteEditor";
+} from "./NoteEditorRefactored";
 import {
   InstrumentType,
   INSTRUMENT_NAMES,

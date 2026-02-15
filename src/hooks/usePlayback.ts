@@ -32,7 +32,7 @@ import {
   TimeSignature,
   TimeSignatureChange,
 } from "@/lib/types";
-import { getLayoutConfig } from "@/components/NoteEditor";
+import { getLayoutConfig } from "@/components/NoteEditorRefactored";
 import {
   LEFT_MARGIN,
   MIN_BEAT_WIDTH,
