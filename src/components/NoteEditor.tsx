@@ -737,6 +737,7 @@ export type NoteTool =
   | "rest-eighth"
   | "delete"
   | "repeat"
+  | "volta"
   | "lyrics"
   | "timesig"
   | null;

@@ -75,7 +75,12 @@ export function VoltaBracketLayer({
         }
 
         const systemLayout = systemLayouts[startSystemIndex];
-        if (!systemLayout) return null;
+        if (!systemLayout) {
+          console.warn(
+            `[VoltaBracketLayer] No systemLayout for system ${startSystemIndex}`,
+          );
+          return null;
+        }
 
         // Calculate X positions based on measure boundaries
         const startMeasureInSystem = volta.startMeasure % measuresPerRow;
@@ -86,7 +91,12 @@ export function VoltaBracketLayer({
         const startMeasureInfo = systemLayout.measures[startMeasureInSystem];
         const endMeasureInfo = systemLayout.measures[endMeasureInSystem - 1];
 
-        if (!startMeasureInfo || !endMeasureInfo) return null;
+        if (!startMeasureInfo || !endMeasureInfo) {
+          console.warn(
+            `[VoltaBracketLayer] Missing measure info for volta ${volta.id}`,
+          );
+          return null;
+        }
 
         // Calculate X coordinates from beat positions
         // MeasureInfo stores startBeatInSystem (beat offset), multiply by beatWidth for pixels
@@ -130,9 +140,8 @@ export function VoltaBracketLayer({
               y1={y}
               x2={endX}
               y2={y}
-              stroke="currentColor"
+              stroke="#374151"
               strokeWidth={VOLTA_LINE_WIDTH}
-              className="text-gray-700 dark:text-gray-300"
             />
 
             {/* Left vertical drop */}
@@ -141,9 +150,8 @@ export function VoltaBracketLayer({
               y1={y}
               x2={startX}
               y2={y + VOLTA_HEIGHT}
-              stroke="currentColor"
+              stroke="#374151"
               strokeWidth={VOLTA_LINE_WIDTH}
-              className="text-gray-700 dark:text-gray-300"
             />
 
             {/* Right vertical drop (dashed to indicate continuation) */}
@@ -152,10 +160,9 @@ export function VoltaBracketLayer({
               y1={y}
               x2={endX}
               y2={y + VOLTA_HEIGHT}
-              stroke="currentColor"
+              stroke="#374151"
               strokeWidth={VOLTA_LINE_WIDTH}
               strokeDasharray="4,4"
-              className="text-gray-700 dark:text-gray-300"
             />
 
             {/* Volta number label */}
@@ -164,8 +171,8 @@ export function VoltaBracketLayer({
               y={y - 4}
               fontSize="14"
               fontWeight="bold"
-              fill="currentColor"
-              className="text-gray-800 dark:text-gray-200 select-none"
+              fill="#1f2937"
+              className="select-none"
             >
               {volta.voltaNumber}.
             </text>

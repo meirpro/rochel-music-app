@@ -28,6 +28,7 @@ import {
   Pitch,
   EditorNote,
   RepeatMarker,
+  VoltaBracket,
   TimeSignature,
   TimeSignatureChange,
 } from "@/lib/types";
@@ -58,6 +59,7 @@ interface UsePlaybackOptions {
   composition: {
     notes: EditorNote[];
     repeatMarkers: RepeatMarker[];
+    voltaBrackets?: VoltaBracket[];
   };
   tempo: number;
   timeSignature: TimeSignature;
@@ -398,6 +400,44 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
     // Build playback sequence with repeat handling
     const playbackSequence: PlaybackNote[] = [];
     const getNoteAbsoluteBeat = (note: EditorNote) => note.absoluteBeat;
+    const voltaBrackets = composition.voltaBrackets || [];
+
+    // DEBUG: Log repeat sections and voltas
+    console.log("[DEBUG] Repeat sections:", repeatSections);
+    console.log("[DEBUG] Volta brackets:", voltaBrackets);
+
+    // Helper to check if a note should play on a given pass (volta-aware)
+    // Returns true if note is NOT in any volta, OR is in a volta matching the pass number
+    const shouldPlayNoteOnPass = (
+      note: EditorNote,
+      passNumber: number,
+      sectionPairId: string,
+    ): boolean => {
+      const noteMeasure = Math.floor(note.absoluteBeat / beatsPerMeasure);
+
+      // Find voltas for this repeat section
+      const sectionVoltas = voltaBrackets.filter(
+        (v) => v.repeatPairId === sectionPairId,
+      );
+
+      if (sectionVoltas.length === 0) {
+        // No voltas for this section - play note on all passes
+        return true;
+      }
+
+      // Check if note is in any volta
+      const noteVolta = sectionVoltas.find(
+        (v) => noteMeasure >= v.startMeasure && noteMeasure < v.endMeasure,
+      );
+
+      if (!noteVolta) {
+        // Note is not in any volta (shared section) - play on all passes
+        return true;
+      }
+
+      // Note is in a volta - only play on matching pass
+      return noteVolta.voltaNumber === passNumber;
+    };
 
     let currentBeatOffset = 0;
     let lastProcessedBeat = 0;
@@ -418,37 +458,104 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       }
       currentBeatOffset += section.startAbsoluteBeat - lastProcessedBeat;
 
-      // First pass of repeated section
-      for (const note of sortedNotes) {
-        const noteBeat = getNoteAbsoluteBeat(note);
-        if (
-          noteBeat >= section.startAbsoluteBeat &&
-          noteBeat < section.endAbsoluteBeat
-        ) {
-          playbackSequence.push({
-            ...note,
-            playBeat:
-              currentBeatOffset + (noteBeat - section.startAbsoluteBeat),
-          } as PlaybackNote);
-        }
-      }
-      currentBeatOffset += section.endAbsoluteBeat - section.startAbsoluteBeat;
+      // Find voltas for this section to determine number of passes
+      const sectionVoltas = voltaBrackets.filter(
+        (v) => v.repeatPairId === section.pairId,
+      );
+      const maxPass =
+        sectionVoltas.length > 0
+          ? Math.max(...sectionVoltas.map((v) => v.voltaNumber))
+          : 2;
 
-      // Second pass of repeated section
-      for (const note of sortedNotes) {
-        const noteBeat = getNoteAbsoluteBeat(note);
-        if (
-          noteBeat >= section.startAbsoluteBeat &&
-          noteBeat < section.endAbsoluteBeat
-        ) {
-          playbackSequence.push({
-            ...note,
-            playBeat:
-              currentBeatOffset + (noteBeat - section.startAbsoluteBeat),
-          } as PlaybackNote);
+      // Play repeated section multiple times (with volta filtering)
+      // On each pass, skip the beats of inactive voltas (both for timing and visuals)
+      for (let pass = 1; pass <= maxPass; pass++) {
+        // Calculate which volta beat ranges to skip on this pass
+        const skippedVoltas = sectionVoltas.filter(
+          (v) => v.voltaNumber !== pass,
+        );
+        const skipRanges = skippedVoltas
+          .map((v) => ({
+            start: v.startMeasure * beatsPerMeasure,
+            end: v.endMeasure * beatsPerMeasure,
+          }))
+          .sort((a, b) => a.start - b.start);
+
+        console.log(
+          `[DEBUG] Pass ${pass}: skipRanges=`,
+          skipRanges,
+          `currentBeatOffset=${currentBeatOffset}`,
+        );
+
+        // Helper: calculate how many beats before 'absBeat' are in skipped ranges
+        const getSkippedBeatsBefore = (absBeat: number): number => {
+          let skipped = 0;
+          for (const range of skipRanges) {
+            if (range.end <= absBeat) {
+              // Entire range is before this beat
+              skipped += range.end - range.start;
+            } else if (range.start < absBeat) {
+              // Range partially overlaps
+              skipped += absBeat - range.start;
+            }
+          }
+          return skipped;
+        };
+
+        // Schedule notes with adjusted playBeat (accounting for skipped volta time)
+        let notesScheduledThisPass = 0;
+        let firstNoteThisPass: { absBeat: number; playBeat: number } | null =
+          null;
+        let lastNoteThisPass: { absBeat: number; playBeat: number } | null =
+          null;
+
+        for (const note of sortedNotes) {
+          const noteBeat = getNoteAbsoluteBeat(note);
+          if (
+            noteBeat >= section.startAbsoluteBeat &&
+            noteBeat < section.endAbsoluteBeat &&
+            shouldPlayNoteOnPass(note, pass, section.pairId)
+          ) {
+            const skippedBeats = getSkippedBeatsBefore(noteBeat);
+            const computedPlayBeat =
+              currentBeatOffset +
+              (noteBeat - section.startAbsoluteBeat) -
+              skippedBeats;
+            playbackSequence.push({
+              ...note,
+              playBeat: computedPlayBeat,
+            } as PlaybackNote);
+            notesScheduledThisPass++;
+            if (!firstNoteThisPass) {
+              firstNoteThisPass = {
+                absBeat: noteBeat,
+                playBeat: computedPlayBeat,
+              };
+            }
+            lastNoteThisPass = {
+              absBeat: noteBeat,
+              playBeat: computedPlayBeat,
+            };
+          }
         }
+        console.log(
+          `[DEBUG] Pass ${pass} notes: ${notesScheduledThisPass} scheduled, first=${JSON.stringify(firstNoteThisPass)}, last=${JSON.stringify(lastNoteThisPass)}`,
+        );
+
+        // Advance beat offset by section length minus skipped volta beats
+        const totalSkippedBeats = skipRanges.reduce(
+          (sum, r) => sum + (r.end - r.start),
+          0,
+        );
+        const passLength =
+          section.endAbsoluteBeat -
+          section.startAbsoluteBeat -
+          totalSkippedBeats;
+        console.log(
+          `[DEBUG] Pass ${pass} complete: skippedBeats=${totalSkippedBeats}, passLength=${passLength}, newOffset=${currentBeatOffset + passLength}`,
+        );
+        currentBeatOffset += passLength;
       }
-      currentBeatOffset += section.endAbsoluteBeat - section.startAbsoluteBeat;
 
       lastProcessedBeat = section.endAbsoluteBeat;
     }
@@ -533,13 +640,17 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         const duration = segmentEndBeat - currentBeat;
         const sys = systemLayouts[startVisual.system] || systemLayouts[0];
 
-        timeline.push({
+        const segment = {
           startBeat: currentTimelineBeat,
           endBeat: currentTimelineBeat + duration,
           system: startVisual.system,
           startX: startVisual.x,
           endX: segmentEndBeat === systemEndBeat ? sys.staffRight : endVisual.x,
-        });
+        };
+        console.log(
+          `[DEBUG-SEG] Timeline segment: abs[${currentBeat}-${segmentEndBeat}] -> timeline[${segment.startBeat}-${segment.endBeat}]`,
+        );
+        timeline.push(segment);
 
         currentTimelineBeat += duration;
         currentBeat = segmentEndBeat;
@@ -559,17 +670,60 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         );
       }
 
-      timelineBeat = addSegmentsBetween(
-        section.startAbsoluteBeat,
-        section.endAbsoluteBeat,
-        timelineBeat,
+      // Find voltas for this section to determine number of passes
+      const sectionVoltas = voltaBrackets.filter(
+        (v) => v.repeatPairId === section.pairId,
       );
+      const maxPass =
+        sectionVoltas.length > 0
+          ? Math.max(...sectionVoltas.map((v) => v.voltaNumber))
+          : 2;
 
-      timelineBeat = addSegmentsBetween(
-        section.startAbsoluteBeat,
-        section.endAbsoluteBeat,
-        timelineBeat,
-      );
+      // Add timeline segments for each pass (skipping inactive volta ranges)
+      for (let pass = 1; pass <= maxPass; pass++) {
+        // Calculate which volta beat ranges to skip on this pass
+        const skippedVoltas = sectionVoltas.filter(
+          (v) => v.voltaNumber !== pass,
+        );
+        const skipRanges = skippedVoltas
+          .map((v) => ({
+            start: v.startMeasure * beatsPerMeasure,
+            end: v.endMeasure * beatsPerMeasure,
+          }))
+          .sort((a, b) => a.start - b.start);
+
+        console.log(
+          `[DEBUG-TL] Pass ${pass}: skipRanges=`,
+          skipRanges,
+          `timelineBeat=${timelineBeat}`,
+        );
+
+        // Add segments, jumping over skipped volta ranges
+        let segmentStart = section.startAbsoluteBeat;
+        for (const range of skipRanges) {
+          // Add segment from current position up to the skip range
+          if (range.start > segmentStart) {
+            timelineBeat = addSegmentsBetween(
+              segmentStart,
+              Math.min(range.start, section.endAbsoluteBeat),
+              timelineBeat,
+            );
+          }
+          // Jump past the skipped range
+          segmentStart = Math.max(segmentStart, range.end);
+        }
+        // Add final segment after all skipped ranges
+        if (segmentStart < section.endAbsoluteBeat) {
+          timelineBeat = addSegmentsBetween(
+            segmentStart,
+            section.endAbsoluteBeat,
+            timelineBeat,
+          );
+        }
+        console.log(
+          `[DEBUG-TL] Pass ${pass} complete: timelineBeat=${timelineBeat}`,
+        );
+      }
 
       lastProcessedAbsBeat = section.endAbsoluteBeat;
     }

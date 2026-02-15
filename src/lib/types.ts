@@ -182,6 +182,15 @@ export interface RepeatMarker {
   measureNumber: number; // Absolute measure from composition start (0, 1, 2...)
 }
 
+// Volta bracket (1st/2nd endings) - links to a repeat section
+export interface VoltaBracket {
+  id: string;
+  repeatPairId: string; // Links to RepeatMarker.pairId this volta belongs to
+  startMeasure: number; // Absolute measure where volta begins (0-indexed)
+  endMeasure: number; // Absolute measure where volta ends (exclusive)
+  voltaNumber: number; // 1, 2, 3, etc. - determines which pass plays these notes
+}
+
 // Legacy composition format
 export interface LegacyComposition {
   notes: LegacyEditorNote[];
@@ -210,6 +219,7 @@ export interface Composition {
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
   lyrics: Lyrics;
+  voltaBrackets?: VoltaBracket[]; // Optional: 1st/2nd endings within repeat sections
 }
 
 // Saved song structure for localStorage persistence

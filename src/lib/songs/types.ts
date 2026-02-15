@@ -4,6 +4,7 @@ import {
   RepeatMarker,
   LyricSyllable,
   TimeSignatureChange,
+  VoltaBracket,
 } from "../types";
 
 export interface TranscriptionNotes {
@@ -33,6 +34,7 @@ export interface SongData {
   description?: string;
   notes: EditorNote[];
   repeatMarkers: RepeatMarker[];
+  voltaBrackets?: VoltaBracket[]; // Optional volta brackets for 1st/2nd endings
   lyrics: LyricSyllable[];
   settings: {
     tempo: number;

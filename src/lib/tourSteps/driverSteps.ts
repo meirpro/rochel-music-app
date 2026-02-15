@@ -25,6 +25,7 @@ export const TOUR_ELEMENT_IDS = {
   sixteenthNoteTool: "tour-sixteenth-note",
   deleteTool: "tour-delete-tool",
   repeatTool: "tour-repeat-tool",
+  voltaTool: "tour-volta-tool",
   lyricsTool: "tour-lyrics-tool",
   timesigTool: "tour-timesig-tool",
   moveToggle: "tour-move-toggle",

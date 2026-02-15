@@ -11,6 +11,8 @@ export type {
   BeamGroup,
   RepeatMarker,
   RenderedRepeatMarker,
+  VoltaBracket,
+  RenderedVoltaBracket,
   NoteTool,
   NoteEditorProps,
   ContextMenuSection,
@@ -74,6 +76,10 @@ export { getNoteLabel, getDurationFromTool } from "./utils/durationUtils";
 
 // Beaming utilities
 export { groupEighthNotes, createBeamGroup } from "./utils/beamingUtils";
+
+// Measure validation utilities
+export { validateMeasures } from "./utils/measureValidation";
+export type { MeasureValidation } from "./utils/measureValidation";
 
 // Subcomponents
 export { MenuNoteIcon } from "./components/MenuNoteIcon";
