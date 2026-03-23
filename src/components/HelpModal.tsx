@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatedModal } from "./AnimatedModal";
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -445,92 +446,88 @@ const HELP_SECTIONS = [
 export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const [activeSection, setActiveSection] = useState(HELP_SECTIONS[0].id);
 
-  if (!isOpen) return null;
-
   const currentSection =
     HELP_SECTIONS.find((s) => s.id === activeSection) || HELP_SECTIONS[0];
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      onClick={onClose}
+    <AnimatedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 p-6 rounded-t-2xl border-b-2 border-primary-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-primary-700">Help & Music Theory</h2>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-2xl transition-colors text-primary-400 hover:text-primary-600"
-              aria-label="Close"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-          {/* Mobile: Horizontal scrollable tabs */}
-          <div className="md:hidden bg-primary-50 border-b border-primary-200 overflow-x-auto overflow-y-hidden hide-scrollbar px-3 py-3">
-            <div className="flex gap-2 min-w-max">
-              {HELP_SECTIONS.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition-colors ${
-                    activeSection === section.id
-                      ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
-                      : "text-gray-700 bg-white/60 hover:bg-primary-100"
-                  }`}
-                >
-                  {section.title}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop: Sidebar Navigation */}
-          <div className="hidden md:block w-48 bg-primary-50 border-r border-primary-200 overflow-y-auto p-3">
-            <div className="space-y-1">
-              {HELP_SECTIONS.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                    activeSection === section.id
-                      ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
-                      : "text-gray-700 hover:bg-primary-100"
-                  }`}
-                >
-                  <div className="text-sm leading-tight">{section.title}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
-              {currentSection.title}
-            </h3>
-            {currentSection.content}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-primary-50 p-4 rounded-b-2xl border-t border-primary-200">
+      {/* Header */}
+      <div className="sticky top-0 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 p-6 rounded-t-2xl border-b-2 border-primary-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-primary-700">
+            Help & Music Theory
+          </h2>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 font-semibold rounded-xl hover:from-primary-200 hover:to-primary-300 transition-all shadow-sm"
+            className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-2xl transition-colors text-primary-400 hover:text-primary-600"
+            aria-label="Close"
           >
-            Got it! ✓
+            ×
           </button>
         </div>
       </div>
-    </div>
+
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Mobile: Horizontal scrollable tabs */}
+        <div className="md:hidden bg-primary-50 border-b border-primary-200 overflow-x-auto overflow-y-hidden hide-scrollbar px-3 py-3">
+          <div className="flex gap-2 min-w-max">
+            {HELP_SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition-colors ${
+                  activeSection === section.id
+                    ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
+                    : "text-gray-700 bg-white/60 hover:bg-primary-100"
+                }`}
+              >
+                {section.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: Sidebar Navigation */}
+        <div className="hidden md:block w-48 bg-primary-50 border-r border-primary-200 overflow-y-auto p-3">
+          <div className="space-y-1">
+            {HELP_SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                  activeSection === section.id
+                    ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
+                    : "text-gray-700 hover:bg-primary-100"
+                }`}
+              >
+                <div className="text-sm leading-tight">{section.title}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+            {currentSection.title}
+          </h3>
+          {currentSection.content}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="sticky bottom-0 bg-primary-50 p-4 rounded-b-2xl border-t border-primary-200">
+        <button
+          onClick={onClose}
+          className="w-full py-3 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 font-semibold rounded-xl hover:from-primary-200 hover:to-primary-300 transition-all shadow-sm"
+        >
+          Got it! ✓
+        </button>
+      </div>
+    </AnimatedModal>
   );
 }
