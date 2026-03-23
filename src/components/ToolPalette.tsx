@@ -109,7 +109,7 @@ const DottedQuarterIcon = () => (
       rx="7"
       ry="5"
       fill="currentColor"
-      stroke="#000"
+      stroke="currentColor"
       strokeWidth="0.5"
       transform="rotate(-15 12 26)"
     />
@@ -133,7 +133,7 @@ const QuarterNoteIcon = () => (
       rx="7"
       ry="5"
       fill="currentColor"
-      stroke="#000"
+      stroke="currentColor"
       strokeWidth="0.5"
       transform="rotate(-15 14 26)"
     />
@@ -156,7 +156,7 @@ const EighthNoteIcon = () => (
       rx="7"
       ry="5"
       fill="currentColor"
-      stroke="#000"
+      stroke="currentColor"
       strokeWidth="0.5"
       transform="rotate(-15 14 26)"
     />
@@ -185,7 +185,7 @@ const DottedEighthIcon = () => (
       rx="7"
       ry="5"
       fill="currentColor"
-      stroke="#000"
+      stroke="currentColor"
       strokeWidth="0.5"
       transform="rotate(-15 12 26)"
     />
@@ -215,7 +215,7 @@ const SixteenthNoteIcon = () => (
       rx="7"
       ry="5"
       fill="currentColor"
-      stroke="#000"
+      stroke="currentColor"
       strokeWidth="0.5"
       transform="rotate(-15 14 26)"
     />
@@ -542,7 +542,7 @@ const NOTE_TOOLS: Array<{
     icon: <QuarterNoteIcon />,
     label: "Quarter Note",
     description: "1 beat • The basic pulse in most music",
-    color: "bg-purple-100 border-purple-300 text-purple-600",
+    color: "bg-primary-100 border-primary-300 text-primary-600",
   },
   {
     id: "dotted-quarter",
@@ -811,7 +811,7 @@ export function ToolPalette({
     <Tooltip.Provider disableHoverableContent>
       <div
         id={TOUR_ELEMENT_IDS.toolPalette}
-        className={`w-[120px] bg-purple-50 border-l-2 border-purple-300 flex flex-col items-center py-3 shadow-sm overflow-y-auto overflow-x-hidden ${
+        className={`w-[120px] bg-primary-50 border-l-2 border-primary-300 flex flex-col items-center py-3 shadow-sm overflow-y-auto overflow-x-hidden ${
           isPianoOpen ? "pb-40" : ""
         }`}
       >
@@ -901,7 +901,7 @@ export function ToolPalette({
         {/* Note tools section */}
         {!hideSections.includes("notes") && (
           <>
-            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+            <div className="text-xs font-semibold text-primary-600 mb-2 text-center flex-shrink-0">
               NOTES
             </div>
             <div className="grid grid-cols-2 gap-2 px-2 mb-3">
@@ -911,7 +911,7 @@ export function ToolPalette({
             </div>
             {/* Divider - only show if next section is visible */}
             {!hideSections.includes("rests") && (
-              <div className="w-20 h-px bg-purple-300 my-2" />
+              <div className="w-20 h-px bg-primary-300 my-2" />
             )}
           </>
         )}
@@ -929,7 +929,7 @@ export function ToolPalette({
             </div>
             {/* Divider - only show if next section is visible */}
             {!hideSections.includes("markup") && (
-              <div className="w-20 h-px bg-purple-300 my-2" />
+              <div className="w-20 h-px bg-primary-300 my-2" />
             )}
           </>
         )}
@@ -937,7 +937,7 @@ export function ToolPalette({
         {/* Markup tools section */}
         {!hideSections.includes("markup") && (
           <>
-            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+            <div className="text-xs font-semibold text-primary-600 mb-2 text-center flex-shrink-0">
               MARKUP
             </div>
             <div className="grid grid-cols-2 gap-2 px-2 mb-3">
@@ -947,7 +947,7 @@ export function ToolPalette({
             </div>
             {/* Divider - only show if next section is visible */}
             {!hideSections.includes("actions") && (
-              <div className="w-20 h-px bg-purple-300 my-2" />
+              <div className="w-20 h-px bg-primary-300 my-2" />
             )}
           </>
         )}
@@ -955,7 +955,7 @@ export function ToolPalette({
         {/* Action tools section - Delete & Move */}
         {!hideSections.includes("actions") && (
           <>
-            <div className="text-xs font-semibold text-purple-600 mb-2 text-center flex-shrink-0">
+            <div className="text-xs font-semibold text-primary-600 mb-2 text-center flex-shrink-0">
               ACTIONS
             </div>
             <div className="flex gap-2 px-2">
