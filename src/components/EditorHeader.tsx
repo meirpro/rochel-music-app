@@ -203,19 +203,19 @@ export function EditorHeader({
   };
 
   return (
-    <header className="h-16 bg-gradient-to-r from-purple-200 via-blue-200 to-teal-200 border-b-2 border-purple-300 flex items-center justify-between px-2 sm:px-4 shadow-sm">
+    <header className="h-16 bg-gradient-to-r from-primary-100 to-primary-200 border-b-2 border-primary-300 flex items-center justify-between px-2 sm:px-4 shadow-sm">
       {/* Left section - Logo and Song */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Piano logo icon */}
-          <LogoIcon className="w-6 h-6 sm:w-7 sm:h-7 text-purple-700" />
-          <span className="text-purple-700 font-semibold text-lg hidden md:inline">
+          <LogoIcon className="w-6 h-6 sm:w-7 sm:h-7 text-primary-700" />
+          <span className="text-primary-700 font-semibold text-lg hidden md:inline">
             Rochel&apos;s Piano School
           </span>
         </div>
 
         {vis.showSongLibrary && (
-          <div className="h-8 w-px bg-purple-300 hidden md:block flex-shrink-0" />
+          <div className="h-8 w-px bg-primary-300 hidden md:block flex-shrink-0" />
         )}
 
         {/* Song Library Button / Mobile Dropdown */}
@@ -232,13 +232,13 @@ export function EditorHeader({
               }}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm border group min-w-0 ${
                 showMobileSongMenu
-                  ? "bg-purple-100 border-purple-300"
-                  : "bg-white/70 hover:bg-white/90 border-purple-200 hover:border-purple-300"
+                  ? "bg-primary-100 border-primary-300"
+                  : "bg-white/70 hover:bg-white/90 border-primary-200 hover:border-primary-300"
               }`}
             >
               {/* Folder/Library icon */}
               <svg
-                className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0"
+                className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -251,15 +251,15 @@ export function EditorHeader({
                 />
               </svg>
               <div className="flex flex-col items-start min-w-0">
-                <span className="text-[10px] text-purple-400 leading-none hidden sm:block">
+                <span className="text-[10px] text-primary-400 leading-none hidden sm:block">
                   Current Song
                 </span>
-                <span className="text-purple-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
+                <span className="text-primary-700 font-semibold text-xs sm:text-sm max-w-[80px] sm:max-w-[140px] truncate leading-tight">
                   {currentSongTitle}
                 </span>
               </div>
               <svg
-                className={`w-3 h-3 sm:w-4 sm:h-4 text-purple-400 group-hover:text-purple-600 transition-all flex-shrink-0 ${
+                className={`w-3 h-3 sm:w-4 sm:h-4 text-primary-400 group-hover:text-primary-600 transition-all flex-shrink-0 ${
                   showMobileSongMenu ? "rotate-180" : ""
                 }`}
                 fill="none"
@@ -277,9 +277,9 @@ export function EditorHeader({
 
             {/* Mobile Song Dropdown */}
             {showMobileSongMenu && isMobile && (
-              <div className="absolute left-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[200px] max-w-[280px] max-h-[60vh] overflow-y-auto">
-                <div className="px-3 py-2 bg-gradient-to-r from-blue-100 to-purple-100 border-b border-purple-200">
-                  <span className="text-xs font-semibold text-purple-700">
+              <div className="absolute left-0 top-12 bg-white rounded-lg shadow-lg border-2 border-primary-200 overflow-hidden z-50 min-w-[200px] max-w-[280px] max-h-[60vh] overflow-y-auto">
+                <div className="px-3 py-2 bg-gradient-to-r from-primary-50 to-primary-100 border-b border-primary-200">
+                  <span className="text-xs font-semibold text-primary-700">
                     Select a Song
                   </span>
                 </div>
@@ -301,7 +301,7 @@ export function EditorHeader({
                         }}
                         className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between gap-2 ${
                           isCurrent
-                            ? "bg-purple-50 text-purple-700"
+                            ? "bg-primary-50 text-primary-700"
                             : "hover:bg-gray-50 text-gray-700"
                         }`}
                       >
@@ -316,7 +316,7 @@ export function EditorHeader({
                         </div>
                         {isCurrent && (
                           <svg
-                            className="w-4 h-4 text-purple-500 flex-shrink-0"
+                            className="w-4 h-4 text-primary-500 flex-shrink-0"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -351,13 +351,13 @@ export function EditorHeader({
             className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-lg shadow-sm transition-colors"
             title="Click to change time signature"
           >
-            <span className="text-purple-700 font-semibold text-base sm:text-lg">
+            <span className="text-primary-700 font-semibold text-base sm:text-lg">
               {timeSignature.numerator}
             </span>
-            <span className="text-purple-400 font-semibold text-base sm:text-lg">
+            <span className="text-primary-400 font-semibold text-base sm:text-lg">
               /
             </span>
-            <span className="text-purple-700 font-semibold text-base sm:text-lg">
+            <span className="text-primary-700 font-semibold text-base sm:text-lg">
               {timeSignature.denominator}
             </span>
           </button>
@@ -378,22 +378,22 @@ export function EditorHeader({
                   onChange={(e) => setTempoInputValue(e.target.value)}
                   onBlur={handleTempoBlur}
                   onKeyDown={handleTempoKeyDown}
-                  className="w-10 sm:w-12 text-purple-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
+                  className="w-10 sm:w-12 text-primary-700 font-semibold text-sm bg-transparent border-none outline-none text-center"
                 />
               ) : (
                 <button
                   onClick={() => setIsEditingTempo(true)}
-                  className="text-purple-700 font-semibold text-sm hover:text-purple-800"
+                  className="text-primary-700 font-semibold text-sm hover:text-primary-800"
                 >
                   {tempo}
                 </button>
               )}
-              <span className="text-purple-500 text-xs">BPM</span>
+              <span className="text-primary-500 text-xs">BPM</span>
               {/* Reset to song tempo button */}
               {songTempo !== undefined && tempo !== songTempo && (
                 <button
                   onClick={() => onTempoChange(songTempo)}
-                  className="ml-1 w-5 h-5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-600 flex items-center justify-center transition-colors"
+                  className="ml-1 w-5 h-5 rounded-full bg-primary-200 hover:bg-primary-300 text-primary-600 flex items-center justify-center transition-colors"
                   title={`Reset to song tempo (${songTempo})`}
                 >
                   <svg
@@ -428,7 +428,7 @@ export function EditorHeader({
 
           {/* Total measures control - only on xl screens */}
           {vis.showMeasureControls && (
-            <div className="hidden xl:block ml-2 pl-2 border-l border-purple-300">
+            <div className="hidden xl:block ml-2 pl-2 border-l border-primary-300">
               <MeasuresControlCompact
                 value={totalMeasures}
                 onChange={onTotalMeasuresChange}
@@ -449,7 +449,7 @@ export function EditorHeader({
             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all shadow-sm ${
               showHamburgerMenu
                 ? "bg-primary-600 text-white"
-                : "bg-white/60 hover:bg-white/80 text-purple-600"
+                : "bg-white/60 hover:bg-white/80 text-primary-600"
             }`}
             title="Menu"
           >
@@ -470,15 +470,15 @@ export function EditorHeader({
 
           {/* Hamburger menu dropdown */}
           {showHamburgerMenu && (
-            <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[200px] max-h-[70vh] overflow-y-auto">
+            <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-primary-200 overflow-hidden z-50 min-w-[200px] max-h-[70vh] overflow-y-auto">
               {/* Measures controls - show in menu below xl */}
-              <div className="xl:hidden border-b border-purple-200 p-3">
-                <div className="text-xs text-purple-500 font-semibold mb-2">
+              <div className="xl:hidden border-b border-primary-200 p-3">
+                <div className="text-xs text-primary-500 font-semibold mb-2">
                   LAYOUT
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-purple-700">Per row:</span>
+                    <span className="text-sm text-primary-700">Per row:</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() =>
@@ -486,11 +486,11 @@ export function EditorHeader({
                             Math.max(1, measuresPerRow - 1),
                           )
                         }
-                        className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center justify-center"
+                        className="w-7 h-7 rounded bg-primary-100 hover:bg-primary-200 text-primary-700 flex items-center justify-center"
                       >
                         -
                       </button>
-                      <span className="w-8 text-center text-purple-700 font-semibold">
+                      <span className="w-8 text-center text-primary-700 font-semibold">
                         {measuresPerRow}
                       </span>
                       <button
@@ -499,31 +499,31 @@ export function EditorHeader({
                             Math.min(totalMeasures, measuresPerRow + 1),
                           )
                         }
-                        className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center justify-center"
+                        className="w-7 h-7 rounded bg-primary-100 hover:bg-primary-200 text-primary-700 flex items-center justify-center"
                       >
                         +
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-purple-700">Total:</span>
+                    <span className="text-sm text-primary-700">Total:</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() =>
                           onTotalMeasuresChange(Math.max(1, totalMeasures - 1))
                         }
-                        className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center justify-center"
+                        className="w-7 h-7 rounded bg-primary-100 hover:bg-primary-200 text-primary-700 flex items-center justify-center"
                       >
                         -
                       </button>
-                      <span className="w-8 text-center text-purple-700 font-semibold">
+                      <span className="w-8 text-center text-primary-700 font-semibold">
                         {totalMeasures}
                       </span>
                       <button
                         onClick={() =>
                           onTotalMeasuresChange(Math.min(99, totalMeasures + 1))
                         }
-                        className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center justify-center"
+                        className="w-7 h-7 rounded bg-primary-100 hover:bg-primary-200 text-primary-700 flex items-center justify-center"
                       >
                         +
                       </button>
@@ -533,8 +533,8 @@ export function EditorHeader({
               </div>
 
               {/* Time sig and Tempo - show in menu below sm */}
-              <div className="sm:hidden border-b border-purple-200 p-3">
-                <div className="text-xs text-purple-500 font-semibold mb-2">
+              <div className="sm:hidden border-b border-primary-200 p-3">
+                <div className="text-xs text-primary-500 font-semibold mb-2">
                   MUSIC
                 </div>
                 <div className="flex items-center gap-3">
@@ -543,17 +543,17 @@ export function EditorHeader({
                       onSettings();
                       setShowHamburgerMenu(false);
                     }}
-                    className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded text-purple-700"
+                    className="flex items-center gap-1 px-2 py-1 bg-primary-50 rounded text-primary-700"
                   >
                     <span className="font-semibold">
                       {timeSignature.numerator}/{timeSignature.denominator}
                     </span>
                   </button>
-                  <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded">
-                    <span className="text-purple-700 font-semibold">
+                  <div className="flex items-center gap-1 px-2 py-1 bg-primary-50 rounded">
+                    <span className="text-primary-700 font-semibold">
                       {tempo}
                     </span>
-                    <span className="text-purple-500 text-xs">BPM</span>
+                    <span className="text-primary-500 text-xs">BPM</span>
                   </div>
                 </div>
               </div>
@@ -564,7 +564,7 @@ export function EditorHeader({
                   onTogglePiano();
                   setShowHamburgerMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3"
+                className="w-full px-4 py-3 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-3"
               >
                 <LogoIcon className="w-5 h-5" />
                 <span>Piano {showPiano ? "(ON)" : "(OFF)"}</span>
@@ -576,7 +576,7 @@ export function EditorHeader({
                   onSettings();
                   setShowHamburgerMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3 border-t border-purple-100"
+                className="w-full px-4 py-3 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-3 border-t border-primary-100"
               >
                 <svg
                   className="w-5 h-5"
@@ -606,7 +606,7 @@ export function EditorHeader({
                   onHelp();
                   setShowHamburgerMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3 border-t border-purple-100"
+                className="w-full px-4 py-3 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-3 border-t border-primary-100"
               >
                 <svg
                   className="w-5 h-5"
@@ -630,7 +630,7 @@ export function EditorHeader({
                   onDownloadPNG();
                   setShowHamburgerMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3 border-t border-purple-100"
+                className="w-full px-4 py-3 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-3 border-t border-primary-100"
               >
                 <svg
                   className="w-5 h-5"
@@ -654,7 +654,7 @@ export function EditorHeader({
                   onDownloadSVG();
                   setShowHamburgerMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-3 border-t border-purple-100"
+                className="w-full px-4 py-3 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-3 border-t border-primary-100"
               >
                 <svg
                   className="w-5 h-5"
@@ -687,8 +687,8 @@ export function EditorHeader({
               onClick={onTogglePiano}
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
                 showPiano
-                  ? "bg-white text-purple-600 shadow-md ring-2 ring-purple-300"
-                  : "bg-white/60 hover:bg-white/80 text-purple-600 shadow-sm"
+                  ? "bg-white text-primary-600 shadow-md ring-2 ring-primary-300"
+                  : "bg-white/60 hover:bg-white/80 text-primary-600 shadow-sm"
               }`}
               title="Toggle Piano"
             >
@@ -701,8 +701,9 @@ export function EditorHeader({
             <button
               id={TOUR_ELEMENT_IDS.settingsButton}
               onClick={onSettings}
-              className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
+              className="w-10 h-10 bg-white/60 hover:bg-white/80 text-primary-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
               title="Settings"
+              aria-label="Settings"
             >
               <svg
                 className="w-5 h-5"
@@ -733,7 +734,7 @@ export function EditorHeader({
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all shadow-sm ${
                 showTutorialMenu
                   ? "bg-primary-600 text-white"
-                  : "bg-white/60 hover:bg-white/80 text-purple-600"
+                  : "bg-white/60 hover:bg-white/80 text-primary-600"
               }`}
               title="Learn the App"
             >
@@ -765,8 +766,9 @@ export function EditorHeader({
             <button
               id={TOUR_ELEMENT_IDS.helpButton}
               onClick={onHelp}
-              className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
+              className="w-10 h-10 bg-white/60 hover:bg-white/80 text-primary-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
               title="Help"
+              aria-label="Help"
             >
               <svg
                 className="w-5 h-5"
@@ -789,7 +791,7 @@ export function EditorHeader({
             <div className="relative" ref={downloadMenuRef}>
               <button
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                className="w-10 h-10 bg-white/60 hover:bg-white/80 text-purple-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
+                className="w-10 h-10 bg-white/60 hover:bg-white/80 text-primary-600 rounded-lg flex items-center justify-center transition-all shadow-sm"
                 title="Download"
               >
                 <svg
@@ -809,13 +811,13 @@ export function EditorHeader({
 
               {/* Dropdown menu */}
               {showDownloadMenu && (
-                <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden z-50 min-w-[140px]">
+                <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border-2 border-primary-200 overflow-hidden z-50 min-w-[140px]">
                   <button
                     onClick={() => {
                       onDownloadPNG();
                       setShowDownloadMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-2"
                   >
                     <svg
                       className="w-4 h-4"
@@ -837,7 +839,7 @@ export function EditorHeader({
                       onDownloadSVG();
                       setShowDownloadMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2 border-t border-purple-100"
+                    className="w-full px-4 py-2 text-left text-primary-700 hover:bg-primary-50 transition-colors flex items-center gap-2 border-t border-primary-100"
                   >
                     <svg
                       className="w-4 h-4"
@@ -862,7 +864,7 @@ export function EditorHeader({
         {/* End Utility Buttons Group */}
 
         {vis.showPlayControls && (
-          <div className="hidden lg:block h-8 w-px bg-purple-300" />
+          <div className="hidden lg:block h-8 w-px bg-primary-300" />
         )}
 
         {/* Play Controls Section */}
@@ -877,6 +879,7 @@ export function EditorHeader({
                 onClick={onStop}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-all shadow-sm"
                 title="Stop and reset (rewind)"
+                aria-label="Stop and reset"
               >
                 <svg
                   className="w-4 h-4"
