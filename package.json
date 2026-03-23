@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "deploy:staging": "next build && wrangler pages deploy out/ --project-name rochel-music-staging --branch staging/design-polish --commit-dirty=true"
   },
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.8",
