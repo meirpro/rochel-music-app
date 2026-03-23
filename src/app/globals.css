@@ -27,11 +27,32 @@
 }
 
 @theme inline {
+  /* Base palette */
   --color-app: #f8fafc;
   --color-panel: #ffffff;
   --color-ink: #1e293b;
   --color-muted: #64748b;
   --color-accent: #10b981;
+
+  /* Primary (purple) — main UI chrome */
+  --color-primary-50: #faf5ff;
+  --color-primary-100: #f3e8ff;
+  --color-primary-200: #e9d5ff;
+  --color-primary-300: #d8b4fe;
+  --color-primary-400: #c084fc;
+  --color-primary-500: #a855f7;
+  --color-primary-600: #9333ea;
+  --color-primary-700: #7c3aed;
+  --color-primary-800: #6b21a8;
+
+  /* Semantic */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Learn mode surfaces */
+  --color-learn-surface: #f3e8ff;
+  --color-learn-border: #e9d5ff;
 }
 
 body {
