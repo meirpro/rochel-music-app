@@ -80,7 +80,7 @@ export function SettingsModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
@@ -88,12 +88,12 @@ export function SettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-200 to-blue-200 text-purple-800 p-6 border-b-2 border-purple-300">
+        <div className="bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 p-6 border-b-2 border-primary-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Settings</h2>
+            <h2 className="text-2xl font-semibold text-primary-700">Settings</h2>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center transition-colors text-purple-700"
+              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center transition-colors text-primary-400 hover:text-primary-600"
               aria-label="Close"
             >
               <svg

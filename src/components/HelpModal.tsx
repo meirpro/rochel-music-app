@@ -244,7 +244,7 @@ const HELP_SECTIONS = [
               <div className="text-sm text-gray-600">2 beats</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-2 bg-orange-50 rounded-lg">
+          <div className="flex items-center gap-3 p-2 bg-primary-50 rounded-lg">
             <DottedQuarterNote color="#F97316" />
             <div>
               <div className="font-bold text-orange-700">Dotted Quarter</div>
@@ -408,7 +408,7 @@ const HELP_SECTIONS = [
             <div className="text-xl font-bold text-green-700">6/8</div>
             <div className="text-xs text-gray-600">6 eighths</div>
           </div>
-          <div className="bg-orange-50 rounded-lg p-2 text-center">
+          <div className="bg-primary-50 rounded-lg p-2 text-center">
             <div className="text-xl font-bold text-orange-700">2/4</div>
             <div className="text-xs text-gray-600">2 beats</div>
           </div>
@@ -452,7 +452,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
@@ -460,12 +460,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-orange-200 to-pink-200 text-orange-800 p-6 rounded-t-2xl border-b-2 border-orange-300">
+        <div className="sticky top-0 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 p-6 rounded-t-2xl border-b-2 border-primary-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Help & Music Theory</h2>
+            <h2 className="text-2xl font-semibold text-primary-700">Help & Music Theory</h2>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-2xl transition-colors text-orange-700"
+              className="w-10 h-10 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-2xl transition-colors text-primary-400 hover:text-primary-600"
               aria-label="Close"
             >
               ×
@@ -475,7 +475,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Mobile: Horizontal scrollable tabs */}
-          <div className="md:hidden bg-orange-50 border-b border-orange-200 overflow-x-auto overflow-y-hidden hide-scrollbar px-3 py-3">
+          <div className="md:hidden bg-primary-50 border-b border-primary-200 overflow-x-auto overflow-y-hidden hide-scrollbar px-3 py-3">
             <div className="flex gap-2 min-w-max">
               {HELP_SECTIONS.map((section) => (
                 <button
@@ -483,8 +483,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   onClick={() => setActiveSection(section.id)}
                   className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition-colors ${
                     activeSection === section.id
-                      ? "bg-orange-200 text-orange-800 font-semibold shadow-sm"
-                      : "text-gray-700 bg-white/60 hover:bg-orange-100"
+                      ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
+                      : "text-gray-700 bg-white/60 hover:bg-primary-100"
                   }`}
                 >
                   {section.title}
@@ -494,7 +494,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           </div>
 
           {/* Desktop: Sidebar Navigation */}
-          <div className="hidden md:block w-48 bg-orange-50 border-r border-orange-200 overflow-y-auto p-3">
+          <div className="hidden md:block w-48 bg-primary-50 border-r border-primary-200 overflow-y-auto p-3">
             <div className="space-y-1">
               {HELP_SECTIONS.map((section) => (
                 <button
@@ -502,8 +502,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   onClick={() => setActiveSection(section.id)}
                   className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
                     activeSection === section.id
-                      ? "bg-orange-200 text-orange-800 font-semibold shadow-sm"
-                      : "text-gray-700 hover:bg-orange-100"
+                      ? "bg-primary-200 text-primary-800 font-semibold shadow-sm"
+                      : "text-gray-700 hover:bg-primary-100"
                   }`}
                 >
                   <div className="text-sm leading-tight">{section.title}</div>
@@ -522,10 +522,10 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-orange-50 p-4 rounded-b-2xl border-t border-orange-200">
+        <div className="sticky bottom-0 bg-primary-50 p-4 rounded-b-2xl border-t border-primary-200">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gradient-to-r from-orange-200 to-pink-200 text-orange-800 font-semibold rounded-xl hover:from-orange-300 hover:to-pink-300 transition-all shadow-sm"
+            className="w-full py-3 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 font-semibold rounded-xl hover:from-primary-200 hover:to-primary-300 transition-all shadow-sm"
           >
             Got it! ✓
           </button>

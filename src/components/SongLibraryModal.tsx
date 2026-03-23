@@ -386,7 +386,7 @@ export function SongLibraryModal({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -399,11 +399,11 @@ export function SongLibraryModal({
         }`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-200 to-purple-200 text-blue-800 px-4 py-3 border-b border-blue-300 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">My Songs</h2>
+        <div className="bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 px-4 py-3 border-b border-primary-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-primary-700">My Songs</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-xl transition-colors text-blue-700"
+            className="w-8 h-8 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center text-xl transition-colors text-primary-400 hover:text-primary-600"
             aria-label="Close"
           >
             ×
@@ -675,7 +675,7 @@ export function SongLibraryModal({
               </div>
               <button
                 onClick={onClose}
-                className="w-full py-2 bg-gradient-to-r from-blue-200 to-purple-200 text-blue-800 text-sm font-medium rounded-lg hover:from-blue-300 hover:to-purple-300 transition-all"
+                className="w-full py-2 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 text-sm font-medium rounded-lg hover:from-primary-200 hover:to-primary-300 transition-all"
               >
                 Done
               </button>
