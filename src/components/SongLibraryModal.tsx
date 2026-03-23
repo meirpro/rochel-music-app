@@ -107,7 +107,7 @@ function SongCard({
         ) : (
           <button
             onClick={() => onLoadSong(song)}
-            className="flex-1 px-3 py-1.5 bg-blue-200 hover:bg-blue-300 text-blue-800 text-xs font-medium rounded-lg transition-colors"
+            className="flex-1 px-3 py-1.5 bg-primary-200 hover:bg-primary-300 text-primary-800 text-xs font-medium rounded-lg transition-colors"
           >
             Load
           </button>
@@ -419,7 +419,7 @@ export function SongLibraryModal({
                 onClick={toggleSearch}
                 className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                   isSearchOpen
-                    ? "bg-blue-200 text-blue-700"
+                    ? "bg-primary-200 text-primary-700"
                     : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
                 }`}
                 title="Search songs"
@@ -444,7 +444,7 @@ export function SongLibraryModal({
             {onNewSong && (
               <button
                 onClick={onNewSong}
-                className="flex-1 h-9 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                className="flex-1 h-9 bg-primary-100 hover:bg-primary-200 text-primary-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
               >
                 <span className="text-base leading-none">+</span>
                 New
@@ -483,7 +483,7 @@ export function SongLibraryModal({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search songs..."
-                  className="w-full pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-300 focus:outline-none"
+                  className="w-full pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:border-primary-300 focus:outline-none"
                 />
                 {searchQuery && (
                   <button

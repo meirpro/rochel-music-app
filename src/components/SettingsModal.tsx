@@ -132,7 +132,7 @@ export function SettingsModal({
                 }}
               />
               <div className="w-20 text-center">
-                <div className="text-2xl font-semibold text-purple-600">
+                <div className="text-2xl font-semibold text-primary-600">
                   {tempo}
                 </div>
                 <div className="text-xs text-gray-500">BPM</div>
@@ -237,7 +237,7 @@ export function SettingsModal({
                       denominator: timeSignature.denominator,
                     })
                   }
-                  className="w-full px-4 py-3 text-lg font-semibold text-center border-2 border-purple-200 rounded-xl focus:border-purple-300 focus:outline-none bg-white cursor-pointer hover:bg-purple-50 transition-colors shadow-sm"
+                  className="w-full px-4 py-3 text-lg font-semibold text-center border-2 border-primary-200 rounded-xl focus:border-primary-300 focus:outline-none bg-white cursor-pointer hover:bg-primary-50 transition-colors shadow-sm"
                 >
                   {TIME_SIG_NUMERATORS.map((num) => (
                     <option key={num} value={num}>
@@ -248,7 +248,7 @@ export function SettingsModal({
               </div>
 
               {/* Divider */}
-              <div className="text-4xl font-semibold text-purple-300 pb-3">
+              <div className="text-4xl font-semibold text-primary-300 pb-3">
                 /
               </div>
 
@@ -296,8 +296,8 @@ export function SettingsModal({
                     onClick={() => onInstrumentChange(inst)}
                     className={`px-3 py-2.5 rounded-xl font-medium transition-all text-sm ${
                       instrument === inst
-                        ? "bg-purple-500 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-purple-100"
+                        ? "bg-primary-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-primary-100"
                     }`}
                   >
                     {INSTRUMENT_NAMES[inst]}
@@ -309,14 +309,14 @@ export function SettingsModal({
               href="https://tonejs.github.io/examples/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-purple-500 hover:text-purple-700 underline"
+              className="text-xs text-primary-500 hover:text-primary-700 underline"
             >
               Explore more sounds on Tone.js →
             </a>
 
             {/* Instrument Balance - per-instrument gain adjustment */}
             <details className="mt-3">
-              <summary className="text-sm text-gray-600 cursor-pointer hover:text-purple-600 select-none">
+              <summary className="text-sm text-gray-600 cursor-pointer hover:text-primary-600 select-none">
                 Advanced: Instrument Balance
               </summary>
               <div className="mt-2 p-3 bg-gray-50 rounded-lg space-y-2">
@@ -359,7 +359,7 @@ export function SettingsModal({
                         <span
                           className={`text-xs w-14 text-right ${
                             gain > 0
-                              ? "text-purple-600"
+                              ? "text-primary-600"
                               : gain < 0
                                 ? "text-red-500"
                                 : "text-gray-500"
@@ -385,7 +385,7 @@ export function SettingsModal({
                     };
                     onInstrumentGainsChange(resetGains);
                   }}
-                  className="text-xs text-purple-500 hover:text-purple-700 underline mt-1"
+                  className="text-xs text-primary-500 hover:text-primary-700 underline mt-1"
                 >
                   Reset to defaults
                 </button>
@@ -443,7 +443,7 @@ export function SettingsModal({
                 <span className="text-base font-medium text-gray-700">
                   Note Spacing
                 </span>
-                <span className="text-lg font-semibold text-purple-600">
+                <span className="text-lg font-semibold text-primary-600">
                   {Math.round(noteSpacing * 100)}%
                 </span>
               </div>
@@ -507,10 +507,10 @@ export function SettingsModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-purple-50 p-4 rounded-b-2xl border-t border-purple-200">
+        <div className="sticky bottom-0 bg-primary-50 p-4 rounded-b-2xl border-t border-primary-200">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gradient-to-r from-purple-200 to-blue-200 text-purple-800 font-semibold rounded-xl hover:from-purple-300 hover:to-blue-300 transition-all text-lg shadow-sm"
+            className="w-full py-3 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 font-semibold rounded-xl hover:from-primary-200 hover:to-primary-300 transition-all text-lg shadow-sm"
           >
             Done ✓
           </button>
@@ -540,7 +540,7 @@ function ToggleSwitchWithDescription({
     emerald: "bg-emerald-300",
     pink: "bg-pink-300",
     blue: "bg-blue-300",
-    purple: "bg-purple-300",
+    purple: "bg-primary-300",
   };
 
   return (

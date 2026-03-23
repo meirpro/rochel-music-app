@@ -448,7 +448,7 @@ export function EditorHeader({
             onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all shadow-sm ${
               showHamburgerMenu
-                ? "bg-purple-500 text-white"
+                ? "bg-primary-600 text-white"
                 : "bg-white/60 hover:bg-white/80 text-purple-600"
             }`}
             title="Menu"
@@ -732,7 +732,7 @@ export function EditorHeader({
               onClick={() => setShowTutorialMenu(!showTutorialMenu)}
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all shadow-sm ${
                 showTutorialMenu
-                  ? "bg-purple-500 text-white"
+                  ? "bg-primary-600 text-white"
                   : "bg-white/60 hover:bg-white/80 text-purple-600"
               }`}
               title="Learn the App"
