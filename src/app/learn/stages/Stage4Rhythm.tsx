@@ -74,7 +74,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Stage intro */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-purple-800 mb-2">
+        <h1 className="text-3xl font-bold text-primary-800 mb-2">
           Rhythm & Shorter Notes
         </h1>
         <p className="text-gray-600">
@@ -125,7 +125,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
               connected by a <strong>beam</strong>. This makes them easier to
               read!
             </p>
-            <div className="bg-purple-50 rounded-lg p-4 my-4 flex justify-around items-center">
+            <div className="bg-primary-50 rounded-lg p-4 my-4 flex justify-around items-center">
               <div className="text-center">
                 <div className="mb-2 flex gap-1 justify-center">
                   <StandaloneSingleNote duration={0.5} size={28} />
@@ -163,34 +163,34 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                 <div className="w-16 flex justify-center">
                   <StandaloneSingleNote duration={3} size={36} />
                 </div>
-                <div className="w-28 font-medium text-purple-800">
+                <div className="w-28 font-medium text-primary-800">
                   Dotted half
                 </div>
                 <div className="flex-1 text-gray-700">
-                  2 + 1 = <strong className="text-purple-600">3 beats</strong>
+                  2 + 1 = <strong className="text-primary-600">3 beats</strong>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-16 flex justify-center">
                   <StandaloneSingleNote duration={1.5} size={36} />
                 </div>
-                <div className="w-28 font-medium text-purple-800">
+                <div className="w-28 font-medium text-primary-800">
                   Dotted quarter
                 </div>
                 <div className="flex-1 text-gray-700">
-                  1 + ½ = <strong className="text-purple-600">1.5 beats</strong>
+                  1 + ½ = <strong className="text-primary-600">1.5 beats</strong>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-16 flex justify-center">
                   <StandaloneSingleNote duration={0.75} size={36} />
                 </div>
-                <div className="w-28 font-medium text-purple-800">
+                <div className="w-28 font-medium text-primary-800">
                   Dotted eighth
                 </div>
                 <div className="flex-1 text-gray-700">
                   ½ + ¼ ={" "}
-                  <strong className="text-purple-600">0.75 beats</strong>
+                  <strong className="text-primary-600">0.75 beats</strong>
                 </div>
               </div>
             </div>
@@ -216,7 +216,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                 className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
                   playingPattern === "quarters"
                     ? "border-teal-400 bg-teal-50"
-                    : "border-purple-200 hover:border-purple-300"
+                    : "border-primary-200 hover:border-primary-300"
                 }`}
               >
                 <div className="flex gap-1 mb-1">
@@ -236,7 +236,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                 className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
                   playingPattern === "mixed"
                     ? "border-teal-400 bg-teal-50"
-                    : "border-purple-200 hover:border-purple-300"
+                    : "border-primary-200 hover:border-primary-300"
                 }`}
               >
                 <div className="flex gap-1 items-end mb-1">
@@ -260,7 +260,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
                 className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
                   playingPattern === "eighths"
                     ? "border-teal-400 bg-teal-50"
-                    : "border-purple-200 hover:border-purple-300"
+                    : "border-primary-200 hover:border-primary-300"
                 }`}
               >
                 <div className="flex gap-1 mb-1">
@@ -286,7 +286,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
           className={`px-6 py-2 rounded-lg font-medium transition-all ${
             step === 0
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+              : "bg-primary-100 text-primary-700 hover:bg-primary-200"
           }`}
         >
           ← Previous
@@ -294,7 +294,7 @@ export function Stage4Rhythm({ onComplete }: Stage4RhythmProps) {
 
         <button
           onClick={handleNextStep}
-          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-md"
+          className="px-6 py-2 bg-gradient-to-r from-primary-500 to-blue-500 text-white rounded-lg font-medium hover:from-primary-600 hover:to-blue-600 transition-all shadow-md"
         >
           {step < 3 ? "Next →" : "Complete Stage →"}
         </button>

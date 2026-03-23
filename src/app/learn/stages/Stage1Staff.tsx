@@ -78,7 +78,7 @@ export function Stage1Staff({ onComplete }: Stage1StaffProps) {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Stage intro */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-purple-800 mb-2">
+        <h1 className="text-3xl font-bold text-primary-800 mb-2">
           The Staff & Notes
         </h1>
         <p className="text-gray-600">
@@ -246,7 +246,7 @@ export function Stage1Staff({ onComplete }: Stage1StaffProps) {
           className={`px-6 py-2 rounded-lg font-medium transition-all ${
             step === 0
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+              : "bg-primary-100 text-primary-700 hover:bg-primary-200"
           }`}
         >
           ← Previous
@@ -254,7 +254,7 @@ export function Stage1Staff({ onComplete }: Stage1StaffProps) {
 
         <button
           onClick={handleNextStep}
-          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-md"
+          className="px-6 py-2 bg-gradient-to-r from-primary-500 to-blue-500 text-white rounded-lg font-medium hover:from-primary-600 hover:to-blue-600 transition-all shadow-md"
         >
           {step < 3 ? "Next →" : "Complete Stage →"}
         </button>

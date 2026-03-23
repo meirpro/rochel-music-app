@@ -19,7 +19,7 @@ export function StageComplete({
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100]">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 p-6 text-white text-center">
+        <div className="bg-gradient-to-r from-teal-500 via-blue-500 to-primary-500 p-6 text-white text-center">
           <div className="text-5xl mb-2">🎊</div>
           <div className="text-2xl font-bold">
             {isFinalStage ? "Congratulations!" : "Stage Complete!"}
@@ -47,14 +47,14 @@ export function StageComplete({
 
           {/* Next stage preview */}
           {nextStage && (
-            <div className="bg-purple-50 rounded-lg p-4 mb-4">
-              <div className="text-sm text-purple-600 font-medium mb-1">
+            <div className="bg-primary-50 rounded-lg p-4 mb-4">
+              <div className="text-sm text-primary-600 font-medium mb-1">
                 Up Next: Stage {nextStage}
               </div>
-              <div className="text-purple-800 font-semibold">
+              <div className="text-primary-800 font-semibold">
                 {STAGE_INFO[nextStage].title}
               </div>
-              <div className="text-purple-600 text-sm">
+              <div className="text-primary-600 text-sm">
                 {STAGE_INFO[nextStage].subtitle}
               </div>
             </div>
@@ -63,7 +63,7 @@ export function StageComplete({
           {/* Continue button */}
           <button
             onClick={onContinue}
-            className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-xl font-semibold shadow-lg transition-all hover:shadow-xl"
+            className="w-full px-6 py-3 bg-gradient-to-r from-primary-500 to-blue-500 hover:from-primary-600 hover:to-blue-600 text-white rounded-xl font-semibold shadow-lg transition-all hover:shadow-xl"
           >
             {isFinalStage ? "Go to Editor →" : "Continue to Next Stage →"}
           </button>

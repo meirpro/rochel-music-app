@@ -78,7 +78,7 @@ export default function LearnPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-teal-100">
+    <div className="min-h-screen bg-gradient-to-br from-primary-100 via-blue-50 to-teal-100">
       <LearnLayout
         currentStage={currentStage}
         completedStages={learnProgress?.completedStages || []}

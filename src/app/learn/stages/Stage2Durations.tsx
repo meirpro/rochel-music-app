@@ -105,7 +105,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Stage intro */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-purple-800 mb-2">
+        <h1 className="text-3xl font-bold text-primary-800 mb-2">
           Note Durations
         </h1>
         <p className="text-gray-600">Learn how long to hold each note</p>
@@ -124,11 +124,11 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
               <div className="text-lg">
                 Think of it like holding your voice:
                 <br />
-                <span className="text-purple-600 font-mono">
+                <span className="text-primary-600 font-mono">
                   &quot;Laaaaaaaa&quot;
                 </span>{" "}
                 (long) vs{" "}
-                <span className="text-purple-600 font-mono">
+                <span className="text-primary-600 font-mono">
                   &quot;La&quot;
                 </span>{" "}
                 (short)
@@ -165,7 +165,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                     ${
                       isPlaying
                         ? "border-teal-400 bg-teal-50 ring-2 ring-teal-300"
-                        : "border-purple-200 bg-white hover:border-purple-300"
+                        : "border-primary-200 bg-white hover:border-primary-300"
                     }
                   `}
                   >
@@ -175,10 +175,10 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                         size={48}
                       />
                     </div>
-                    <div className="font-bold text-purple-800">
+                    <div className="font-bold text-primary-800">
                       {duration.name}
                     </div>
-                    <div className="text-lg text-purple-600 font-semibold">
+                    <div className="text-lg text-primary-600 font-semibold">
                       {duration.beats} beat{duration.beats > 1 ? "s" : ""}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
@@ -208,7 +208,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
                 <div className="w-20 text-right text-sm font-medium">
                   Whole (4)
                 </div>
-                <div className="flex-1 h-8 bg-purple-500 rounded flex items-center justify-center text-white text-xs">
+                <div className="flex-1 h-8 bg-primary-500 rounded flex items-center justify-center text-white text-xs">
                   1 - 2 - 3 - 4
                 </div>
               </div>
@@ -284,7 +284,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
           className={`px-6 py-2 rounded-lg font-medium transition-all ${
             step === 0
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+              : "bg-primary-100 text-primary-700 hover:bg-primary-200"
           }`}
         >
           ← Previous
@@ -292,7 +292,7 @@ export function Stage2Durations({ onComplete }: Stage2DurationsProps) {
 
         <button
           onClick={handleNextStep}
-          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-md"
+          className="px-6 py-2 bg-gradient-to-r from-primary-500 to-blue-500 text-white rounded-lg font-medium hover:from-primary-600 hover:to-blue-600 transition-all shadow-md"
         >
           {step < 3 ? "Next →" : "Complete Stage →"}
         </button>

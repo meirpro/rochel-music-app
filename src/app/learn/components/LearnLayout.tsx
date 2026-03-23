@@ -38,11 +38,11 @@ export function LearnLayout({
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-purple-200 flex items-center justify-between px-4 shadow-sm sticky top-0 z-50">
+      <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-primary-200 flex items-center justify-between px-4 shadow-sm sticky top-0 z-50">
         {/* Left - Back button */}
         <button
           onClick={onExit}
-          className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors"
+          className="flex items-center gap-2 text-primary-600 hover:text-primary-800 transition-colors"
         >
           <svg
             className="w-5 h-5"
@@ -62,12 +62,12 @@ export function LearnLayout({
 
         {/* Center - Stage title */}
         <div className="flex items-center gap-3">
-          <LogoIcon className="w-6 h-6 text-purple-600" />
+          <LogoIcon className="w-6 h-6 text-primary-600" />
           <div className="text-center">
-            <div className="text-xs text-purple-500 font-medium">
+            <div className="text-xs text-primary-500 font-medium">
               Stage {currentStage} of 5
             </div>
-            <div className="text-purple-800 font-semibold">
+            <div className="text-primary-800 font-semibold">
               {stageInfo.title}
             </div>
           </div>
@@ -90,11 +90,11 @@ export function LearnLayout({
                   transition-all duration-200
                   ${
                     isCurrent
-                      ? "bg-purple-500 text-white ring-2 ring-purple-300 ring-offset-2"
+                      ? "bg-primary-500 text-white ring-2 ring-primary-300 ring-offset-2"
                       : isCompleted
                         ? "bg-teal-500 text-white"
                         : isAccessible
-                          ? "bg-purple-100 text-purple-600 hover:bg-purple-200"
+                          ? "bg-primary-100 text-primary-600 hover:bg-primary-200"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }
                 `}
@@ -125,10 +125,10 @@ export function LearnLayout({
       <main className="flex-1 overflow-auto">{children}</main>
 
       {/* Footer with escape hatch */}
-      <footer className="py-3 px-4 bg-white/50 border-t border-purple-100 text-center">
+      <footer className="py-3 px-4 bg-white/50 border-t border-primary-100 text-center">
         <Link
           href="/"
-          className="text-sm text-purple-500 hover:text-purple-700 transition-colors"
+          className="text-sm text-primary-500 hover:text-primary-700 transition-colors"
         >
           Skip learning and go to editor →
         </Link>
