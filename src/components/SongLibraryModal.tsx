@@ -56,7 +56,7 @@ function SongCard({
         isCurrent
           ? "bg-purple-50 border-purple-300"
           : isSelectMode && isSelected
-            ? "bg-indigo-50 border-indigo-300"
+            ? "bg-primary-50 border-primary-300"
             : "bg-white border-gray-200 hover:border-gray-300"
       }`}
     >
@@ -66,7 +66,7 @@ function SongCard({
             type="checkbox"
             checked={isSelected}
             onChange={() => onToggleSelection(song.id)}
-            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer flex-shrink-0"
             title="Select for export"
           />
         )}
@@ -621,7 +621,7 @@ export function SongLibraryModal({
               <div className="flex items-center justify-between mb-2">
                 <button
                   onClick={toggleSelectAll}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                  className="text-xs text-primary-600 hover:text-primary-800 font-medium"
                 >
                   {selectedForExport.size === songs.length
                     ? "Deselect All"
@@ -643,7 +643,7 @@ export function SongLibraryModal({
                   disabled={selectedForExport.size === 0}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
                     selectedForExport.size > 0
-                      ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                      ? "bg-primary-500 hover:bg-primary-600 text-white"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -666,7 +666,7 @@ export function SongLibraryModal({
                   disabled={songs.length === 0}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
                     songs.length > 0
-                      ? "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+                      ? "bg-primary-100 hover:bg-primary-200 text-primary-700"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
                   }`}
                 >

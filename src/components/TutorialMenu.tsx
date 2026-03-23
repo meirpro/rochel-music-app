@@ -364,7 +364,7 @@ export function TutorialMenu({
             className={`w-full text-left px-3 py-3 rounded-lg transition-all border-2 ${
               !editorTutorial.isActive
                 ? "bg-green-50 hover:bg-green-100 border-green-300"
-                : "bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 border-blue-300 hover:border-blue-400"
+                : "bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 border-primary-300 hover:border-primary-400"
             }`}
           >
             <div className="flex items-start gap-3">

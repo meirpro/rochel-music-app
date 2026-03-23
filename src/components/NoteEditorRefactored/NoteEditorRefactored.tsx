@@ -1602,7 +1602,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
       {/* Repeat placement instruction tooltip */}
       {repeatStart && selectedTool === "repeat" && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm shadow-lg z-10">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm shadow-lg z-10">
           Click another measure to complete the repeat section
         </div>
       )}
@@ -1610,13 +1610,13 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       {/* Time signature change picker modal */}
       {timeSigPicker && (
         <div
-          className="absolute bg-white rounded-lg shadow-lg border border-cyan-200 p-3 z-50"
+          className="absolute bg-white rounded-lg shadow-lg border border-primary-200 p-3 z-50"
           style={{
             left: timeSigPicker.x - 60,
             top: timeSigPicker.y + LINE_SPACING * 2 + 20,
           }}
         >
-          <div className="text-xs font-semibold text-cyan-600 mb-2">
+          <div className="text-xs font-semibold text-primary-600 mb-2">
             Time Signature at M{timeSigPicker.measureNumber + 1}
           </div>
           <div className="flex gap-2 items-center">
@@ -1646,7 +1646,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           </div>
           <div className="flex gap-2 mt-3">
             <button
-              className="flex-1 px-3 py-1 text-sm bg-cyan-500 text-white rounded hover:bg-cyan-600"
+              className="flex-1 px-3 py-1 text-sm bg-primary-500 text-white rounded hover:bg-primary-600"
               onClick={() => {
                 const numEl = document.getElementById(
                   "timesig-numerator",
