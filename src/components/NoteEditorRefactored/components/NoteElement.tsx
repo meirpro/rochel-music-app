@@ -529,6 +529,7 @@ export function NoteElement({
   return (
     <g
       key={note.id}
+      className="note-pop-in"
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note.id)}
       onMouseDown={(e) => onMouseDown(e, note.id)}

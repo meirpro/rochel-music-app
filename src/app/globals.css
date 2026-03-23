@@ -76,6 +76,29 @@ body {
   outline: none;
 }
 
+/* Note placement pop animation (SVG-safe) */
+@keyframes note-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.note-pop-in {
+  animation: note-pop 250ms var(--ease-out) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Playhead glow pulse */
+@keyframes playhead-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.4)); }
+  50% { filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.7)); }
+}
+
+.playhead-active {
+  animation: playhead-glow 1s ease-in-out infinite;
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
