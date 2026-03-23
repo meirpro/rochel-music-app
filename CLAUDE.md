@@ -430,3 +430,26 @@ Key concepts to teach:
 - Same duration values as notes (whole=4, half=2, quarter=1, eighth=0.5)
 - Visual symbols differ from note symbols
 - Rests maintain rhythmic structure even without sound
+
+## Design Context
+
+> Full design brief: see `.impeccable.md` in project root.
+
+### Users
+- **Primary:** Rochel (the teacher) — creates sheet music and manages lessons
+- **Secondary:** Kids ages 4-12, both parent-supervised and self-directed, plus classroom use
+
+### Brand Personality
+**Playful, warm, encouraging** — like a friendly piano teacher who celebrates every small win.
+
+### Design Principles
+1. **Clarity over cleverness** — immediately understandable to a child
+2. **Color is pedagogy** — rainbow note colors are teaching tools, not decoration; never compete with them
+3. **Safe to explore** — undo always available, gentle error messages, no fear of breaking things
+4. **Celebrate progress** — motion and visual feedback for achievements
+5. **Teacher-ready, kid-friendly** — progressive disclosure: simple by default, powerful when needed
+
+### Aesthetic Direction
+- Light mode only, Fredoka font, emerald accent (`#10b981`), purple for tutorials
+- Reference feel: Simply Piano / Yousician (but simpler, less gamified)
+- Anti-reference: dark themes, dense professional notation software (Sibelius/Finale)
