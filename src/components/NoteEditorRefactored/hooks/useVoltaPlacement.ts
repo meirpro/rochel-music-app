@@ -35,19 +35,33 @@ export interface UseVoltaPlacementParams {
 }
 
 // Hook return type
+// Resize-drag state — tracks an in-progress edge drag on an existing volta
+export interface VoltaResizeState {
+  voltaId: string;
+  edge: "end"; // Future: support "start" too
+  initialEndMeasure: number; // Snapshot for cancellation/undo
+  currentEndMeasure: number; // Live value during drag (half-open)
+}
+
 export interface UseVoltaPlacementReturn {
   // State
   voltaStart: VoltaStartState | null;
   setVoltaStart: (state: VoltaStartState | null) => void;
   hoveredVoltaMeasure: { system: number; measure: number } | null;
+  voltaResize: VoltaResizeState | null;
 
   // Handlers
   handleVoltaClick: (x: number, system: number) => boolean;
   handleVoltaHover: (x: number, system: number) => void;
   clearVoltaHover: () => void;
+  // Resize drag handlers — call from mousedown/move/up at the SVG level
+  handleVoltaResizeStart: (voltaId: string, edge: "end") => void;
+  handleVoltaResizeMove: (x: number, system: number) => void;
+  handleVoltaResizeEnd: () => void;
 
   // UI state
   isPlacingVolta: boolean;
+  isResizingVolta: boolean;
 }
 
 /**
@@ -144,6 +158,9 @@ export function useVoltaPlacement({
     system: number;
     measure: number;
   } | null>(null);
+
+  // Resize state — set when a drag begins on an existing volta's edge
+  const [voltaResize, setVoltaResize] = useState<VoltaResizeState | null>(null);
 
   // Clear state when tool changes away from volta
   const prevToolRef = useRef(selectedTool);
@@ -295,13 +312,116 @@ export function useVoltaPlacement({
     setHoveredVoltaMeasure(null);
   }, []);
 
+  // Resize: start dragging the end edge of an existing volta
+  const handleVoltaResizeStart = useCallback(
+    (voltaId: string, edge: "end") => {
+      const volta = voltaBrackets.find((v) => v.id === voltaId);
+      if (!volta) return;
+      setVoltaResize({
+        voltaId,
+        edge,
+        initialEndMeasure: volta.endMeasure,
+        currentEndMeasure: volta.endMeasure,
+      });
+    },
+    [voltaBrackets],
+  );
+
+  // Resize: update the drag target based on cursor X
+  const handleVoltaResizeMove = useCallback(
+    (x: number, system: number) => {
+      if (!voltaResize) return;
+      const volta = voltaBrackets.find((v) => v.id === voltaResize.voltaId);
+      if (!volta) return;
+
+      const sysLayout = getLayoutForSystem(systemLayouts, system);
+      const beatInSystem = getBeatFromXInSystem(sysLayout, x, 0);
+      // Round to nearest measure boundary — we want the cursor's measure column
+      const measureInSystem = Math.round(beatInSystem / beatsPerMeasure);
+      const absoluteMeasure = system * measuresPerSystem + measureInSystem;
+
+      // Half-open: cursor "in" measure M means endMeasure = M + 1.
+      // But we let the user resize past the current measure by snapping to whichever
+      // measure boundary they're closest to.
+      let candidateEnd = absoluteMeasure;
+
+      // Must stay strictly greater than startMeasure (volta has ≥1 measure)
+      candidateEnd = Math.max(volta.startMeasure + 1, candidateEnd);
+
+      // Must stay within the repeat section the volta belongs to
+      const pair = repeatMarkers.reduce<{ start?: number; end?: number }>(
+        (acc, m) => {
+          if (m.pairId !== volta.repeatPairId) return acc;
+          if (m.type === "start") acc.start = m.measureNumber;
+          else acc.end = m.measureNumber;
+          return acc;
+        },
+        {},
+      );
+      // Repeat-section endMeasure may need to extend past the marker if voltas
+      // do — but for resize we cap at a reasonable bound (existing marker + 8
+      // measures of headroom) to avoid runaway drags.
+      const sectionUpperBound = (pair.end ?? candidateEnd) + 8;
+      candidateEnd = Math.min(candidateEnd, sectionUpperBound);
+
+      // Don't allow overlap with other voltas in the same repeat section
+      for (const other of voltaBrackets) {
+        if (other.id === volta.id) continue;
+        if (other.repeatPairId !== volta.repeatPairId) continue;
+        // If this resize would push our end past another volta's start, clamp
+        if (
+          volta.startMeasure < other.startMeasure &&
+          candidateEnd > other.startMeasure
+        ) {
+          candidateEnd = other.startMeasure;
+        }
+      }
+
+      if (candidateEnd !== voltaResize.currentEndMeasure) {
+        setVoltaResize({ ...voltaResize, currentEndMeasure: candidateEnd });
+      }
+    },
+    [
+      voltaResize,
+      voltaBrackets,
+      systemLayouts,
+      beatsPerMeasure,
+      measuresPerSystem,
+      repeatMarkers,
+    ],
+  );
+
+  // Resize: commit the drag
+  const handleVoltaResizeEnd = useCallback(() => {
+    if (!voltaResize || !onVoltaBracketsChange) {
+      setVoltaResize(null);
+      return;
+    }
+    // Only commit if the end actually changed
+    if (voltaResize.currentEndMeasure !== voltaResize.initialEndMeasure) {
+      onVoltaBracketsChange(
+        voltaBrackets.map((v) =>
+          v.id === voltaResize.voltaId
+            ? { ...v, endMeasure: voltaResize.currentEndMeasure }
+            : v,
+        ),
+      );
+    }
+    setVoltaResize(null);
+  }, [voltaResize, voltaBrackets, onVoltaBracketsChange]);
+
   return {
     voltaStart,
     setVoltaStart,
     hoveredVoltaMeasure,
+    voltaResize,
     handleVoltaClick,
     handleVoltaHover,
     clearVoltaHover,
+    handleVoltaResizeStart,
+    handleVoltaResizeMove,
+    handleVoltaResizeEnd,
     isPlacingVolta: voltaStart !== null,
+    isResizingVolta: voltaResize !== null,
   };
 }

@@ -409,10 +409,15 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
 
   // Use extracted volta placement hook
   const {
-    voltaStart: _voltaStart,
+    voltaStart,
     handleVoltaClick,
-    handleVoltaHover: _handleVoltaHover,
-    isPlacingVolta: _isPlacingVolta,
+    handleVoltaHover,
+    hoveredVoltaMeasure,
+    clearVoltaHover,
+    voltaResize,
+    handleVoltaResizeStart,
+    handleVoltaResizeMove,
+    handleVoltaResizeEnd,
   } = useVoltaPlacement({
     voltaBrackets,
     onVoltaBracketsChange,
@@ -621,6 +626,21 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         handleRepeatHover(x, system);
       }
 
+      // Handle volta tool hover tracking — drives the ghost-bracket preview
+      if (selectedTool === "volta" && !readOnly) {
+        const { x, y } = getCoords(e);
+        const system = getSystemFromY(y, systemCount, staffLines);
+        handleVoltaHover(x, system);
+      }
+
+      // Handle volta resize-drag — updates currentEndMeasure
+      if (voltaResize) {
+        const { x, y } = getCoords(e);
+        const system = getSystemFromY(y, systemCount, staffLines);
+        handleVoltaResizeMove(x, system);
+        return;
+      }
+
       if (!draggedNote) return;
 
       const { x, y } = getCoords(e);
@@ -677,6 +697,9 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
       selectedTool,
       readOnly,
       handleRepeatHover,
+      handleVoltaHover,
+      voltaResize,
+      handleVoltaResizeMove,
       draggedNote,
       getCoords,
       systemCount,
@@ -706,12 +729,17 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     if (draggedMarker) {
       handleMarkerDragEnd();
     }
+    if (voltaResize) {
+      handleVoltaResizeEnd();
+    }
   }, [
     draggedNote,
     renderedNotes,
     playNoteSound,
     isDraggingPlayhead,
     draggedMarker,
+    voltaResize,
+    handleVoltaResizeEnd,
     handleMarkerDragEnd,
     onDragEnd,
   ]);
@@ -876,6 +904,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
         onContextMenu={handleEmptyContextMenu}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={clearVoltaHover}
         className="bg-white border border-gray-200 rounded-xl shadow-sm select-none"
         style={{
           cursor: draggedNote
@@ -936,6 +965,11 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
               selectedTool={selectedTool}
               hoveredVolta={hoveredVolta}
               setHoveredVolta={setHoveredVolta}
+              voltaStart={voltaStart}
+              hoveredVoltaMeasure={hoveredVoltaMeasure}
+              systemIndex={systemIndex}
+              voltaResize={voltaResize}
+              onVoltaResizeStart={handleVoltaResizeStart}
             />
           );
         })}
