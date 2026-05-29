@@ -43,14 +43,33 @@ export const mashiachNow: SongData = {
     { id: "mashiach-30", pitch: "D4", duration: 0.5, absoluteBeat: 18.5 },
     { id: "mashiach-31", pitch: "F4", duration: 0.5, absoluteBeat: 19 },
     { id: "mashiach-32", pitch: "D4", duration: 0.5, absoluteBeat: 19.5 },
-    // === ENDING (Measures 6-7, beats 20-27) ===
+    // === ENDING — Measure 6 (beats 20-23): walk-up to 1st ending ===
     { id: "mashiach-33", pitch: "A4", duration: 1, absoluteBeat: 20 },
     { id: "mashiach-34", pitch: "G4", duration: 1, absoluteBeat: 21 },
     { id: "mashiach-35", pitch: "F4", duration: 1, absoluteBeat: 22 },
     { id: "mashiach-36", pitch: "G4", duration: 1, absoluteBeat: 23 },
+    // === 1st ending — Measure 7 (beats 24-27): held A ===
     { id: "mashiach-37", pitch: "A4", duration: 4, absoluteBeat: 24 },
+    // === 2nd ending — Measures 8-9 (beats 28-32): E + held D ===
+    { id: "mashiach-38", pitch: "E4", duration: 1, absoluteBeat: 28 },
+    { id: "mashiach-39", pitch: "D4", duration: 4, absoluteBeat: 29 },
   ],
   repeatMarkers: [
+    // Verse repeat — sing the verse twice before the chorus
+    {
+      id: "mashiach-verse-repeat-start",
+      pairId: "mashiach-verse-repeat",
+      type: "start",
+      measureNumber: 0,
+    },
+    {
+      id: "mashiach-verse-repeat-end",
+      pairId: "mashiach-verse-repeat",
+      type: "end",
+      measureNumber: 2,
+    },
+    // Chorus + endings repeat — measureNumber points to end of volta 1,
+    // playback code auto-extends to include volta 2 (see MEMORY.md)
     {
       id: "mashiach-repeat-start",
       pairId: "mashiach-repeat",
@@ -61,7 +80,25 @@ export const mashiachNow: SongData = {
       id: "mashiach-repeat-end",
       pairId: "mashiach-repeat",
       type: "end",
-      measureNumber: 6,
+      measureNumber: 7,
+    },
+  ],
+  voltaBrackets: [
+    // 1st ending (m6, beats 24-27): held A — half-open [6, 7)
+    {
+      id: "mashiach-volta-1",
+      repeatPairId: "mashiach-repeat",
+      startMeasure: 6,
+      endMeasure: 7,
+      voltaNumber: 1,
+    },
+    // 2nd ending (m7-m8, beats 28-32): E + held D — half-open [7, 9)
+    {
+      id: "mashiach-volta-2",
+      repeatPairId: "mashiach-repeat",
+      startMeasure: 7,
+      endMeasure: 9,
+      voltaNumber: 2,
     },
   ],
   lyrics: [
