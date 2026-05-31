@@ -44,7 +44,13 @@ import { groupEighthNotes } from "./utils/beamingUtils";
 import { validateMeasures, MeasureValidation } from "./utils/measureValidation";
 
 // Import types
-import { EditorNote, RenderedNote, BeamGroup, NoteEditorProps } from "./types";
+import {
+  EditorNote,
+  RenderedNote,
+  BeamGroup,
+  NoteEditorProps,
+  RepeatMarker,
+} from "./types";
 
 // Import subcomponents
 import { StaffSystem } from "./components/StaffSystem";
@@ -200,6 +206,26 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
   const renderedRepeatMarkers = useMemo(
     () => toRenderedRepeatMarkers(repeatMarkers, measuresPerSystem),
     [repeatMarkers, measuresPerSystem],
+  );
+
+  // Wrap onRepeatMarkersChange so that whenever a repeat pair gets removed,
+  // any volta brackets attached to that pair (repeatPairId match) are removed
+  // too. Otherwise orphaned voltas linger, confuse the placement flow, and
+  // can't be re-added (volta tool requires being inside a repeat section).
+  const handleRepeatMarkersChange = useCallback(
+    (next: RepeatMarker[]) => {
+      onRepeatMarkersChange?.(next);
+      if (onVoltaBracketsChange && voltaBrackets.length > 0) {
+        const remainingPairIds = new Set(next.map((m) => m.pairId));
+        const orphanRemoved = voltaBrackets.filter((v) =>
+          remainingPairIds.has(v.repeatPairId),
+        );
+        if (orphanRemoved.length !== voltaBrackets.length) {
+          onVoltaBracketsChange(orphanRemoved);
+        }
+      }
+    },
+    [onRepeatMarkersChange, onVoltaBracketsChange, voltaBrackets],
   );
 
   // Get max SVG width
@@ -400,7 +426,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
     isDraggingMarker,
   } = useRepeatPlacement({
     repeatMarkers: renderedRepeatMarkers,
-    onRepeatMarkersChange,
+    onRepeatMarkersChange: handleRepeatMarkersChange,
     systemLayouts,
     measuresPerSystem,
     beatsPerMeasure: defaultLayout.beatsPerMeasure,
@@ -928,7 +954,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             showGrid={showGrid}
             onTimeSignatureClick={onTimeSignatureClick}
             repeatMarkers={renderedRepeatMarkers}
-            onRepeatMarkersChange={onRepeatMarkersChange}
+            onRepeatMarkersChange={handleRepeatMarkersChange}
             hoveredMarker={hoveredMarker}
             setHoveredMarker={setHoveredMarker}
             selectedTool={selectedTool}
@@ -951,11 +977,17 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
             <VoltaBracketLayer
               key={`volta-${systemIndex}`}
               voltaBrackets={voltaBrackets.filter((v) => {
-                // Only render voltas that start in this system
+                // Include voltas that touch this system at any point — multi-
+                // system voltas render a slice per system, so the start system,
+                // any middle systems, and the end system all need to draw a
+                // segment.
                 const startSystem = Math.floor(
                   v.startMeasure / measuresPerSystem,
                 );
-                return startSystem === systemIndex;
+                const endSystem = Math.floor(
+                  (v.endMeasure - 1) / measuresPerSystem,
+                );
+                return systemIndex >= startSystem && systemIndex <= endSystem;
               })}
               onVoltaBracketsChange={onVoltaBracketsChange}
               systemLayouts={systemLayouts}
@@ -1242,6 +1274,7 @@ export function NoteEditorRefactored(props: NoteEditorProps) {
           (() => {
             const hoverStaffCenterY = getStaffCenterY(
               hoveredRepeatMeasure.system,
+              staffLines,
             );
             const hoverSysLayout = getLayoutForSystem(
               systemLayouts,

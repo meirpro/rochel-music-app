@@ -144,34 +144,44 @@ export function VoltaBracketLayer({
           (liveEndMeasure - 1) / measuresPerRow,
         );
 
-        // For now, only render voltas that fit on a single system
-        // Multi-system volta rendering is more complex and can be added later
-        if (startSystemIndex !== endSystemIndex) {
-          console.warn(
-            `Volta bracket ${volta.id} spans multiple systems - not yet supported`,
-          );
+        // The parent filter includes voltas that touch any system in
+        // [startSystemIndex, endSystemIndex]. Each system draws ONLY its slice.
+        // systemIndex is the system this layer instance is rendering for.
+        const thisSystem = systemIndex ?? startSystemIndex;
+        if (thisSystem < startSystemIndex || thisSystem > endSystemIndex) {
           return null;
         }
+        const isStartSystem = thisSystem === startSystemIndex;
+        const isEndSystem = thisSystem === endSystemIndex;
 
-        const systemLayout = systemLayouts[startSystemIndex];
+        const systemLayout = systemLayouts[thisSystem];
         if (!systemLayout) {
           console.warn(
-            `[VoltaBracketLayer] No systemLayout for system ${startSystemIndex}`,
+            `[VoltaBracketLayer] No systemLayout for system ${thisSystem}`,
           );
           return null;
         }
 
-        // Calculate X positions based on measure boundaries
-        const startMeasureInSystem = volta.startMeasure % measuresPerRow;
-        const endMeasureInSystem = ((liveEndMeasure - 1) % measuresPerRow) + 1;
+        // Compute the slice bounds for this system: clamp left to the volta's
+        // start only on the start system (otherwise begin at the row's first
+        // measure), and clamp right to the volta's end only on the end system
+        // (otherwise extend to the row's last measure).
+        const sliceStartMeasureInSystem = isStartSystem
+          ? volta.startMeasure % measuresPerRow
+          : 0;
+        const sliceEndMeasureInSystem = isEndSystem
+          ? ((liveEndMeasure - 1) % measuresPerRow) + 1
+          : measuresPerRow;
 
         // Find measure X positions from layout
-        const startMeasureInfo = systemLayout.measures[startMeasureInSystem];
-        const endMeasureInfo = systemLayout.measures[endMeasureInSystem - 1];
+        const startMeasureInfo =
+          systemLayout.measures[sliceStartMeasureInSystem];
+        const endMeasureInfo =
+          systemLayout.measures[sliceEndMeasureInSystem - 1];
 
         if (!startMeasureInfo || !endMeasureInfo) {
           console.warn(
-            `[VoltaBracketLayer] Missing measure info for volta ${volta.id}`,
+            `[VoltaBracketLayer] Missing measure info for volta ${volta.id} on system ${thisSystem}`,
           );
           return null;
         }
@@ -213,7 +223,7 @@ export function VoltaBracketLayer({
               }
             }}
           >
-            {/* Horizontal line at top */}
+            {/* Horizontal line at top — drawn on every system the volta touches */}
             <line
               x1={startX}
               y1={y}
@@ -223,17 +233,22 @@ export function VoltaBracketLayer({
               strokeWidth={VOLTA_LINE_WIDTH}
             />
 
-            {/* Left vertical drop */}
-            <line
-              x1={startX}
-              y1={y}
-              x2={startX}
-              y2={y + VOLTA_HEIGHT}
-              stroke="#991b1b"
-              strokeWidth={VOLTA_LINE_WIDTH}
-            />
+            {/* Left vertical drop — only on the start system. Continuation rows
+                begin "open" so the eye reads the bracket as carrying over. */}
+            {isStartSystem && (
+              <line
+                x1={startX}
+                y1={y}
+                x2={startX}
+                y2={y + VOLTA_HEIGHT}
+                stroke="#991b1b"
+                strokeWidth={VOLTA_LINE_WIDTH}
+              />
+            )}
 
-            {/* Right vertical drop (dashed to indicate continuation) */}
+            {/* Right vertical drop — solid on the end system (closes the bracket),
+                dashed on intermediate/start systems (indicates continuation onto
+                the next row). */}
             <line
               x1={endX}
               y1={y}
@@ -241,57 +256,64 @@ export function VoltaBracketLayer({
               y2={y + VOLTA_HEIGHT}
               stroke="#991b1b"
               strokeWidth={VOLTA_LINE_WIDTH}
-              strokeDasharray="4,4"
+              strokeDasharray={isEndSystem ? undefined : "4,4"}
             />
 
-            {/* Volta number label */}
-            <text
-              x={startX + VOLTA_LABEL_OFFSET}
-              y={y - 4}
-              fontSize="14"
-              fontWeight="bold"
-              fill="#991b1b"
-              className="select-none"
-            >
-              {volta.voltaNumber}.
-            </text>
-
-            {/* Right-edge resize handle — appears when the volta tool is active
-                and the user isn't currently placing a new one */}
-            {onVoltaResizeStart && selectedTool === "volta" && !voltaStart && (
-              <g
-                className="volta-resize-handle"
-                style={{ cursor: "ew-resize" }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onVoltaResizeStart(volta.id, "end");
-                }}
-                onClick={(e) => e.stopPropagation()}
+            {/* Volta number label — only on the start system, so multi-system
+                voltas don't repeat the number on every row. */}
+            {isStartSystem && (
+              <text
+                x={startX + VOLTA_LABEL_OFFSET}
+                y={y - 4}
+                fontSize="14"
+                fontWeight="bold"
+                fill="#991b1b"
+                className="select-none"
               >
-                {/* Invisible larger hit target */}
-                <rect
-                  x={endX - 8}
-                  y={y - 4}
-                  width={16}
-                  height={VOLTA_HEIGHT + 8}
-                  fill="transparent"
-                />
-                {/* Visible grip — small filled square at the corner */}
-                <rect
-                  x={endX - 3}
-                  y={y + VOLTA_HEIGHT - 6}
-                  width={6}
-                  height={6}
-                  fill={isResizingThis ? "#dc2626" : "#991b1b"}
-                  stroke="white"
-                  strokeWidth={1}
-                />
-              </g>
+                {volta.voltaNumber}.
+              </text>
             )}
 
-            {/* Live measure-count badge while resizing */}
-            {isResizingThis && (
+            {/* Right-edge resize handle — only on the end system, since the
+                drag target is the volta's actual end. */}
+            {isEndSystem &&
+              onVoltaResizeStart &&
+              selectedTool === "volta" &&
+              !voltaStart && (
+                <g
+                  className="volta-resize-handle"
+                  style={{ cursor: "ew-resize" }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onVoltaResizeStart(volta.id, "end");
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Invisible larger hit target */}
+                  <rect
+                    x={endX - 8}
+                    y={y - 4}
+                    width={16}
+                    height={VOLTA_HEIGHT + 8}
+                    fill="transparent"
+                  />
+                  {/* Visible grip — small filled square at the corner */}
+                  <rect
+                    x={endX - 3}
+                    y={y + VOLTA_HEIGHT - 6}
+                    width={6}
+                    height={6}
+                    fill={isResizingThis ? "#dc2626" : "#991b1b"}
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                </g>
+              )}
+
+            {/* Live measure-count badge while resizing — only on the end
+                system so multi-system voltas don't repeat the badge per row */}
+            {isResizingThis && isEndSystem && (
               <text
                 x={endX + 6}
                 y={y - 4}
