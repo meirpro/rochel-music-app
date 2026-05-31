@@ -1,5 +1,5 @@
 // Mashiach Now (משיח נאו) - Chabad Song
-// Verse + Chorus + Ending
+// Verse + Chorus + Two endings (asymmetric: walk-up→hold-A vs walk-down→hold-D)
 import { SongData } from "./types";
 
 export const mashiachNow: SongData = {
@@ -43,19 +43,21 @@ export const mashiachNow: SongData = {
     { id: "mashiach-30", pitch: "D4", duration: 0.5, absoluteBeat: 18.5 },
     { id: "mashiach-31", pitch: "F4", duration: 0.5, absoluteBeat: 19 },
     { id: "mashiach-32", pitch: "D4", duration: 0.5, absoluteBeat: 19.5 },
-    // === ENDING — Measure 6 (beats 20-23): walk-up to 1st ending ===
+    // === 1st ending — Measures 6-7 (beats 20-27): walk-up to held A ===
     { id: "mashiach-33", pitch: "A4", duration: 1, absoluteBeat: 20 },
     { id: "mashiach-34", pitch: "G4", duration: 1, absoluteBeat: 21 },
     { id: "mashiach-35", pitch: "F4", duration: 1, absoluteBeat: 22 },
     { id: "mashiach-36", pitch: "G4", duration: 1, absoluteBeat: 23 },
-    // === 1st ending — Measure 7 (beats 24-27): held A ===
     { id: "mashiach-37", pitch: "A4", duration: 4, absoluteBeat: 24 },
-    // === 2nd ending — Measures 8-9 (beats 28-32): E + held D ===
-    { id: "mashiach-38", pitch: "E4", duration: 1, absoluteBeat: 28 },
-    { id: "mashiach-39", pitch: "D4", duration: 4, absoluteBeat: 29 },
+    // === 2nd ending — Measures 8-9 (beats 28-35): walk-down to held D ===
+    { id: "mashiach-38", pitch: "A4", duration: 1, absoluteBeat: 28 },
+    { id: "mashiach-39", pitch: "G4", duration: 1, absoluteBeat: 29 },
+    { id: "mashiach-40", pitch: "F4", duration: 1, absoluteBeat: 30 },
+    { id: "mashiach-41", pitch: "E4", duration: 1, absoluteBeat: 31 },
+    { id: "mashiach-42", pitch: "D4", duration: 4, absoluteBeat: 32 },
   ],
   repeatMarkers: [
-    // Verse repeat — sing the verse twice before the chorus
+    // Verse repeat — sing the verse twice before the chorus.
     {
       id: "mashiach-verse-repeat-start",
       pairId: "mashiach-verse-repeat",
@@ -68,34 +70,36 @@ export const mashiachNow: SongData = {
       type: "end",
       measureNumber: 2,
     },
-    // Chorus + endings repeat — measureNumber points to end of volta 1,
-    // playback code auto-extends to include volta 2 (see MEMORY.md)
+    // Chorus + endings repeat. measureNumber=9 fully encloses both voltas;
+    // the playback code's volta auto-extend would also accept m7 here, but
+    // explicitly spanning the full range matches what the editor exports
+    // and is easier to read.
     {
-      id: "mashiach-repeat-start",
-      pairId: "mashiach-repeat",
+      id: "mashiach-chorus-repeat-start",
+      pairId: "mashiach-chorus-repeat",
       type: "start",
       measureNumber: 2,
     },
     {
-      id: "mashiach-repeat-end",
-      pairId: "mashiach-repeat",
+      id: "mashiach-chorus-repeat-end",
+      pairId: "mashiach-chorus-repeat",
       type: "end",
-      measureNumber: 7,
+      measureNumber: 9,
     },
   ],
   voltaBrackets: [
-    // 1st ending (m6, beats 24-27): held A — half-open [6, 7)
+    // 1st ending (m6-m7, beats 20-27): walk-up A G F G → held A.
     {
       id: "mashiach-volta-1",
-      repeatPairId: "mashiach-repeat",
-      startMeasure: 6,
+      repeatPairId: "mashiach-chorus-repeat",
+      startMeasure: 5,
       endMeasure: 7,
       voltaNumber: 1,
     },
-    // 2nd ending (m7-m8, beats 28-32): E + held D — half-open [7, 9)
+    // 2nd ending (m8-m9, beats 28-35): walk-down A G F E → held D.
     {
       id: "mashiach-volta-2",
-      repeatPairId: "mashiach-repeat",
+      repeatPairId: "mashiach-chorus-repeat",
       startMeasure: 7,
       endMeasure: 9,
       voltaNumber: 2,
@@ -138,7 +142,7 @@ export const mashiachNow: SongData = {
     { text: "wait", absoluteBeat: 19 },
   ],
   settings: {
-    tempo: 100,
+    tempo: 200,
     timeSignature: { numerator: 4, denominator: 4 },
   },
   releaseDate: "2025-01-15",
