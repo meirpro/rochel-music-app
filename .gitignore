@@ -42,3 +42,6 @@ next-env.d.ts
 firebase-debug.log
 .claude/settings.local.json
 /.playwright-mcp
+
+# Claude Code superpowers skill runtime — brainstorm session PIDs/logs/markers
+/.superpowers
