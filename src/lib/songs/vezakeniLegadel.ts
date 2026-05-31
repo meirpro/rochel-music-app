@@ -53,6 +53,8 @@ export const vezakeniLegadel: SongData = {
 
   releaseDate: "2026-02-02",
 
+  category: "experimental",
+
   transcriptionNotes: {
     original: {
       key: "C minor",
