@@ -35,18 +35,37 @@ let contextConfigured = false;
 function ensureLowLatencyContext(): void {
   if (contextConfigured) return;
 
-  // Only configure if context hasn't started yet
-  if (Tone.getContext().state === "suspended") {
-    Tone.setContext(
-      new Tone.Context({
-        latencyHint: "interactive",
-        lookAhead: AUDIO_CONFIG.LOOK_AHEAD,
-      }),
-    );
-  } else {
-    // Context already running, just reduce lookAhead
-    Tone.getContext().lookAhead = AUDIO_CONFIG.LOOK_AHEAD;
+  // Always replace the existing context with a fresh low-latency one on first
+  // init of this page session.
+  //
+  // Why we don't trust the existing context state:
+  // Chrome holds AudioContext objects alive across same-tab soft reloads. The
+  // inherited context may report as "running" (its prior state) yet be
+  // disconnected from the audio device — a zombie state where Tone.js skips
+  // its resume() path but no audio actually plays. Symptom: audio works after
+  // ctrl+shift+r but not ctrl+r. Forcing a fresh Context here gives us a clean
+  // audio device association on every load.
+  const previous = Tone.getContext();
+  Tone.setContext(
+    new Tone.Context({
+      latencyHint: "interactive",
+      lookAhead: AUDIO_CONFIG.LOOK_AHEAD,
+    }),
+  );
+
+  // Best-effort release of the audio device the old context was holding. The
+  // Tone.js type is a union with OfflineAudioContext (no close()), so narrow at
+  // runtime. If close() throws (already closed, invalid state), we don't care
+  // — the new context is what Tone will use from here on.
+  try {
+    const raw = previous.rawContext as unknown as AudioContext;
+    if (typeof raw.close === "function") {
+      raw.close();
+    }
+  } catch {
+    // ignore
   }
+
   contextConfigured = true;
 }
 
