@@ -170,6 +170,8 @@ export const omarRabbiAkivaUpdated: SongData = {
 
   releaseDate: "2026-02-03",
 
+  category: "experimental",
+
   transcriptionNotes: {
     original: {
       key: "Bb Major / G minor",
