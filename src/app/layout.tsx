@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { Fredoka } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const fredoka = Fredoka({
-  variable: "--font-fredoka",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
+// Fredoka is self-hosted via @font-face rules in globals.css — keeping the
+// --font-fredoka variable name lets the existing Tailwind/global styles keep
+// working unchanged.
 
 export const metadata: Metadata = {
   title: {
@@ -38,7 +35,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fredoka.variable} font-fredoka antialiased bg-app text-white`}
+        className="font-fredoka antialiased bg-app text-white"
+        style={{ ["--font-fredoka" as string]: "Fredoka" }}
       >
         <Providers>{children}</Providers>
       </body>
