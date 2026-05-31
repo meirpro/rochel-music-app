@@ -1057,7 +1057,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <Toaster position="top-center" />
+      <Toaster position="bottom-center" closeButton />
 
       {/* Header */}
       <EditorHeader

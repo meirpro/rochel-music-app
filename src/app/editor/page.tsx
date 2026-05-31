@@ -492,7 +492,7 @@ export default function EditorPage() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Toast notifications */}
-      <Toaster position="top-center" />
+      <Toaster position="bottom-center" closeButton />
 
       {/* Mobile banner */}
       <MobileBanner />
