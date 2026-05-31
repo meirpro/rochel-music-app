@@ -1,6 +1,9 @@
 // Ochila Lakel (אוחילה לאל)
 // Key: F Major / D minor, Time: 4/4
 // UPDATED: All 17 rests from MusicXML
+// TODO: The arrangement feels cut off at the end on staging — possibly missing
+// the final phrase or resolution from the source. Cross-check against the
+// original sheet music and extend if needed.
 import { SongData } from "./types";
 
 export const ochilaLakelUpdated: SongData = {
