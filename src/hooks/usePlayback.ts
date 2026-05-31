@@ -637,17 +637,50 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
       while (currentBeat < endAbsBeat) {
         const startVisual = absoluteBeatToVisual(currentBeat);
         const systemEndBeat = startVisual.systemEndBeat;
-        const segmentEndBeat = Math.min(endAbsBeat, systemEndBeat);
+        const sys = systemLayouts[startVisual.system] || systemLayouts[0];
+
+        // Break segments at measure boundaries too — not just system boundaries.
+        // Within a single measure there are no decorations, so linear interp
+        // between content start and content end is exact. Crossing a measure
+        // boundary that has a repeat marker (suffix on m_a + prefix on m_b)
+        // adds decoration width to the spatial gap but zero beats to the temporal
+        // gap; a single per-system segment averages that width across both
+        // measures and visibly drifts the playhead by half the marker width.
+        const beatInSystem = currentBeat - sys.startBeat;
+        let measureEndBeat = systemEndBeat;
+        for (const m of sys.measures) {
+          const mStart = sys.startBeat + m.startBeatInSystem;
+          const mEnd = mStart + m.beatsInMeasure;
+          if (currentBeat >= mStart && currentBeat < mEnd) {
+            measureEndBeat = mEnd;
+            break;
+          }
+          // Defensive: if loop finds a measure that starts after currentBeat,
+          // clamp the segment to that next measure's start so we re-anchor on
+          // the next iteration.
+          if (mStart > beatInSystem + sys.startBeat) {
+            measureEndBeat = Math.min(measureEndBeat, mStart);
+            break;
+          }
+        }
+
+        const segmentEndBeat = Math.min(
+          endAbsBeat,
+          systemEndBeat,
+          measureEndBeat,
+        );
         const endVisual = absoluteBeatToVisual(segmentEndBeat);
 
         const duration = segmentEndBeat - currentBeat;
-        const sys = systemLayouts[startVisual.system] || systemLayouts[0];
 
         const segment = {
           startBeat: currentTimelineBeat,
           endBeat: currentTimelineBeat + duration,
           system: startVisual.system,
           startX: startVisual.x,
+          // When the segment fills a system, snap to staffRight so the playhead
+          // glides to the row's right edge instead of stopping at the last
+          // measure's content end.
           endX: segmentEndBeat === systemEndBeat ? sys.staffRight : endVisual.x,
         };
         timeline.push(segment);
