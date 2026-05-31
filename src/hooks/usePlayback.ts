@@ -639,49 +639,64 @@ export function usePlayback(options: UsePlaybackOptions): UsePlaybackReturn {
         const systemEndBeat = startVisual.systemEndBeat;
         const sys = systemLayouts[startVisual.system] || systemLayouts[0];
 
-        // Break segments at measure boundaries too — not just system boundaries.
-        // Within a single measure there are no decorations, so linear interp
-        // between content start and content end is exact. Crossing a measure
-        // boundary that has a repeat marker (suffix on m_a + prefix on m_b)
-        // adds decoration width to the spatial gap but zero beats to the temporal
-        // gap; a single per-system segment averages that width across both
-        // measures and visibly drifts the playhead by half the marker width.
-        const beatInSystem = currentBeat - sys.startBeat;
-        let measureEndBeat = systemEndBeat;
+        // Find the measure that contains currentBeat. We need both its bounds
+        // (to break the segment at its end) AND its xOffset (to compute the
+        // segment's endX in this measure's local coordinates — see below).
+        let currentMeasure: (typeof sys.measures)[number] | null = null;
         for (const m of sys.measures) {
           const mStart = sys.startBeat + m.startBeatInSystem;
           const mEnd = mStart + m.beatsInMeasure;
           if (currentBeat >= mStart && currentBeat < mEnd) {
-            measureEndBeat = mEnd;
-            break;
-          }
-          // Defensive: if loop finds a measure that starts after currentBeat,
-          // clamp the segment to that next measure's start so we re-anchor on
-          // the next iteration.
-          if (mStart > beatInSystem + sys.startBeat) {
-            measureEndBeat = Math.min(measureEndBeat, mStart);
+            currentMeasure = m;
             break;
           }
         }
+        const measureStartAbsBeat = currentMeasure
+          ? sys.startBeat + currentMeasure.startBeatInSystem
+          : currentBeat;
+        const measureEndAbsBeat = currentMeasure
+          ? measureStartAbsBeat + currentMeasure.beatsInMeasure
+          : systemEndBeat;
 
         const segmentEndBeat = Math.min(
           endAbsBeat,
           systemEndBeat,
-          measureEndBeat,
+          measureEndAbsBeat,
         );
-        const endVisual = absoluteBeatToVisual(segmentEndBeat);
 
         const duration = segmentEndBeat - currentBeat;
+
+        // Critical: endX must be computed in the CURRENT measure's coordinates,
+        // not by calling absoluteBeatToVisual(segmentEndBeat). At a measure
+        // boundary, absoluteBeatToVisual returns the *next* measure's content
+        // start, which is on the far side of any repeat-marker decoration gap.
+        // Using that as endX makes the playhead glide *through* the decoration
+        // gap over the course of the current measure — the drift bug. Instead
+        // we anchor endX to the current measure's own content frame so the
+        // playhead reaches the measure's content end exactly when its last
+        // beat plays, and then jumps the decoration gap on the next iteration.
+        let endX: number;
+        if (currentMeasure) {
+          const beatsIntoMeasure = segmentEndBeat - measureStartAbsBeat;
+          endX =
+            LEFT_MARGIN +
+            currentMeasure.xOffset +
+            beatsIntoMeasure * sys.beatWidth;
+        } else {
+          endX = absoluteBeatToVisual(segmentEndBeat).x;
+        }
+        // When the segment spans to the end of the system, snap to staffRight
+        // so the playhead glides to the row's right edge (matches old behavior).
+        if (segmentEndBeat === systemEndBeat) {
+          endX = sys.staffRight;
+        }
 
         const segment = {
           startBeat: currentTimelineBeat,
           endBeat: currentTimelineBeat + duration,
           system: startVisual.system,
           startX: startVisual.x,
-          // When the segment fills a system, snap to staffRight so the playhead
-          // glides to the row's right edge instead of stopping at the last
-          // measure's content end.
-          endX: segmentEndBeat === systemEndBeat ? sys.staffRight : endVisual.x,
+          endX,
         };
         timeline.push(segment);
 
