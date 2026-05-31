@@ -35,35 +35,26 @@ let contextConfigured = false;
 function ensureLowLatencyContext(): void {
   if (contextConfigured) return;
 
-  // Always replace the existing context with a fresh low-latency one on first
-  // init of this page session.
-  //
-  // Why we don't trust the existing context state:
-  // Chrome holds AudioContext objects alive across same-tab soft reloads. The
-  // inherited context may report as "running" (its prior state) yet be
-  // disconnected from the audio device — a zombie state where Tone.js skips
-  // its resume() path but no audio actually plays. Symptom: audio works after
-  // ctrl+shift+r but not ctrl+r. Forcing a fresh Context here gives us a clean
-  // audio device association on every load.
-  const previous = Tone.getContext();
-  Tone.setContext(
-    new Tone.Context({
-      latencyHint: "interactive",
-      lookAhead: AUDIO_CONFIG.LOOK_AHEAD,
-    }),
-  );
+  const current = Tone.getContext();
 
-  // Best-effort release of the audio device the old context was holding. The
-  // Tone.js type is a union with OfflineAudioContext (no close()), so narrow at
-  // runtime. If close() throws (already closed, invalid state), we don't care
-  // — the new context is what Tone will use from here on.
-  try {
-    const raw = previous.rawContext as unknown as AudioContext;
-    if (typeof raw.close === "function") {
-      raw.close();
-    }
-  } catch {
-    // ignore
+  // If the inherited context is already dead (Chrome shut down the audio
+  // device, or we previously transitioned the page through a closed state),
+  // build a fresh one. Otherwise reuse the live one and just adjust lookAhead.
+  //
+  // Earlier we tried always-recreate-and-close-the-old. That broke audio with
+  // "Cannot resume a closed AudioContext" because Tone.js's setContext shares
+  // internal state with the rawContext we tried to close, killing the new
+  // context too. Letting Tone keep its singleton and only swapping when it's
+  // already unusable avoids that whole class of bug.
+  if (current.rawContext.state === "closed") {
+    Tone.setContext(
+      new Tone.Context({
+        latencyHint: "interactive",
+        lookAhead: AUDIO_CONFIG.LOOK_AHEAD,
+      }),
+    );
+  } else {
+    current.lookAhead = AUDIO_CONFIG.LOOK_AHEAD;
   }
 
   contextConfigured = true;
